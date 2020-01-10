@@ -1,0 +1,13 @@
+---
+{{ include "stack.service" (dict "name" "redmine" "service" .Values.services.redmine ) }}
+---
+{{ include "stack.ingress" (dict "name" "redmine" "service" .Values.services.redmine ) }}
+---
+{{ include "stack.deployment" (dict "name" "redmine" "service" .Values.services.redmine ) }}
+---
+---
+{{ include "stack.service" (dict "name" "db" "service" .Values.services.db ) }}
+---
+{{ include "stack.ingress" (dict "name" "db" "service" .Values.services.db ) }}
+---
+{{ include "stack.deployment" (dict "name" "db" "service" .Values.services.db ) }}
