@@ -11,12 +11,20 @@ See `./values.yml` for an (opinated) completed stack.
 helm -n your-name-space upgrade --install your-stack . -f docker-compose.yml
 ```
 
-## This sample stack (redmine + db) as `values.yml`
-```bash
-helm -n com-linktohack-redmine upgrade --install redmine --set services.redmine.ports={3000:3000},services.db.ports={3306:3306} .
+## Samples
+Tested in a K3s cluster with `local-path` provisioner
+### Redmine + MySQL
+
+```
+helm install -n com-linktohack-bitwarden bitwarden . -f ./docker-compose-bitwarden.yaml --set services.bitwarden.ports={80:80} 
 ```
 
-Tested in a K3s cluster with `local-path` provisioner
+### Bitwarden
+
+```bash
+helm -n com-linktohack-redmine upgrade --install redmine --set services.redmine.ports={3000:3000},services.db.ports={3306:3306} . -f ./docker-compose-redmine.yaml
+```
+
 ## As template
 ```bash
 helm --namespace com-linktohack-redmine template . --debug --set services.redmine.ports={3000:3000},services.db.ports={3306:3306} > stack1.yaml      

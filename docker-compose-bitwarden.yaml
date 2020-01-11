@@ -1,0 +1,22 @@
+version: '3'
+
+services:
+  bitwarden:
+    image: mprasil/bitwarden
+    container_name: bitwarden
+    restart: always
+    networks:
+      - web
+    volumes:
+      - /root/data/com-linktohack-bitwarden/:/data/
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - "traefik.port=80"
+        - "traefik.frontend.rule=Host:bitwarden.kube.linktohack.com"
+
+networks:
+  web:
+    external: true
