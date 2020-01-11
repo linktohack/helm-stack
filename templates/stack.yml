@@ -1,13 +1,15 @@
+{{- $Release := .Release -}}
+{{- $Values := .Values -}}
+{{- range $name, $service:= .Values.services }}
 ---
-{{ include "stack.service" (dict "name" "redmine" "service" .Values.services.redmine ) }}
+{{ include "stack.pv" (dict "name" $name "service" $service "Values" $Values "Release" $Release) }}
 ---
-{{ include "stack.ingress" (dict "name" "redmine" "service" .Values.services.redmine ) }}
+{{ include "stack.pvc" (dict "name" $name "service" $service "Values" $Values "Release" $Release) }}
 ---
-{{ include "stack.deployment" (dict "name" "redmine" "service" .Values.services.redmine ) }}
+{{ include "stack.service" (dict "name" $name "service" $service "Values" $Values "Release" $Release) }}
 ---
+{{ include "stack.ingress" (dict "name" $name "service" $service "Values" $Values "Release" $Release) }}
 ---
-{{ include "stack.service" (dict "name" "db" "service" .Values.services.db ) }}
+{{ include "stack.deployment" (dict "name" $name "service" $service "Values" $Values "Release" $Release) }}
 ---
-{{ include "stack.ingress" (dict "name" "db" "service" .Values.services.db ) }}
----
-{{ include "stack.deployment" (dict "name" "db" "service" .Values.services.db ) }}
+{{- end -}}

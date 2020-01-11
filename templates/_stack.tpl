@@ -1,4 +1,5 @@
 {{- define "stack.deployment" -}}
+{{ $name := .name }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -23,6 +24,23 @@ spec:
               value: {{ $envValue }}
             {{- end -}}
           {{- end }}
+          {{- if (.service.volumes) }}
+          volumeMounts:
+          {{- range $i, $volume := .service.volumes }}
+            {{- $path := splitList ":" $volume }}
+            - mountPath: {{ $path | last }}
+              name: {{ printf "%s-%d" $name $i }}
+            {{- end }}
+          {{- end -}}
+      {{ if (.service.volumes) }}
+      volumes:
+      {{- range $i, $volume := .service.volumes }}
+        {{- $path := splitList ":" $volume }}
+        - name: {{ printf "%s-%d" $name $i }}
+          persistentVolumeClaim:
+            claimName: {{ printf "%s-%d" $name $i }}
+        {{- end }}
+      {{- end -}}
 {{- end -}}
 
 {{- define "stack.service" -}}
@@ -76,7 +94,48 @@ spec:
             backend:
               serviceName: {{ .name | quote }}
               servicePort: {{ printf "port-%s" $port | quote }}
-{{-       end }}
-{{-     end }}
-{{-   end }}
-{{- end }}
+{{-       end -}}
+{{-     end -}}
+{{-   end -}}
+{{- end -}}
+
+{{- define "stack.pv" -}}
+{{- $namespace := .Release.Namespace }}
+{{- $name := .name }}
+{{- range $i, $volume := .service.volumes }}
+{{- $path := splitList ":" $volume }}
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ printf "%s-%s-%d" $namespace $name $i | quote }}
+spec:
+  claimRef:
+    namespace: {{ $namespace }}
+    name: {{ printf "%s-%d" $name $i | quote }}
+  persistentVolumeReclaimPolicy: Delete
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 10Gi
+  hostPath:
+    path: {{ $path | first | quote }}
+{{- end -}}
+{{- end -}}
+
+{{- define "stack.pvc" -}}
+{{ $name := .name }}
+{{ range $i, $volume := .service.volumes }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ printf "%s-%d" $name $i | quote }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi  
+{{- end -}}
+{{- end -}}

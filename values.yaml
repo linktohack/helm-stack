@@ -4,8 +4,8 @@ services:
   redmine:
     image: redmine
     volumes:
-      - /home/dev/link.bfast.redmine/redmine/config/configuration.yml:/usr/src/redmine/config/configuration.yml
-      - /home/dev/link.bfast.redmine/redmine/files:/usr/src/redmine/files
+      - /root/data/com-linktohack-redmine/redmine/config/configuration.yml:/usr/src/redmine/config/configuration.yml
+      - /root/data/com-linktohack-redmine/redmine/files:/usr/src/redmine/files
     environment:
       REDMINE_DB_MYSQL: db
       REDMINE_DB_PASSWORD: example
@@ -24,7 +24,7 @@ services:
   db:
     image: mysql:5.7
     volumes:
-      - /home/dev/link.bfast.redmine/mysql:/var/lib/mysql
+      - /root/data/com-linktohack-redmine/mysql:/var/lib/mysql
     environment:
       MYSQL_ROOT_PASSWORD: example
       MYSQL_DATABASE: redmine
