@@ -1,5 +1,5 @@
 {{- define "stack.deployment" -}}
-{{ $name := .name }}
+{{- $name := .name -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -23,10 +23,10 @@ spec:
             - name: {{ $envName | quote }}
               value: {{ $envValue }}
             {{- end -}}
-          {{- end }}
+          {{- end -}}
           {{- if (.service.volumes) }}
           volumeMounts:
-          {{- range $i, $volume := .service.volumes }}
+            {{- range $i, $volume := .service.volumes -}}
             {{- $path := splitList ":" $volume }}
             - mountPath: {{ $path | last }}
               name: {{ printf "%s-%d" $name $i }}
@@ -34,7 +34,7 @@ spec:
           {{- end -}}
       {{ if (.service.volumes) }}
       volumes:
-      {{- range $i, $volume := .service.volumes }}
+        {{- range $i, $volume := .service.volumes -}}
         {{- $path := splitList ":" $volume }}
         - name: {{ printf "%s-%d" $name $i }}
           persistentVolumeClaim:
@@ -43,66 +43,109 @@ spec:
       {{- end -}}
 {{- end -}}
 
-{{- define "stack.service" -}}
+{{- define "stack.service.nodeport" -}}
+{{- if (.service.ports) -}}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .name | quote }}
+  name: {{ printf "%s-nodeport" .name | quote }}
 spec:
-  type: ClusterIP
-  {{- if (.service.ports) }}
+  type: NodePort
   ports:
     {{- range .service.ports -}}
     {{- $port := splitList ":" . }}
-    - name: {{ printf "port-%s" (first $port) | quote }}
+    - name: {{ printf "nodeport-%s" (first $port) | quote }}
+      nodePort: {{ $port | first }}
       port: {{ $port | last }}
-      targetPort: {{ $port | last }}
-    {{- end -}}
-  {{- end }}
+    {{- end }}
   selector:
     service: {{ .name | quote }}
 {{- end -}}
+{{- end -}}
 
-{{- define "stack.ingress" -}}
+
+{{- define "stack.service.clusterip" -}}
+{{-   $name := .name -}}
+{{-   $ports := list -}}
 {{-   if .service.deploy -}}
 {{-     if .service.deploy.labels -}}
+{{-       $port := "" }}
+{{-       range .service.deploy.labels -}}
+{{-         $label := splitList "=" . -}}
+{{-         if eq (first $label) "traefik.port" -}}
+{{-           $port = (last $label) -}}
+{{-         end -}}
+{{-       end -}}
+{{-       if and (ne $port "") -}}
+{{-         $ports = append $ports $port -}}
+{{-       end -}}
+{{-     end -}}
+{{-   end -}}
+{{-   if (.service.portsOfClusterIP) -}}
+{{-     range .service.portsOfClusterIP -}}
+{{-       $port := splitList ":" . -}}
+{{-       $ports = append $ports (last $port) -}}
+{{-     end -}}
+{{-   end -}}
+{{- if $ports -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ printf "%s" .name | quote }}
+spec:
+  type: ClusterIP
+  ports:
+    {{- range $port := $ports }}
+    - name: {{ printf "clusterip-%s" $port | quote }}
+      port: {{ $port }}
+      targetPort: {{ $port }}
+    {{- end }}
+  selector:
+    service: {{ $name | quote }}
+{{- end -}}
+{{- end -}}
+
+
+{{- define "stack.ingress" -}}
+{{-   $host := "" -}}
+{{-   $port := "" -}}
+{{-   if .service.deploy -}}
+{{-     if .service.deploy.labels -}}
+{{-       range .service.deploy.labels -}}
+{{-         $label := splitList "=" . -}}
+{{-         if eq (first $label) "traefik.frontend.rule" -}}
+{{-           $rule := splitList ":" (last $label) -}}
+{{-           if eq (first $rule) "Host" -}}
+{{-             $host = (last $rule) -}}
+{{-           end -}}
+{{-         end -}}
+{{-         if eq (first $label) "traefik.port" -}}
+{{-           $port = (last $label) -}}
+{{-         end -}}
+{{-       end -}}
+{{-     end -}}
+{{-   end -}}
+{{- if and (ne $host "") (ne $port "") -}}
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
   name: {{ .name | quote }}
 spec:
   rules:
-{{-     $host := "" }}
-{{-     $port := "" }}
-{{-       range .service.deploy.labels }}
-{{-         $label := splitList "=" . }}
-{{-         if eq (first $label) "traefik.frontend.rule" }}
-{{-           $rule := splitList ":" (last $label) }}
-{{-           if eq (first $rule) "Host" }}
-{{-             $host = (last $rule) }}
-{{-           end }}
-{{-         end }}
-{{-         if eq (first $label) "traefik.port" }}
-{{-           $port = (last $label) }}
-{{-         end }}
-{{-       end }}
-{{-       if and (ne $host "") (ne $port "") }}
     - host: {{ $host | quote }}
       http:
         paths:
           - path: /
             backend:
               serviceName: {{ .name | quote }}
-              servicePort: {{ printf "port-%s" $port | quote }}
-{{-       end -}}
-{{-     end -}}
-{{-   end -}}
+              servicePort: {{ printf "clusterip-%s" $port | quote }}
+{{- end -}}
 {{- end -}}
 
 {{- define "stack.pv" -}}
-{{- $namespace := .Release.Namespace }}
-{{- $name := .name }}
-{{- range $i, $volume := .service.volumes }}
+{{- $namespace := .Release.Namespace -}}
+{{- $name := .name -}}
+{{- range $i, $volume := .service.volumes -}}
 {{- $path := splitList ":" $volume }}
 ---
 apiVersion: v1
