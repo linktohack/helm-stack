@@ -3,7 +3,7 @@ Deploy your `docker-compose` `stack` with Helm.
 
 A lot of assumption has been made of how you structure your stack file, I guess we need to find a way to normalize it (maybe can be found in the source of `docker`)
 
-See `./values.yml` for an (opinionated) completed stack.
+See `./values.yml` for an (opinionated) completed stack and `./stack1.yaml` for the geerated stack.
 
 ## TL;DR (if it works)
 ```bash
