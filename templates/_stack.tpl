@@ -5,7 +5,7 @@ kind: Deployment
 metadata:
   name: {{ .name | quote }}
 spec:
-  replicas: {{ .service.replicas | default 1 }}
+  replicas: {{ if .service.deploy -}} {{- .service.deploy.replicas | default 1 -}} {{- else -}} 1 {{- end }}
   selector:
     matchLabels:
       service: {{ .name | quote }}
@@ -17,14 +17,37 @@ spec:
       containers:
         - name: {{ .name | quote }}
           image: {{ .service.image | quote }}
-          {{- if (.service.environment) }}
+          {{- if or .service.privileged .service.cap_add .service.cap_drop }}
+          securityContext:
+            {{- if .service.privileged }}
+            privileged: {{ .service.privileged }}
+            {{- end }}
+            {{- if or .service.cap_add .service.cap_drop }}
+            capabilities:
+              {{- if .service.cap_add }}
+              add: {{ .service.cap_add | toYaml | nindent 16 }}
+              {{- end }}
+              {{- if .service.cap_drop }}
+              drop: {{ .service.cap_drop | toYaml | nindent 16 }}
+              {{- end }}
+            {{- end }}
+          {{- end -}}
+          {{- if .service.environment }}
           env:
+            {{- if eq (typeOf .service.environment) "[]interface {}" -}}
+            {{- range .service.environment }}
+            {{- $env := splitList "=" . }}
+            - name: {{ $env | first | quote }}
+              value: {{ $env | last | quote}}
+            {{- end -}}
+            {{- else }}
             {{- range $envName, $envValue := .service.environment }}
             - name: {{ $envName | quote }}
-              value: {{ $envValue }}
+              value: {{ $envValue | quote }}
+            {{- end -}}
             {{- end -}}
           {{- end -}}
-          {{- if (.service.volumes) }}
+          {{- if .service.volumes }}
           volumeMounts:
             {{- range $volIndex, $volName := .service.volumes -}}
             {{- $path := splitList ":" $volName }}
@@ -32,7 +55,7 @@ spec:
               name: {{ printf "%s-%d" $name $volIndex }}
             {{- end }}
           {{- end -}}
-      {{ if (.service.volumes) }}
+      {{ if .service.volumes }}
       volumes:
         {{- range $volIndex, $volName := .service.volumes -}}
         {{- $path := splitList ":" $volName }}
@@ -44,19 +67,57 @@ spec:
 {{- end -}}
 
 {{- define "stack.service.loadbalancer" -}}
-{{- if (.service.ports) -}}
+{{-   $tcpPorts := list -}}
+{{-   $udpPorts := list -}}
+{{-   range .service.ports -}}
+{{-     $portDef := splitList ":" . -}}
+{{-     $port := first $portDef -}}
+{{-     $targetPort := last $portDef -}}
+{{-     $maybeTargetWithProto := splitList "/" $targetPort -}}
+{{-     $protocol := "TCP" -}}
+{{-     if eq (len $maybeTargetWithProto) 2 -}}
+{{-       $targetPort = first $maybeTargetWithProto -}}
+{{-       $protocol = upper (last $maybeTargetWithProto) -}}
+{{-     end -}}
+{{-     if eq $protocol "TCP" -}}
+{{-       $tcpPorts = append $tcpPorts (list $protocol $port $targetPort) -}}
+{{-     end -}}
+{{-     if eq $protocol "UDP" -}}
+{{-       $udpPorts = append $udpPorts (list $protocol $port $targetPort) -}}
+{{-     end -}}
+{{-   end -}}
+{{- if $tcpPorts }}
+---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ printf "%s-loadbalancer" .name | quote }}
+  name: {{ printf "%s-loadbalancer-tcp" .name | quote }}
 spec:
   type: LoadBalancer
   ports:
-    {{- range .service.ports -}}
-    {{- $port := splitList ":" . }}
-    - name: {{ printf "loadbalancer-%s" (first $port) | quote }}
-      port: {{ $port | first }}
-      targetPort: {{ $port | last }}
+    {{- range $tcpPorts }}
+    - name: {{ printf "loadbalancer-%s-%s" (index . 1) (index . 0) | lower | quote }}
+      protocol: {{ index . 0 | quote }}
+      port: {{ index . 1 }}
+      targetPort: {{ index . 2 }}
+    {{- end }}
+  selector:
+    service: {{ .name | quote }}
+{{- end -}}
+{{- if $udpPorts }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ printf "%s-loadbalancer-udp" .name | quote }}
+spec:
+  type: LoadBalancer
+  ports:
+    {{- range $udpPorts }}
+    - name: {{ printf "loadbalancer-%s-%s" (index . 1) (index . 0) | lower | quote }}
+      protocol: {{ index . 0 | quote }}
+      port: {{ index . 1 }}
+      targetPort: {{ index . 2 }}
     {{- end }}
   selector:
     service: {{ .name | quote }}
@@ -81,7 +142,7 @@ spec:
 {{-       end -}}
 {{-     end -}}
 {{-   end -}}
-{{-   if (.service.clusterip) -}}
+{{-   if .service.clusterip -}}
 {{-     range .service.clusterip.ports -}}
 {{-       $port := splitList ":" . -}}
 {{-       $ports = append $ports (last $port) -}}
@@ -145,6 +206,7 @@ spec:
 {{- define "stack.pv" -}}
 {{- $namespace := .Release.Namespace -}}
 {{- $name := .name -}}
+{{- $pv := .service.pv -}}
 {{- range $volIndex, $volName := .service.volumes -}}
 {{- $path := splitList ":" $volName }}
 ---
@@ -160,14 +222,15 @@ spec:
   accessModes:
     - ReadWriteOnce
   capacity:
-    storage: 10Gi
+    storage: {{ if $pv -}} {{- $pv.storage | default "10Gi" -}} {{- else -}} 10Gi {{- end }}
   hostPath:
     path: {{ $path | first | quote }}
 {{- end -}}
 {{- end -}}
 
 {{- define "stack.pvc" -}}
-{{ $name := .name }}
+{{- $name := .name -}}
+{{- $pv := .service.pv -}}
 {{ range $volIndex, $volName := .service.volumes }}
 ---
 apiVersion: v1
@@ -179,6 +242,6 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 10Gi  
+      storage: {{ if $pv -}} {{- $pv.storage | default "10Gi" -}} {{- else -}} 10Gi {{- end }}
 {{- end -}}
 {{- end -}}
