@@ -1,0 +1,108 @@
+---
+# Source: stack/templates/stack.yml
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: "com-linktohack-ipsec-openvpn-as-0"
+spec:
+  claimRef:
+    namespace: com-linktohack-ipsec
+    name: "openvpn-as-0"
+  persistentVolumeReclaimPolicy: Delete
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 1Gi
+  hostPath:
+    path: "/root/data/com-linktohack-openvpn/config"
+---
+# Source: stack/templates/stack.yml
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: "openvpn-as-0"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
+kind: Service
+metadata:
+  name: "openvpn-as-loadbalancer-tcp"
+spec:
+  type: LoadBalancer
+  ports:
+    - name: "loadbalancer-943-tcp"
+      protocol: "TCP"
+      port: 943
+      targetPort: 943
+    - name: "loadbalancer-9443-tcp"
+      protocol: "TCP"
+      port: 9443
+      targetPort: 9443
+  selector:
+    service: "openvpn-as"
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
+kind: Service
+metadata:
+  name: "openvpn-as-loadbalancer-udp"
+spec:
+  type: LoadBalancer
+  ports:
+    - name: "loadbalancer-1194-udp"
+      protocol: "UDP"
+      port: 1194
+      targetPort: 1194
+  selector:
+    service: "openvpn-as"
+---
+# Source: stack/templates/stack.yml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "openvpn-as"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: "openvpn-as"
+  template:
+    metadata:
+      labels:
+        service: "openvpn-as"
+    spec:
+      containers:
+        - name: "openvpn-as"
+          image: "linuxserver/openvpn-as"
+          securityContext:
+            capabilities:
+              add: 
+                - NET_ADMIN
+          env:
+            - name: "PUID"
+              value: "1000"
+            - name: "PGID"
+              value: "1000"
+            - name: "TZ"
+              value: "Europe/London"
+            - name: "INTERFACE"
+              value: "eth0"
+          volumeMounts:
+            - mountPath: /config
+              name: openvpn-as-0
+      volumes:
+        - name: openvpn-as-0
+          persistentVolumeClaim:
+            claimName: openvpn-as-0
+---
+# Source: stack/templates/stack.yml
+---
