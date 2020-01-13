@@ -1,9 +1,9 @@
 # What
 Deploy your `docker-compose` `stack` with Helm.
 
-A lot of assumtion has been made of how you structure your stack file, I guess we need to find a way to normalize it (maybe can be found in the source of `docker`)
+A lot of assumption has been made of how you structure your stack file, I guess we need to find a way to normalize it (maybe can be found in the source of `docker`)
 
-See `./values.yml` for an (opinated) completed stack.
+See `./values.yml` for an (opinionated) completed stack.
 
 ## TL;DR (if it works)
 ```bash
@@ -37,7 +37,12 @@ helm -n com-linktohack-redmine template . -f docker-compose-redmine.yaml --set s
 - [compose-on-kubernetes](https://github.com/docker/compose-on-kubernetes)
 
 # How
-For each of the services, we try to extract the information into 5 kind of K8s object: PV, PVC, Service (NodePort and ClusterIP), Ingress and Deployment.
+For each of the services, we try to extract the information into 5 kinds of K8s object: PV, PVC, Service (NodePort and ClusterIP), Ingress and Deployment.
+
+# Why
+Blog post https://linktohack.com/posts/evaluate-options-to-migrate-from-swarm-to-k8s/
+
+The same technique can be applied via a proper language instead of using a Helm template why not standing on the shoulders of giant(s). Helm is the de facto package manager, using Helm we're having the ability to `namespace`d the stack, rollback and so on... for free.
 
 # Limitation
 - [ ] Volume: Handle external/separated volumes
