@@ -27,9 +27,10 @@ helm -n com-linktohack-redmine upgrade --install redmine . -f docker-compose-red
 helm -n com-linktohack-bitwarden upgrade --install bitwarden . -f ./docker-compose-bitwarden.yaml
 ```
 
-## As template
+## Via template
 ```bash
 helm -n com-linktohack-redmine template . -f docker-compose-redmine.yaml --set services.db.clusterip.ports={3306:3306},services.db.ports={30306:3306} > stack1.yml
+kubectl -n com-linktohack-redmine apply -f stack1.yml
 ```
 
 # Other works (may related)
