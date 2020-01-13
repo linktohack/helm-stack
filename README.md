@@ -16,11 +16,11 @@ Tested in a K3s cluster with `local-path` provisioner
 
 ### Redmine + MySQL
 ```
-helm -n com-linktohack-redmine upgrade --install redmine . -f docker-compose-redmine.yaml --set services.db.portsOfClusterIP={3306:3306},services.db.ports={30306:3306}
+helm -n com-linktohack-redmine upgrade --install redmine . -f docker-compose-redmine.yaml --set services.db.clusterip.ports={3306:3306},services.db.ports={30306:3306}
 ```
 
 - `services.[service].ports` will be exposed as `NodePort` (if needed)
-- addtional key `services.[service].portsOfClusterIP` will be exposed as `ClusterIP` ports
+- addtional key `services.[service].clusterip.ports` will be exposed as `ClusterIP` ports
 
 ### Bitwarden
 ```bash
@@ -29,7 +29,7 @@ helm -n com-linktohack-bitwarden upgrade --install bitwarden . -f ./docker-compo
 
 ## As template
 ```bash
-helm -n com-linktohack-redmine template . -f docker-compose-redmine.yaml --set services.db.portsOfClusterIP={3306:3306},services.db.ports={30306:3306} > stack1.yml
+helm -n com-linktohack-redmine template . -f docker-compose-redmine.yaml --set services.db.clusterip.ports={3306:3306},services.db.ports={30306:3306} > stack1.yml
 ```
 
 # Other works (may related)
@@ -50,7 +50,7 @@ The same technique can be applied via a proper language instead of using a Helm 
 - [ ] Ingress: Handle segment labels for services expose multiple ports
 
 # Contribution
-- Additional keys (e.g. `portsOfClusterIP`) should always be set via `--set` or external `values.yml` but we
+- Additional keys (e.g. `clusterip.ports`) should always be set via `--set` or external `values.yml` but we
 - Should have the JSON schema of `docker-compose` and additional keys
 
 # License

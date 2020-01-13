@@ -95,21 +95,6 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: "db"
-spec:
-  type: ClusterIP
-  ports:
-    - name: "clusterip-3306"
-      port: 3306
-      targetPort: 3306
-  selector:
-    service: "db"
----
-# Source: stack/templates/stack.yml
----
-apiVersion: v1
-kind: Service
-metadata:
   name: "redmine"
 spec:
   type: ClusterIP
@@ -119,6 +104,21 @@ spec:
       targetPort: 3000
   selector:
     service: "redmine"
+---
+# Source: stack/templates/stack.yml
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: "db"
+spec:
+  type: ClusterIP
+  ports:
+    - name: "clusterip-3306"
+      port: 3306
+      targetPort: 3306
+  selector:
+    service: "db"
 ---
 # Source: stack/templates/stack.yml
 apiVersion: apps/v1

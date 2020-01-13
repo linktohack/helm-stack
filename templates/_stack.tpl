@@ -26,19 +26,19 @@ spec:
           {{- end -}}
           {{- if (.service.volumes) }}
           volumeMounts:
-            {{- range $i, $volume := .service.volumes -}}
-            {{- $path := splitList ":" $volume }}
+            {{- range $volIndex, $volName := .service.volumes -}}
+            {{- $path := splitList ":" $volName }}
             - mountPath: {{ $path | last }}
-              name: {{ printf "%s-%d" $name $i }}
+              name: {{ printf "%s-%d" $name $volIndex }}
             {{- end }}
           {{- end -}}
       {{ if (.service.volumes) }}
       volumes:
-        {{- range $i, $volume := .service.volumes -}}
-        {{- $path := splitList ":" $volume }}
-        - name: {{ printf "%s-%d" $name $i }}
+        {{- range $volIndex, $volName := .service.volumes -}}
+        {{- $path := splitList ":" $volName }}
+        - name: {{ printf "%s-%d" $name $volIndex }}
           persistentVolumeClaim:
-            claimName: {{ printf "%s-%d" $name $i }}
+            claimName: {{ printf "%s-%d" $name $volIndex }}
         {{- end }}
       {{- end -}}
 {{- end -}}
@@ -81,8 +81,8 @@ spec:
 {{-       end -}}
 {{-     end -}}
 {{-   end -}}
-{{-   if (.service.portsOfClusterIP) -}}
-{{-     range .service.portsOfClusterIP -}}
+{{-   if (.service.clusterip) -}}
+{{-     range .service.clusterip.ports -}}
 {{-       $port := splitList ":" . -}}
 {{-       $ports = append $ports (last $port) -}}
 {{-     end -}}
@@ -95,10 +95,10 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-    {{- range $port := $ports }}
-    - name: {{ printf "clusterip-%s" $port | quote }}
-      port: {{ $port }}
-      targetPort: {{ $port }}
+    {{- range $ports }}
+    - name: {{ printf "clusterip-%s" . | quote }}
+      port: {{ . }}
+      targetPort: {{ . }}
     {{- end }}
   selector:
     service: {{ $name | quote }}
@@ -145,17 +145,17 @@ spec:
 {{- define "stack.pv" -}}
 {{- $namespace := .Release.Namespace -}}
 {{- $name := .name -}}
-{{- range $i, $volume := .service.volumes -}}
-{{- $path := splitList ":" $volume }}
+{{- range $volIndex, $volName := .service.volumes -}}
+{{- $path := splitList ":" $volName }}
 ---
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: {{ printf "%s-%s-%d" $namespace $name $i | quote }}
+  name: {{ printf "%s-%s-%d" $namespace $name $volIndex | quote }}
 spec:
   claimRef:
     namespace: {{ $namespace }}
-    name: {{ printf "%s-%d" $name $i | quote }}
+    name: {{ printf "%s-%d" $name $volIndex | quote }}
   persistentVolumeReclaimPolicy: Delete
   accessModes:
     - ReadWriteOnce
@@ -168,12 +168,12 @@ spec:
 
 {{- define "stack.pvc" -}}
 {{ $name := .name }}
-{{ range $i, $volume := .service.volumes }}
+{{ range $volIndex, $volName := .service.volumes }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ printf "%s-%d" $name $i | quote }}
+  name: {{ printf "%s-%d" $name $volIndex | quote }}
 spec:
   accessModes:
     - ReadWriteOnce
