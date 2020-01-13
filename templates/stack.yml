@@ -6,9 +6,9 @@
 ---
 {{ include "stack.pvc" (dict "name" $name "service" $service "Values" $Values "Release" $Release) }}
 ---
-{{ include "stack.service.nodeport" (dict "name" $name "service" $service "Values" $Values "Release" $Release) }}
----
 {{ include "stack.service.clusterip" (dict "name" $name "service" $service "Values" $Values "Release" $Release) }}
+---
+{{ include "stack.service.loadbalancer" (dict "name" $name "service" $service "Values" $Values "Release" $Release) }}
 ---
 {{ include "stack.ingress" (dict "name" $name "service" $service "Values" $Values "Release" $Release) }}
 ---

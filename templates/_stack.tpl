@@ -43,20 +43,20 @@ spec:
       {{- end -}}
 {{- end -}}
 
-{{- define "stack.service.nodeport" -}}
+{{- define "stack.service.loadbalancer" -}}
 {{- if (.service.ports) -}}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ printf "%s-nodeport" .name | quote }}
+  name: {{ printf "%s-loadbalancer" .name | quote }}
 spec:
-  type: NodePort
+  type: LoadBalancer
   ports:
     {{- range .service.ports -}}
     {{- $port := splitList ":" . }}
-    - name: {{ printf "nodeport-%s" (first $port) | quote }}
-      nodePort: {{ $port | first }}
-      port: {{ $port | last }}
+    - name: {{ printf "loadbalancer-%s" (first $port) | quote }}
+      port: {{ $port | first }}
+      targetPort: {{ $port | last }}
     {{- end }}
   selector:
     service: {{ .name | quote }}

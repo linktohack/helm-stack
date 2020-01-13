@@ -16,7 +16,7 @@ Tested in a K3s cluster with `local-path` provisioner
 
 ### Redmine + MySQL
 ```
-helm -n com-linktohack-redmine upgrade --install redmine . -f docker-compose-redmine.yaml --set services.db.clusterip.ports={3306:3306},services.db.ports={30306:3306}
+helm -n com-linktohack-redmine upgrade --install redmine . -f docker-compose-redmine.yaml --set services.db.clusterip.ports={3306:3306},services.db.ports={3306:3306}
 ```
 
 - `services.[service].ports` will be exposed as `NodePort` (if needed)
@@ -29,7 +29,7 @@ helm -n com-linktohack-bitwarden upgrade --install bitwarden . -f ./docker-compo
 
 ## Via template
 ```bash
-helm -n com-linktohack-redmine template . -f docker-compose-redmine.yaml --set services.db.clusterip.ports={3306:3306},services.db.ports={30306:3306} > stack1.yml
+helm -n com-linktohack-redmine template . -f docker-compose-redmine.yaml --set services.db.clusterip.ports={3306:3306},services.db.ports={3306:3306} > stack1.yml
 kubectl -n com-linktohack-redmine apply -f stack1.yml
 ```
 
@@ -38,7 +38,7 @@ kubectl -n com-linktohack-redmine apply -f stack1.yml
 - [compose-on-kubernetes](https://github.com/docker/compose-on-kubernetes)
 
 # How
-For each of the services, we try to extract the information into 5 kinds of K8s object: PV, PVC, Service (NodePort and ClusterIP), Ingress and Deployment.
+For each of services defined in `docker-compose.yml`, we try to extract the information into 5 kinds of K8s object: PV, PVC, Service (ClusterIP and LoadBalancer), Ingress and Deployment.
 
 # Why
 Blog post https://linktohack.com/posts/evaluate-options-to-migrate-from-swarm-to-k8s/

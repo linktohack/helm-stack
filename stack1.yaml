@@ -91,22 +91,6 @@ spec:
       storage: 10Gi
 ---
 # Source: stack/templates/stack.yml
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: "redmine"
-spec:
-  type: ClusterIP
-  ports:
-    - name: "clusterip-3000"
-      port: 3000
-      targetPort: 3000
-  selector:
-    service: "redmine"
----
-# Source: stack/templates/stack.yml
----
 apiVersion: v1
 kind: Service
 metadata:
@@ -119,6 +103,34 @@ spec:
       targetPort: 3306
   selector:
     service: "db"
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
+kind: Service
+metadata:
+  name: "db-loadbalancer"
+spec:
+  type: LoadBalancer
+  ports:
+    - name: "loadbalancer-3306"
+      port: 3306
+      targetPort: 3306
+  selector:
+    service: "db"
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
+kind: Service
+metadata:
+  name: "redmine"
+spec:
+  type: ClusterIP
+  ports:
+    - name: "clusterip-3000"
+      port: 3000
+      targetPort: 3000
+  selector:
+    service: "redmine"
 ---
 # Source: stack/templates/stack.yml
 apiVersion: apps/v1
@@ -189,6 +201,7 @@ spec:
             claimName: db-0
 ---
 # Source: stack/templates/stack.yml
+---
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
