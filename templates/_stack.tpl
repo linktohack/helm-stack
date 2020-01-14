@@ -1,5 +1,17 @@
 {{- define "stack.deployment" -}}
-{{- $name := .name -}}
+{{-   $name := .name -}}
+{{-   $environments := list -}}
+{{-   if .service.enviroment -}}
+{{-     $isList := eq (typeOf .service.environment) "[]interface {}" -}}
+{{-     range $envName, $envValue := .service.environment -}}
+{{-         if $isList -}}
+{{-         $list := splitList "=" $envValue -}}
+{{-         $envName = first $list -}}
+{{-         $envValue = join "=" (last $list) -}}
+{{-       end -}}
+{{-       $environments = append $environments (list $envName $envValue) -}}
+{{-     end -}}
+{{-   end -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -32,19 +44,11 @@ spec:
               {{- end }}
             {{- end }}
           {{- end -}}
-          {{- if .service.environment }}
+          {{- if $environments }}
           env:
-            {{- if eq (typeOf .service.environment) "[]interface {}" -}}
-            {{- range .service.environment }}
-            {{- $env := splitList "=" . }}
-            - name: {{ $env | first | quote }}
-              value: {{ $env | last | quote}}
-            {{- end -}}
-            {{- else }}
-            {{- range $envName, $envValue := .service.environment }}
-            - name: {{ $envName | quote }}
-              value: {{ $envValue | quote }}
-            {{- end -}}
+            {{- range $environments }}
+            - name: {{ . | first | quote }}
+              value: {{ . | last | quote }}
             {{- end -}}
           {{- end -}}
           {{- if .service.volumes }}
@@ -130,11 +134,16 @@ spec:
 {{-   $ports := list -}}
 {{-   if .service.deploy -}}
 {{-     if .service.deploy.labels -}}
-{{-       $port := "" }}
-{{-       range .service.deploy.labels -}}
-{{-         $label := splitList "=" . -}}
-{{-         if eq (first $label) "traefik.port" -}}
-{{-           $port = (last $label) -}}
+{{-       $port := "" -}}
+{{-       $isList := eq (typeOf .service.deploy.labels) "[]interface {}" -}}
+{{-       range $labelName, $labelValue := .service.deploy.labels -}}
+{{-         if $isList -}}
+{{-           $list := splitList "=" $labelValue -}}
+{{-           $labelName = first $list -}}
+{{-           $labelValue = join "=" (last $list) -}}
+{{-         end -}}
+{{-         if eq $labelName "traefik.port" -}}
+{{-           $port = $labelValue -}}
 {{-         end -}}
 {{-       end -}}
 {{-       if and (ne $port "") -}}
@@ -170,18 +179,27 @@ spec:
 {{- define "stack.ingress" -}}
 {{-   $host := "" -}}
 {{-   $port := "" -}}
+{{-   $backend := "http" -}}
 {{-   if .service.deploy -}}
 {{-     if .service.deploy.labels -}}
-{{-       range .service.deploy.labels -}}
-{{-         $label := splitList "=" . -}}
-{{-         if eq (first $label) "traefik.frontend.rule" -}}
-{{-           $rule := splitList ":" (last $label) -}}
+{{-       $isList := eq (typeOf .service.deploy.labels) "[]interface {}" -}}
+{{-       range $labelName, $labelValue := .service.deploy.labels -}}
+{{-         if $isList -}}
+{{-           $list := splitList "=" $labelValue -}}
+{{-           $labelName = first $list -}}
+{{-           $labelValue = join "=" (last $list) -}}
+{{-         end -}}
+{{-         if eq $labelName "traefik.frontend.rule" -}}
+{{-           $rule := splitList ":" $labelValue -}}
 {{-           if eq (first $rule) "Host" -}}
 {{-             $host = (last $rule) -}}
 {{-           end -}}
 {{-         end -}}
-{{-         if eq (first $label) "traefik.port" -}}
-{{-           $port = (last $label) -}}
+{{-         if eq $labelName "traefik.port" -}}
+{{-           $port = $labelValue -}}
+{{-         end -}}
+{{-         if eq $labelName "traefik.backend" -}}
+{{-           $backend = $labelValue -}}
 {{-         end -}}
 {{-       end -}}
 {{-     end -}}
@@ -191,6 +209,8 @@ apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
   name: {{ .name | quote }}
+  annotations:
+    ingress.kubernetes.io/protocol: {{ $backend }}
 spec:
   rules:
     - host: {{ $host | quote }}
