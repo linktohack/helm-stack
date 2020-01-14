@@ -14,6 +14,45 @@ helm -n your-name-space upgrade --install your-stack . -f docker-compose.yml
 ## Samples
 Tested in a K3s cluster with `local-path` provisioner
 
+### Dockersamples
+```sh
+❯ helm -n com-linktohack-docker-on-compose upgrade --install sample . -f docker-compose-dockersamples.yaml
+Release "sample" does not exist. Installing it now.
+NAME: sample
+LAST DEPLOYED: Tue Jan 14 18:38:42 2020
+NAMESPACE: com-linktohack-docker-on-compose
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+
+❯ kubectl get all -n com-linktohack-docker-on-compose                                                                                                                                                                                                     stack/git/master 
+NAME                                   READY   STATUS    RESTARTS   AGE
+pod/svclb-web-loadbalancer-tcp-hk9sb   1/1     Running   0          2m2s
+pod/web-57bbd888fb-dvqxj               1/1     Running   0          2m2s
+pod/db-769769498d-6zqx8                1/1     Running   0          2m2s
+pod/words-6465f956d-kmk9c              1/1     Running   0          2m2s
+pod/words-6465f956d-sw9t2              1/1     Running   0          2m2s
+pod/words-6465f956d-vchlm              1/1     Running   0          2m2s
+pod/words-6465f956d-l9lnd              1/1     Running   0          2m2s
+pod/words-6465f956d-2lsbz              1/1     Running   0          2m2s
+
+NAME                           TYPE           CLUSTER-IP      EXTERNAL-IP   PORT(S)           AGE
+service/web-loadbalancer-tcp   LoadBalancer   10.43.235.241   2.56.99.175   33000:31908/TCP   2m4s
+
+NAME                                        DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR   AGE
+daemonset.apps/svclb-web-loadbalancer-tcp   1         1         1       1            1           <none>          2m4s
+
+NAME                    READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/web     1/1     1            1           2m4s
+deployment.apps/db      1/1     1            1           2m4s
+deployment.apps/words   5/5     5            5           2m4s
+
+NAME                              DESIRED   CURRENT   READY   AGE
+replicaset.apps/web-57bbd888fb    1         1         1       2m4s
+replicaset.apps/db-769769498d     1         1         1       2m4s
+replicaset.apps/words-6465f956d   5         5         5       2m4s
+```
+
 ### Redmine + MySQL
 ```sh
 helm -n com-linktohack-redmine upgrade --install redmine . -f docker-compose-redmine.yaml --set services.db.clusterip.ports={3306:3306},services.db.ports={3306:3306}
