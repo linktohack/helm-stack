@@ -58,7 +58,7 @@ replicaset.apps/words-6465f956d   5         5         5       2m4s
 helm -n com-linktohack-redmine upgrade --install redmine . -f docker-compose-redmine.yaml --set services.db.clusterip.ports={3306:3306},services.db.ports={3306:3306}
 ```
 
-- `services.[service].ports` will be exposed as `NodePort` (if needed)
+- `services.[service].ports` will be exposed as `LoadBalancer` (if needed)
 - addtional key `services.[service].clusterip.ports` will be exposed as `ClusterIP` ports
 
 ### Bitwarden
