@@ -116,12 +116,30 @@ metadata:
   name: "openvpn-as"
   annotations:
     ingress.kubernetes.io/protocol: https
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/rule-type: PathPrefixStrip
+    traefik.ingress.kubernetes.io/request-modifier: AddPrefix:/api
 spec:
   rules:
     - host: "openvpn.kube.linktohack.com"
       http:
         paths:
-          - path: /
+          - path: "/v2"
+            backend:
+              serviceName: "openvpn-as"
+              servicePort: "clusterip-9443"
+          - path: "/v3"
+            backend:
+              serviceName: "openvpn-as"
+              servicePort: "clusterip-9443"
+    - host: "opvn.kube.linktohack.com"
+      http:
+        paths:
+          - path: "/v2"
+            backend:
+              serviceName: "openvpn-as"
+              servicePort: "clusterip-9443"
+          - path: "/v3"
             backend:
               serviceName: "openvpn-as"
               servicePort: "clusterip-9443"

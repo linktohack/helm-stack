@@ -7,7 +7,7 @@
 {{-         if $isList -}}
 {{-         $list := splitList "=" $envValue -}}
 {{-         $envName = first $list -}}
-{{-         $envValue = join "=" (last $list) -}}
+{{-         $envValue = join "=" (rest $list) -}}
 {{-       end -}}
 {{-       $environments = append $environments (list $envName $envValue) -}}
 {{-     end -}}
@@ -74,9 +74,9 @@ spec:
 {{-   $tcpPorts := list -}}
 {{-   $udpPorts := list -}}
 {{-   range .service.ports -}}
-{{-     $portDef := splitList ":" . -}}
-{{-     $port := first $portDef -}}
-{{-     $targetPort := last $portDef -}}
+{{-     $pair := splitList ":" . -}}
+{{-     $port := first $pair -}}
+{{-     $targetPort := last $pair -}}
 {{-     $maybeTargetWithProto := splitList "/" $targetPort -}}
 {{-     $protocol := "TCP" -}}
 {{-     if eq (len $maybeTargetWithProto) 2 -}}
@@ -140,7 +140,7 @@ spec:
 {{-         if $isList -}}
 {{-           $list := splitList "=" $labelValue -}}
 {{-           $labelName = first $list -}}
-{{-           $labelValue = join "=" (last $list) -}}
+{{-           $labelValue = join "=" (rest $list) -}}
 {{-         end -}}
 {{-         if eq $labelName "traefik.port" -}}
 {{-           $port = $labelValue -}}
@@ -153,8 +153,8 @@ spec:
 {{-   end -}}
 {{-   if .service.clusterip -}}
 {{-     range .service.clusterip.ports -}}
-{{-       $port := splitList ":" . -}}
-{{-       $ports = append $ports (last $port) -}}
+{{-       $pair := splitList ":" . -}}
+{{-       $ports = append $ports (last $pair) -}}
 {{-     end -}}
 {{-   end -}}
 {{- if $ports -}}
@@ -177,9 +177,11 @@ spec:
 
 
 {{- define "stack.ingress" -}}
-{{-   $host := "" -}}
+{{-   $hosts := list -}}
 {{-   $port := "" -}}
 {{-   $backend := "http" -}}
+{{-   $pathPrefixStrip := list -}}
+{{-   $addPrefix := "" -}}
 {{-   if .service.deploy -}}
 {{-     if .service.deploy.labels -}}
 {{-       $isList := eq (typeOf .service.deploy.labels) "[]interface {}" -}}
@@ -187,12 +189,21 @@ spec:
 {{-         if $isList -}}
 {{-           $list := splitList "=" $labelValue -}}
 {{-           $labelName = first $list -}}
-{{-           $labelValue = join "=" (last $list) -}}
+{{-           $labelValue = join "=" (rest $list) -}}
 {{-         end -}}
 {{-         if eq $labelName "traefik.frontend.rule" -}}
-{{-           $rule := splitList ":" $labelValue -}}
-{{-           if eq (first $rule) "Host" -}}
-{{-             $host = (last $rule) -}}
+{{-           $rules := splitList ";" $labelValue -}}
+{{-           range $rule := $rules -}}
+{{-             $pair := splitList ":" $rule -}}
+{{-             if eq (first $pair) "Host" -}}
+{{-               $hosts = concat $hosts (splitList "," (last $pair)) -}}
+{{-             end -}}
+{{-             if eq (first $pair) "PathPrefixStrip" -}}
+{{-               $pathPrefixStrip = concat $pathPrefixStrip (splitList "," (last $pair)) -}}
+{{-             end -}}
+{{-             if eq (first $pair) "AddPrefix" -}}
+{{-               $addPrefix = last $pair -}}
+{{-             end -}}
 {{-           end -}}
 {{-         end -}}
 {{-         if eq $labelName "traefik.port" -}}
@@ -204,22 +215,36 @@ spec:
 {{-       end -}}
 {{-     end -}}
 {{-   end -}}
-{{- if and (ne $host "") (ne $port "") -}}
+{{- if and $hosts (ne $port "") -}}
+{{- $name := .name -}}
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
   name: {{ .name | quote }}
   annotations:
     ingress.kubernetes.io/protocol: {{ $backend }}
+    {{- if or $pathPrefixStrip (ne $addPrefix "") }}
+    kubernetes.io/ingress.class: traefik
+    {{- end }}
+    {{- if $pathPrefixStrip }}
+    traefik.ingress.kubernetes.io/rule-type: PathPrefixStrip
+    {{- end }}
+    {{- if $addPrefix }}
+    traefik.ingress.kubernetes.io/request-modifier: {{ printf "AddPrefix:%s" $addPrefix }}
+    {{- end }}
 spec:
   rules:
+    {{- range $host := $hosts }}
     - host: {{ $host | quote }}
       http:
         paths:
-          - path: /
+          {{- range $path := default (list "/") $pathPrefixStrip }}
+          - path: {{ $path | quote }}
             backend:
-              serviceName: {{ .name | quote }}
+              serviceName: {{ $name | quote }}
               servicePort: {{ printf "clusterip-%s" $port | quote }}
+          {{- end -}}
+    {{- end -}}
 {{- end -}}
 {{- end -}}
 

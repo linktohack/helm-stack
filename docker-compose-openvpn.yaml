@@ -24,4 +24,4 @@ services:
       labels:
         - "traefik.backend=https"
         - "traefik.port=9443"
-        - "traefik.frontend.rule=Host:openvpn.kube.linktohack.com"
+        - "traefik.frontend.rule=Host:openvpn.kube.linktohack.com,opvn.kube.linktohack.com;PathPrefixStrip:/v2,/v3;AddPrefix:/api"
