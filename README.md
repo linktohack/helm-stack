@@ -6,7 +6,7 @@ A lot of assumption has been made of how you structure your stack file, I guess 
 See `./values.yml` for an (opinionated) completed stack and `./stack1.yaml` for the geerated stack.
 
 ## TL;DR (if it works)
-```bash
+```sh
 # docker stack deploy -c docker-compose.yml your_stack
 helm -n your-name-space upgrade --install your-stack . -f docker-compose.yml
 ```
@@ -15,7 +15,7 @@ helm -n your-name-space upgrade --install your-stack . -f docker-compose.yml
 Tested in a K3s cluster with `local-path` provisioner
 
 ### Redmine + MySQL
-```
+```sh
 helm -n com-linktohack-redmine upgrade --install redmine . -f docker-compose-redmine.yaml --set services.db.clusterip.ports={3306:3306},services.db.ports={3306:3306}
 ```
 
@@ -23,14 +23,25 @@ helm -n com-linktohack-redmine upgrade --install redmine . -f docker-compose-red
 - addtional key `services.[service].clusterip.ports` will be exposed as `ClusterIP` ports
 
 ### Bitwarden
-```bash
+```sh   
 helm -n com-linktohack-bitwarden upgrade --install bitwarden . -f ./docker-compose-bitwarden.yaml
 ```
 
+### OpenVPN
+```sh
+helm -n com-linktohack-ipsec upgrade --install ipsec . -f docker-compose-openvpn.yaml   
+```
+
 ## Via template
-```bash
+```sh
 helm -n com-linktohack-redmine template . -f docker-compose-redmine.yaml --set services.db.clusterip.ports={3306:3306},services.db.ports={3306:3306} > stack1.yml
 kubectl -n com-linktohack-redmine apply -f stack1.yml
+```
+
+```sh
+helm -n com-linktohack-ipsec template ipsec . -f docker-compose-openvpn.yaml --set services.openvpn-as.pv.storage=1Gi > stack2.yaml  
+kubectl -n com-linktohack-ipsec apply -f stack2.yml
+
 ```
 
 # Other works (may related)
