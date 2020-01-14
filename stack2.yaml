@@ -15,7 +15,7 @@ spec:
   capacity:
     storage: 1Gi
   hostPath:
-    path: "/root/data/com-linktohack-openvpn/config"
+    path: "/root/data/com-linktohack-openvpn3"
 ---
 # Source: stack/templates/stack.yml
 ---
@@ -31,6 +31,7 @@ spec:
       storage: 1Gi
 ---
 # Source: stack/templates/stack.yml
+---
 apiVersion: v1
 kind: Service
 metadata:
@@ -65,7 +66,20 @@ spec:
     service: "openvpn-as"
 ---
 # Source: stack/templates/stack.yml
+apiVersion: v1
+kind: Service
+metadata:
+  name: "openvpn-as"
+spec:
+  type: ClusterIP
+  ports:
+    - name: "clusterip-9443"
+      port: 9443
+      targetPort: 9443
+  selector:
+    service: "openvpn-as"
 ---
+# Source: stack/templates/stack.yml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -87,15 +101,6 @@ spec:
             capabilities:
               add: 
                 - NET_ADMIN
-          env:
-            - name: "PUID"
-              value: "1000"
-            - name: "PGID"
-              value: "1000"
-            - name: "TZ"
-              value: "Europe/London"
-            - name: "INTERFACE"
-              value: "eth0"
           volumeMounts:
             - mountPath: /config
               name: openvpn-as-0
@@ -105,4 +110,18 @@ spec:
             claimName: openvpn-as-0
 ---
 # Source: stack/templates/stack.yml
----
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: "openvpn-as"
+  annotations:
+    ingress.kubernetes.io/protocol: https
+spec:
+  rules:
+    - host: "openvpn.kube.linktohack.com"
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: "openvpn-as"
+              servicePort: "clusterip-9443"

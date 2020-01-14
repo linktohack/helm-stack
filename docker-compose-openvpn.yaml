@@ -11,9 +11,17 @@ services:
       - TZ=Europe/London
       - INTERFACE=eth0 #optional
     volumes:
-      - /root/data/com-linktohack-openvpn/config:/config
+      - /root/data/com-linktohack-openvpn3:/config
     ports:
       - 943:943
       - 9443:9443
       - 1194:1194/udp
     restart: unless-stopped
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - "traefik.backend=https"
+        - "traefik.port=9443"
+        - "traefik.frontend.rule=Host:openvpn.kube.linktohack.com"
