@@ -51,9 +51,9 @@
 {{-           if eq $first "node.role" -}}
 {{-             $val := false -}}
 {{-             if eq $op "In" -}}
-{{-               $val = eq $last "master" -}}
+{{-                $val = toString (eq $last "manager") -}}
 {{-             else -}}
-{{-               $val = ne $last "master" -}}
+{{-               $val = toString (ne $last "manager") -}}
 {{-             end -}}
 {{-             $affinities = append $affinities (dict "key" "node-role.kubernetes.io/master" "operator" $op "values" (list $val)) -}}
 {{-           end -}}

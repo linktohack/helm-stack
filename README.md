@@ -3,12 +3,12 @@ Deploy your `docker-compose` `stack` with Helm.
 
 A lot of assumption has been made of how you structure your stack file, I guess we need to find a way to normalize it (maybe can be found in the source of `docker`)
 
-See `./values.yml` for an (opinionated) completed stack and `./stack1.yaml` for the geerated stack.
+See `./values.yaml` for an (opinionated) completed stack and `./stack1.yaml` for the geerated stack.
 
 ## TL;DR
 ```sh
-# docker stack deploy -c docker-compose.yml your_stack
-helm -n your-name-space upgrade --install your-stack . -f docker-compose.yml
+# docker stack deploy -c docker-compose.yaml your_stack
+helm -n your-name-space upgrade --install your-stack . -f docker-compose.yaml
 ```
 
 ## Samples
@@ -58,8 +58,8 @@ replicaset.apps/words-6465f956d   5         5         5       2m4s
 helm -n com-linktohack-redmine upgrade --install redmine . -f docker-compose-redmine.yaml \
     --set services.db.clusterip.ports={3306:3306} \
     --set services.db.ports={3306:3306} \
-    --set services.db.deploy.placement.constraints={node.role==master} \
-    --set services.redmine.deploy.placement.constraints={node.role==master}
+    --set services.db.deploy.placement.constraints={node.role==manager} \
+    --set services.redmine.deploy.placement.constraints={node.role==manager}
 ```
 
 - `services.[service].ports` will be exposed as `LoadBalancer` (if needed)
@@ -82,16 +82,16 @@ helm -n com-linktohack-ipsec upgrade --install ipsec . -f docker-compose-openvpn
 helm -n com-linktohack-redmine template openvpn . -f docker-compose-redmine.yaml  \
     --set services.db.clusterip.ports={3306:3306} \
     --set services.db.ports={3306:3306} \
-    --set services.db.deploy.placement.constraints={node.role==master} \
-    --set services.redmine.deploy.placement.constraints={node.role==master} > stack1.yml
-kubectl -n com-linktohack-redmine apply -f stack1.yml
+    --set services.db.deploy.placement.constraints={node.role==manager} \
+    --set services.redmine.deploy.placement.constraints={node.role==manager} > stack1.yaml
+kubectl -n com-linktohack-redmine apply -f stack1.yaml
 ```
 
 ```sh
 helm -n com-linktohack-ipsec template ipsec . -f docker-compose-openvpn.yaml \
     --set services.openvpn-as.pv.storage=1Gi \
     --set volumes.config.driver_opt=null > stack2.yaml  
-kubectl -n com-linktohack-ipsec apply -f stack2.yml
+kubectl -n com-linktohack-ipsec apply -f stack2.yaml
 
 ```
 
@@ -100,7 +100,7 @@ kubectl -n com-linktohack-ipsec apply -f stack2.yml
 - [compose-on-kubernetes](https://github.com/docker/compose-on-kubernetes)
 
 # How
-For each of services defined in `docker-compose.yml`, we try to extract the information into 5 kinds of K8s object: PV, PVC, Service (ClusterIP and LoadBalancer), Ingress and Deployment.
+For each of services defined in `docker-compose.yaml`, we try to extract the information into 5 kinds of K8s object: PV, PVC, Service (ClusterIP and LoadBalancer), Ingress and Deployment.
 
 # Why
 Blog post https://linktohack.com/posts/evaluate-options-to-migrate-from-swarm-to-k8s/
@@ -138,7 +138,7 @@ The following rules are supported:
 - `volumes.XXX.storage` 
 
 # Contribution
-- Additional keys (e.g. `clusterip.ports`) should always be set via `--set` or external `values.yml` but we
+- Additional keys (e.g. `clusterip.ports`) should always be set via `--set` or external `values.yaml` but we
 - Should have the JSON schema of `docker-compose` and additional keys
 
 # License

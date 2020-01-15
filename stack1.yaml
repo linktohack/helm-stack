@@ -1,40 +1,5 @@
 ---
 # Source: stack/templates/stack.yml
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: "com-linktohack-redmine-redmine-1"
-spec:
-  claimRef:
-    namespace: com-linktohack-redmine
-    name: "redmine-1"
-  persistentVolumeReclaimPolicy: Delete
-  accessModes:
-    - ReadWriteOnce
-  capacity:
-    storage: 10Gi
-  hostPath:
-    path: "/root/data/com-linktohack-redmine/redmine/files"
----
-# Source: stack/templates/stack.yml
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: "com-linktohack-redmine-redmine-0"
-spec:
-  claimRef:
-    namespace: com-linktohack-redmine
-    name: "redmine-0"
-  persistentVolumeReclaimPolicy: Delete
-  accessModes:
-    - ReadWriteOnce
-  capacity:
-    storage: 10Gi
-  hostPath:
-    path: "/root/data/com-linktohack-redmine/redmine/config/configuration.yml"
----
-# Source: stack/templates/stack.yml
 ---
 apiVersion: v1
 kind: PersistentVolume
@@ -53,17 +18,38 @@ spec:
     path: "/root/data/com-linktohack-redmine/mysql"
 ---
 # Source: stack/templates/stack.yml
----
 apiVersion: v1
-kind: PersistentVolumeClaim
+kind: PersistentVolume
 metadata:
-  name: "redmine-0"
+  name: "com-linktohack-redmine-redmine-0"
 spec:
+  claimRef:
+    namespace: com-linktohack-redmine
+    name: "redmine-0"
+  persistentVolumeReclaimPolicy: Delete
   accessModes:
     - ReadWriteOnce
-  resources:
-    requests:
-      storage: 10Gi
+  capacity:
+    storage: 10Gi
+  hostPath:
+    path: "/root/data/com-linktohack-redmine/redmine/config/configuration.yml"
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: "com-linktohack-redmine-redmine-1"
+spec:
+  claimRef:
+    namespace: com-linktohack-redmine
+    name: "redmine-1"
+  persistentVolumeReclaimPolicy: Delete
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 10Gi
+  hostPath:
+    path: "/root/data/com-linktohack-redmine/redmine/files"
 ---
 # Source: stack/templates/stack.yml
 apiVersion: v1
@@ -73,12 +59,12 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
+  storageClassName: "manual"
   resources:
     requests:
-      storage: 10Gi
+      storage: "10Gi"
 ---
 # Source: stack/templates/stack.yml
----
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -86,33 +72,35 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
+  storageClassName: "manual"
   resources:
     requests:
-      storage: 10Gi
+      storage: "10Gi"
 ---
 # Source: stack/templates/stack.yml
 apiVersion: v1
-kind: Service
+kind: PersistentVolumeClaim
 metadata:
-  name: "db"
+  name: "redmine-0"
 spec:
-  type: ClusterIP
-  ports:
-    - name: "clusterip-3306"
-      port: 3306
-      targetPort: 3306
-  selector:
-    service: "db"
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: "manual"
+  resources:
+    requests:
+      storage: "10Gi"
 ---
 # Source: stack/templates/stack.yml
+---
 apiVersion: v1
 kind: Service
 metadata:
-  name: "db-loadbalancer"
+  name: "db-loadbalancer-tcp"
 spec:
   type: LoadBalancer
   ports:
-    - name: "loadbalancer-3306"
+    - name: "loadbalancer-3306-tcp"
+      protocol: "TCP"
       port: 3306
       targetPort: 3306
   selector:
@@ -133,40 +121,18 @@ spec:
     service: "redmine"
 ---
 # Source: stack/templates/stack.yml
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: v1
+kind: Service
 metadata:
-  name: "redmine"
+  name: "db"
 spec:
-  replicas: 1
+  type: ClusterIP
+  ports:
+    - name: "clusterip-3306"
+      port: 3306
+      targetPort: 3306
   selector:
-    matchLabels:
-      service: "redmine"
-  template:
-    metadata:
-      labels:
-        service: "redmine"
-    spec:
-      containers:
-        - name: "redmine"
-          image: "redmine"
-          env:
-            - name: "REDMINE_DB_MYSQL"
-              value: db
-            - name: "REDMINE_DB_PASSWORD"
-              value: example
-          volumeMounts:
-            - mountPath: /usr/src/redmine/config/configuration.yml
-              name: redmine-0
-            - mountPath: /usr/src/redmine/files
-              name: redmine-1
-      volumes:
-        - name: redmine-0
-          persistentVolumeClaim:
-            claimName: redmine-0
-        - name: redmine-1
-          persistentVolumeClaim:
-            claimName: redmine-1
+    service: "db"
 ---
 # Source: stack/templates/stack.yml
 ---
@@ -184,21 +150,67 @@ spec:
       labels:
         service: "db"
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: "node-role.kubernetes.io/master"
+                  operator: "In"
+                  values: 
+                    - "true"
       containers:
         - name: "db"
           image: "mysql:5.7"
-          env:
-            - name: "MYSQL_DATABASE"
-              value: redmine
-            - name: "MYSQL_ROOT_PASSWORD"
-              value: example
           volumeMounts:
-            - mountPath: /var/lib/mysql
-              name: db-0
+            - mountPath: "/var/lib/mysql"
+              name: "db-0"
+      
       volumes:
-        - name: db-0
+        - name: "db-0"
           persistentVolumeClaim:
-            claimName: db-0
+            claimName: "db-0"
+---
+# Source: stack/templates/stack.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "redmine"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: "redmine"
+  template:
+    metadata:
+      labels:
+        service: "redmine"
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: "node-role.kubernetes.io/master"
+                  operator: "In"
+                  values: 
+                    - "true"
+      containers:
+        - name: "redmine"
+          image: "redmine"
+          volumeMounts:
+            - mountPath: "/usr/src/redmine/config/configuration.yml"
+              name: "redmine-0"
+            - mountPath: "/usr/src/redmine/files"
+              name: "redmine-1"
+      
+      volumes:
+        - name: "redmine-0"
+          persistentVolumeClaim:
+            claimName: "redmine-0"
+        - name: "redmine-1"
+          persistentVolumeClaim:
+            claimName: "redmine-1"
 ---
 # Source: stack/templates/stack.yml
 ---
@@ -206,12 +218,14 @@ apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
   name: "redmine"
+  annotations:
+    ingress.kubernetes.io/protocol: http
 spec:
   rules:
     - host: "redmine.kube.linktohack.com"
       http:
         paths:
-          - path: /
+          - path: "/"
             backend:
               serviceName: "redmine"
               servicePort: "clusterip-3000"

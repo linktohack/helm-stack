@@ -32,6 +32,26 @@ spec:
       storage: "10Gi"
 ---
 # Source: stack/templates/stack.yml
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: "openvpn-as-loadbalancer-tcp"
+spec:
+  type: LoadBalancer
+  ports:
+    - name: "loadbalancer-943-tcp"
+      protocol: "TCP"
+      port: 943
+      targetPort: 943
+    - name: "loadbalancer-9443-tcp"
+      protocol: "TCP"
+      port: 9443
+      targetPort: 9443
+  selector:
+    service: "openvpn-as"
+---
+# Source: stack/templates/stack.yml
 apiVersion: v1
 kind: Service
 metadata:
@@ -61,26 +81,6 @@ spec:
     service: "openvpn-as"
 ---
 # Source: stack/templates/stack.yml
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: "openvpn-as-loadbalancer-tcp"
-spec:
-  type: LoadBalancer
-  ports:
-    - name: "loadbalancer-943-tcp"
-      protocol: "TCP"
-      port: 943
-      targetPort: 943
-    - name: "loadbalancer-9443-tcp"
-      protocol: "TCP"
-      port: 9443
-      targetPort: 9443
-  selector:
-    service: "openvpn-as"
----
-# Source: stack/templates/stack.yml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -103,7 +103,7 @@ spec:
                 - key: "node-role.kubernetes.io/master"
                   operator: "In"
                   values: 
-                    - false
+                    - "true"
       containers:
         - name: "openvpn-as"
           image: "linuxserver/openvpn-as"
