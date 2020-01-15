@@ -413,16 +413,14 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: {{ if get $volValue "dynamic" -}}
-                      {{- $type := get $volValue "type" -}}
-                      {{- if eq $type "local" -}}
-                        "standard"
-                      {{- else -}}
-                        {{ $type | quote }}
-                      {{- end -}}
-                    {{- else -}}
-                      "manual"
-                    {{- end }}
+  {{- if get $volValue "dynamic" -}}
+  {{- $type := get $volValue "type" -}}
+  {{- if ne $type "local" }}
+  storageClassName: {{ $type | quote }}
+  {{- end -}}
+  {{- else }}
+  storageClassName: "manual"
+  {{- end }}
   resources:
     requests:
       storage: {{ get $volValue "storage" | quote }}
