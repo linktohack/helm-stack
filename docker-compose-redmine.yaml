@@ -15,7 +15,12 @@ services:
     deploy:
       placement:
         constraints:
+          - node.role != master
+          - node.role == master
           - node.hostname == prod2
+          - node.hostname != prod1
+          - node.labels.xxx == yyy
+          - node.labels.zzz
       labels:
         - 'traefik.frontend.rule=Host:redmine.kube.linktohack.com'
         - 'traefik.port=3000'

@@ -1,22 +1,5 @@
 ---
 # Source: stack/templates/stack.yml
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: "com-linktohack-redmine-redmine-1"
-spec:
-  claimRef:
-    namespace: com-linktohack-redmine
-    name: "redmine-1"
-  persistentVolumeReclaimPolicy: Delete
-  accessModes:
-    - ReadWriteOnce
-  capacity:
-    storage: 10Gi
-  hostPath:
-    path: "/root/data/com-linktohack-redmine/redmine/files"
----
-# Source: stack/templates/stack.yml
 ---
 apiVersion: v1
 kind: PersistentVolume
@@ -38,6 +21,23 @@ spec:
 apiVersion: v1
 kind: PersistentVolume
 metadata:
+  name: "com-linktohack-redmine-redmine-1"
+spec:
+  claimRef:
+    namespace: com-linktohack-redmine
+    name: "redmine-1"
+  persistentVolumeReclaimPolicy: Delete
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 10Gi
+  hostPath:
+    path: "/root/data/com-linktohack-redmine/redmine/files"
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
   name: "com-linktohack-redmine-redmine-0"
 spec:
   claimRef:
@@ -50,19 +50,6 @@ spec:
     storage: 10Gi
   hostPath:
     path: "/root/data/com-linktohack-redmine/redmine/config/configuration.yml"
----
-# Source: stack/templates/stack.yml
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: "db-0"
-spec:
-  accessModes:
-    - ReadWriteOnce
-  storageClassName: "manual"
-  resources:
-    requests:
-      storage: "10Gi"
 ---
 # Source: stack/templates/stack.yml
 apiVersion: v1
@@ -91,20 +78,17 @@ spec:
       storage: "10Gi"
 ---
 # Source: stack/templates/stack.yml
----
 apiVersion: v1
-kind: Service
+kind: PersistentVolumeClaim
 metadata:
-  name: "db-loadbalancer-tcp"
+  name: "db-0"
 spec:
-  type: LoadBalancer
-  ports:
-    - name: "loadbalancer-3306-tcp"
-      protocol: "TCP"
-      port: 3306
-      targetPort: 3306
-  selector:
-    service: "db"
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: "manual"
+  resources:
+    requests:
+      storage: "10Gi"
 ---
 # Source: stack/templates/stack.yml
 apiVersion: v1
@@ -136,32 +120,19 @@ spec:
 ---
 # Source: stack/templates/stack.yml
 ---
-
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: v1
+kind: Service
 metadata:
-  name: "db"
+  name: "db-loadbalancer-tcp"
 spec:
-  replicas: 1
+  type: LoadBalancer
+  ports:
+    - name: "loadbalancer-3306-tcp"
+      protocol: "TCP"
+      port: 3306
+      targetPort: 3306
   selector:
-    matchLabels:
-      service: "db"
-  template:
-    metadata:
-      labels:
-        service: "db"
-    spec:
-      containers:
-        - name: "db"
-          image: "mysql:5.7"
-          volumeMounts:
-            - mountPath: "/var/lib/mysql"
-              name: "db-0"
-      
-      volumes:
-        - name: "db-0"
-          persistentVolumeClaim:
-            claimName: "db-0"
+    service: "db"
 ---
 # Source: stack/templates/stack.yml
 apiVersion: apps/v1
@@ -178,6 +149,15 @@ spec:
       labels:
         service: "redmine"
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: "node-role.kubernetes.io/master"
+                  operator: "In"
+                  values: 
+                    - true
       containers:
         - name: "redmine"
           image: "redmine"
@@ -194,6 +174,43 @@ spec:
         - name: "redmine-1"
           persistentVolumeClaim:
             claimName: "redmine-1"
+---
+# Source: stack/templates/stack.yml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "db"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: "db"
+  template:
+    metadata:
+      labels:
+        service: "db"
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: "node-role.kubernetes.io/master"
+                  operator: "In"
+                  values: 
+                    - true
+      containers:
+        - name: "db"
+          image: "mysql:5.7"
+          volumeMounts:
+            - mountPath: "/var/lib/mysql"
+              name: "db-0"
+      
+      volumes:
+        - name: "db-0"
+          persistentVolumeClaim:
+            claimName: "db-0"
 ---
 # Source: stack/templates/stack.yml
 ---

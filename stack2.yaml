@@ -35,6 +35,21 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  name: "openvpn-as-loadbalancer-udp"
+spec:
+  type: LoadBalancer
+  ports:
+    - name: "loadbalancer-1194-udp"
+      protocol: "UDP"
+      port: 1194
+      targetPort: 1194
+  selector:
+    service: "openvpn-as"
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
+kind: Service
+metadata:
   name: "openvpn-as"
 spec:
   type: ClusterIP
@@ -66,21 +81,6 @@ spec:
     service: "openvpn-as"
 ---
 # Source: stack/templates/stack.yml
-apiVersion: v1
-kind: Service
-metadata:
-  name: "openvpn-as-loadbalancer-udp"
-spec:
-  type: LoadBalancer
-  ports:
-    - name: "loadbalancer-1194-udp"
-      protocol: "UDP"
-      port: 1194
-      targetPort: 1194
-  selector:
-    service: "openvpn-as"
----
-# Source: stack/templates/stack.yml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -95,6 +95,15 @@ spec:
       labels:
         service: "openvpn-as"
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: "node-role.kubernetes.io/master"
+                  operator: "In"
+                  values: 
+                    - false
       containers:
         - name: "openvpn-as"
           image: "linuxserver/openvpn-as"

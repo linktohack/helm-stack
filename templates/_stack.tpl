@@ -25,7 +25,53 @@
 {{-     else -}}
 {{-       $_ := set $volumes (first $list) (dict "dst" (index $list 1)) -}}
 {{-     end -}}
-{{-   end }}
+{{-   end -}}
+{{-   $affinities := list -}}
+{{-   if .service.deploy -}}
+{{-     if .service.deploy.placement -}}
+{{-       range $constraint := .service.deploy.placement.constraints -}}
+{{-         $op := "" -}}
+{{-         $pair := list -}}
+{{-         $curr := splitList "==" $constraint -}}
+{{-         if eq (len $curr) 2 -}}
+{{-           $op = "In" -}}
+{{-           $pair = $curr -}}
+{{-         end -}}
+{{-         $curr := splitList "!=" $constraint -}}
+{{-         if eq (len $curr) 2 -}}
+{{-           $op = "NotIn" -}}
+{{-           $pair = $curr -}}
+{{-         end -}}
+{{-         if and (not (contains "==" $constraint)) (not (contains "!=" $constraint)) (hasPrefix "node.labels" $constraint) -}}
+{{-           $op = "Exists" -}}
+{{-         end -}}
+{{-         if or (eq $op "In") (eq $op "NotIn") -}}
+{{-           $first := trim (first $pair) -}}
+{{-           $last := trim (last $pair) -}}
+{{-           if eq $first "node.role" -}}
+{{-             $val := false -}}
+{{-             if eq $op "In" -}}
+{{-               $val = eq $last "master" -}}
+{{-             else -}}
+{{-               $val = ne $last "master" -}}
+{{-             end -}}
+{{-             $affinities = append $affinities (dict "key" "node-role.kubernetes.io/master" "operator" $op "values" (list $val)) -}}
+{{-           end -}}
+{{-           if eq $first "node.hostname" -}}
+{{-             $affinities = append $affinities (dict "key" "kubernetes.io/hostname" "operator" $op "values" (list $last)) -}}
+{{-           end -}}
+{{-           if hasPrefix "node.labels" $first -}}
+{{-             $affinities = append $affinities (dict "key" (replace "node.labels." ""  $first) "operator" $op "values" (list $last)) -}}
+{{-           end -}}
+{{-         end -}}
+{{-         if (eq $op "Exists") -}}
+{{-           if hasPrefix "node.labels" $constraint -}}
+{{-             $affinities = append $affinities (dict "key" (replace "node.labels." "" $constraint) "operator" $op) -}}
+{{-           end -}}
+{{-         end -}}
+{{-       end -}}
+{{-     end -}}
+{{-   end -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -40,6 +86,20 @@ spec:
       labels:
         service: {{ .name | quote }}
     spec:
+      {{- if $affinities }}
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                {{- range $affinity := $affinities }}
+                - key: {{ "key" | get $affinity | quote }}
+                  operator: {{ "operator" | get $affinity | quote }}
+                  {{- if "values" | get $affinity }}
+                  values: {{ "values" | get $affinity | toYaml | nindent 20 }}
+                  {{- end -}}
+                {{- end -}}
+      {{- end }}
       containers:
         - name: {{ .name | quote }}
           image: {{ .service.image | quote }}

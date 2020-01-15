@@ -55,7 +55,11 @@ replicaset.apps/words-6465f956d   5         5         5       2m4s
 
 ### Redmine + MySQL
 ```sh
-helm -n com-linktohack-redmine upgrade --install redmine . -f docker-compose-redmine.yaml --set services.db.clusterip.ports={3306:3306},services.db.ports={3306:3306}
+helm -n com-linktohack-redmine upgrade --install redmine . -f docker-compose-redmine.yaml \
+    --set services.db.clusterip.ports={3306:3306} \
+    --set services.db.ports={3306:3306} \
+    --set services.db.deploy.placement.constraints={node.role==master} \
+    --set services.redmine.deploy.placement.constraints={node.role==master}
 ```
 
 - `services.[service].ports` will be exposed as `LoadBalancer` (if needed)
@@ -68,17 +72,25 @@ helm -n com-linktohack-bitwarden upgrade --install bitwarden . -f ./docker-compo
 
 ### OpenVPN
 ```sh
-helm -n com-linktohack-ipsec upgrade --install ipsec . -f docker-compose-openvpn.yaml   
+helm -n com-linktohack-ipsec upgrade --install ipsec . -f docker-compose-openvpn.yaml  \
+    --set services.openvpn-as.pv.storage=1Gi \
+    --set volumes.config.driver_opt=null    
 ```
 
 ## Via template
 ```sh
-helm -n com-linktohack-redmine template . -f docker-compose-redmine.yaml --set services.db.clusterip.ports={3306:3306},services.db.ports={3306:3306} > stack1.yml
+helm -n com-linktohack-redmine template openvpn . -f docker-compose-redmine.yaml  \
+    --set services.db.clusterip.ports={3306:3306} \
+    --set services.db.ports={3306:3306} \
+    --set services.db.deploy.placement.constraints={node.role==master} \
+    --set services.redmine.deploy.placement.constraints={node.role==master} > stack1.yml
 kubectl -n com-linktohack-redmine apply -f stack1.yml
 ```
 
 ```sh
-helm -n com-linktohack-ipsec template ipsec . -f docker-compose-openvpn.yaml --set services.openvpn-as.pv.storage=1Gi > stack2.yaml  
+helm -n com-linktohack-ipsec template ipsec . -f docker-compose-openvpn.yaml \
+    --set services.openvpn-as.pv.storage=1Gi \
+    --set volumes.config.driver_opt=null > stack2.yaml  
 kubectl -n com-linktohack-ipsec apply -f stack2.yml
 
 ```
@@ -99,7 +111,7 @@ The same technique can be applied via a proper language instead of using a Helm 
 - [X] Volume: Handle external/separated volumes
 - [X] Ingress: Handle comma, semicolon separated rule (multiple hosts, path...)
 - [ ] Ingress: Handle segment labels for services that expose multiple ports
-- [ ] Node: Handle placement constraints
+- [X] Node: Handle placement constraints
 
 # Note on Ingress
 We currently support parsing `traefik` labels with three rules: `Host`, `PathPrefixStrip` and `AddPrefix`.
@@ -112,6 +124,12 @@ If either `PathPrefixStrip` or `AddPrefix` is available in the label, the annota
 
 # Note on PV
 Both inlined and separated volumes are supported. Dynamic provisioner should work as expected, for static provisioner, `hostPath` and `nfs` are supported.
+
+# Note on node constraints
+The following rules are supported:
+- `node.role`
+- `node.hostname`
+- `node.labels`
 
 # External keys
 - `services.XXX.clusterip.ports` (`services.XXX.ports` are for LoadBalancer)
