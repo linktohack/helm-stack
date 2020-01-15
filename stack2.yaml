@@ -4,31 +4,46 @@
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: "com-linktohack-ipsec-openvpn-as-0"
+  name: "com-linktohack-ipsec-config"
 spec:
   claimRef:
     namespace: com-linktohack-ipsec
-    name: "openvpn-as-0"
+    name: "config"
   persistentVolumeReclaimPolicy: Delete
   accessModes:
     - ReadWriteOnce
   capacity:
-    storage: 1Gi
-  hostPath:
+    storage: 10Gi
+  nfs:
+    server: "192.168.1.1"
     path: "/root/data/com-linktohack-openvpn3"
 ---
 # Source: stack/templates/stack.yml
----
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: "openvpn-as-0"
+  name: "config"
 spec:
   accessModes:
     - ReadWriteOnce
+  storageClassName: "manual"
   resources:
     requests:
-      storage: 1Gi
+      storage: "10Gi"
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
+kind: Service
+metadata:
+  name: "openvpn-as"
+spec:
+  type: ClusterIP
+  ports:
+    - name: "clusterip-9443"
+      port: 9443
+      targetPort: 9443
+  selector:
+    service: "openvpn-as"
 ---
 # Source: stack/templates/stack.yml
 ---
@@ -66,20 +81,6 @@ spec:
     service: "openvpn-as"
 ---
 # Source: stack/templates/stack.yml
-apiVersion: v1
-kind: Service
-metadata:
-  name: "openvpn-as"
-spec:
-  type: ClusterIP
-  ports:
-    - name: "clusterip-9443"
-      port: 9443
-      targetPort: 9443
-  selector:
-    service: "openvpn-as"
----
-# Source: stack/templates/stack.yml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -102,12 +103,13 @@ spec:
               add: 
                 - NET_ADMIN
           volumeMounts:
-            - mountPath: /config
-              name: openvpn-as-0
+            - mountPath: "/config"
+              name: "config"
+      
       volumes:
-        - name: openvpn-as-0
+        - name: "config"
           persistentVolumeClaim:
-            claimName: openvpn-as-0
+            claimName: "config"
 ---
 # Source: stack/templates/stack.yml
 apiVersion: extensions/v1beta1

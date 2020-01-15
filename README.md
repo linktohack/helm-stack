@@ -111,8 +111,9 @@ If either `PathPrefixStrip` or `AddPrefix` is available in the label, the annota
 `port` and `backend` are supported.
 
 # External keys
-- `clusterip.ports`
-- `pv.storage`
+- `services.XXX.clusterip.ports`
+- `services.XXX.pv.storage`
+- `volumes.XXX.storage`
 
 # Contribution
 - Additional keys (e.g. `clusterip.ports`) should always be set via `--set` or external `values.yml` but we

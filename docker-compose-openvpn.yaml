@@ -11,7 +11,7 @@ services:
       - TZ=Europe/London
       - INTERFACE=eth0 #optional
     volumes:
-      - /root/data/com-linktohack-openvpn3:/config
+      - config:/config
     ports:
       - 943:943
       - 9443:9443
@@ -25,3 +25,10 @@ services:
         - "traefik.backend=https"
         - "traefik.port=9443"
         - "traefik.frontend.rule=Host:openvpn.kube.linktohack.com,opvn.kube.linktohack.com;PathPrefixStrip:/v2,/v3;AddPrefix:/api"
+
+volumes:
+  config:
+    driver_opts:
+      type: 'nfs'
+      o: 'addr=192.168.1.1'
+      device: '/root/data/com-linktohack-openvpn3'        

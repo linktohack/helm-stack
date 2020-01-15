@@ -1,0 +1,214 @@
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: "com-linktohack-redmine-redmine-1"
+spec:
+  claimRef:
+    namespace: com-linktohack-redmine
+    name: "redmine-1"
+  persistentVolumeReclaimPolicy: Delete
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 10Gi
+  hostPath:
+    path: "/root/data/com-linktohack-redmine/redmine/files"
+---
+# Source: stack/templates/stack.yml
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: "com-linktohack-redmine-db-0"
+spec:
+  claimRef:
+    namespace: com-linktohack-redmine
+    name: "db-0"
+  persistentVolumeReclaimPolicy: Delete
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 10Gi
+  hostPath:
+    path: "/root/data/com-linktohack-redmine/mysql"
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: "com-linktohack-redmine-redmine-0"
+spec:
+  claimRef:
+    namespace: com-linktohack-redmine
+    name: "redmine-0"
+  persistentVolumeReclaimPolicy: Delete
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 10Gi
+  hostPath:
+    path: "/root/data/com-linktohack-redmine/redmine/config/configuration.yml"
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: "db-0"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: "manual"
+  resources:
+    requests:
+      storage: "10Gi"
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: "redmine-0"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: "manual"
+  resources:
+    requests:
+      storage: "10Gi"
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: "redmine-1"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: "manual"
+  resources:
+    requests:
+      storage: "10Gi"
+---
+# Source: stack/templates/stack.yml
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: "db-loadbalancer-tcp"
+spec:
+  type: LoadBalancer
+  ports:
+    - name: "loadbalancer-3306-tcp"
+      protocol: "TCP"
+      port: 3306
+      targetPort: 3306
+  selector:
+    service: "db"
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
+kind: Service
+metadata:
+  name: "db"
+spec:
+  type: ClusterIP
+  ports:
+    - name: "clusterip-3306"
+      port: 3306
+      targetPort: 3306
+  selector:
+    service: "db"
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
+kind: Service
+metadata:
+  name: "redmine"
+spec:
+  type: ClusterIP
+  ports:
+    - name: "clusterip-3000"
+      port: 3000
+      targetPort: 3000
+  selector:
+    service: "redmine"
+---
+# Source: stack/templates/stack.yml
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "db"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: "db"
+  template:
+    metadata:
+      labels:
+        service: "db"
+    spec:
+      containers:
+        - name: "db"
+          image: "mysql:5.7"
+          volumeMounts:
+            - mountPath: "/var/lib/mysql"
+              name: "db-0"
+      
+      volumes:
+        - name: "db-0"
+          persistentVolumeClaim:
+            claimName: "db-0"
+---
+# Source: stack/templates/stack.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "redmine"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      service: "redmine"
+  template:
+    metadata:
+      labels:
+        service: "redmine"
+    spec:
+      containers:
+        - name: "redmine"
+          image: "redmine"
+          volumeMounts:
+            - mountPath: "/usr/src/redmine/config/configuration.yml"
+              name: "redmine-0"
+            - mountPath: "/usr/src/redmine/files"
+              name: "redmine-1"
+      
+      volumes:
+        - name: "redmine-0"
+          persistentVolumeClaim:
+            claimName: "redmine-0"
+        - name: "redmine-1"
+          persistentVolumeClaim:
+            claimName: "redmine-1"
+---
+# Source: stack/templates/stack.yml
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: "redmine"
+  annotations:
+    ingress.kubernetes.io/protocol: http
+spec:
+  rules:
+    - host: "redmine.kube.linktohack.com"
+      http:
+        paths:
+          - path: "/"
+            backend:
+              serviceName: "redmine"
+              servicePort: "clusterip-3000"

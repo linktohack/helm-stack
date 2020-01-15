@@ -12,6 +12,20 @@
 {{-       $environments = append $environments (list $envName $envValue) -}}
 {{-     end -}}
 {{-   end -}}
+{{-   $service := .service -}}
+{{-   $volumes := dict -}}
+{{-   range $volIndex, $volName := default (list) .service.volumes -}}
+{{-     $storage := "10Gi" -}}
+{{-     if $service.pv -}}
+{{-       $storage = default "10Gi" $service.pv.storage -}}
+{{-     end -}}
+{{-     $list := splitList ":" $volName -}}
+{{-     if hasPrefix "/" (first $list) -}}
+{{-       $_ := set $volumes (printf "%s-%d" $name $volIndex) (dict "dst" (index $list 1)) -}}
+{{-     else -}}
+{{-       $_ := set $volumes (first $list) (dict "dst" (index $list 1)) -}}
+{{-     end -}}
+{{-   end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -51,22 +65,20 @@ spec:
               value: {{ . | last | quote }}
             {{- end -}}
           {{- end -}}
-          {{- if .service.volumes }}
+          {{- if $volumes }}
           volumeMounts:
-            {{- range $volIndex, $volName := .service.volumes -}}
-            {{- $path := splitList ":" $volName }}
-            - mountPath: {{ $path | last }}
-              name: {{ printf "%s-%d" $name $volIndex }}
+            {{- range $volName, $volValue := $volumes }}
+            - mountPath: {{ "dst" | get $volValue | quote }}
+              name: {{ $volName | quote }}
             {{- end }}
-          {{- end -}}
-      {{ if .service.volumes }}
+          {{- end }}
+      {{ if $volumes }}
       volumes:
-        {{- range $volIndex, $volName := .service.volumes -}}
-        {{- $path := splitList ":" $volName }}
-        - name: {{ printf "%s-%d" $name $volIndex }}
+        {{- range $volName, $volValue := $volumes }}
+        - name: {{ $volName | quote }}
           persistentVolumeClaim:
-            claimName: {{ printf "%s-%d" $name $volIndex }}
-        {{- end }}
+            claimName: {{ $volName | quote }}
+        {{- end -}}
       {{- end -}}
 {{- end -}}
 
@@ -249,44 +261,110 @@ spec:
 {{- end -}}
 
 {{- define "stack.pv" -}}
+{{-   $volumes := dict -}}
+{{-   range $volName, $volValue := default (dict) .Values.volumes -}}
+{{-     $storage := "10Gi" -}}
+{{-     if not $volValue -}}
+{{-       $_ := set $volumes $volName (dict "dynamic" true "storage" $storage "type" "local") -}}
+{{-     else -}}
+{{-       $storage = default "10Gi" $volValue.storage -}}
+{{-       if not $volValue.driver_opts -}}
+{{-         $_ := set $volumes $volName (dict "dynamic" true "storage" $storage "type" "local") -}}
+{{-       else -}}
+{{-         $type := default "local" $volValue.driver_opts.type -}}
+{{-         $src := $volValue.driver_opts.device -}}
+{{-         $server := "" -}}
+{{-         if eq $type "nfs" -}}
+{{-           $o := splitList "," (default "" $volValue.driver_opts.o) -}}
+{{-           range $list := $o -}}
+{{-             $pair := splitList "=" $list -}}
+{{-             if eq (first $pair) "addr" -}}
+{{-               $server = (last $pair) -}}
+{{-             end -}}
+{{-           end -}}
+{{-           if and $src $server -}}
+{{-             $_ := set $volumes $volName (dict "dynamic" false "storage" $storage "type" "nfs" "server" $server "src" $src) -}}
+{{-           else -}}
+{{-             $_ := set $volumes $volName (dict "dynamic" true "storage" $storage "type" "nfs") -}}
+{{-           end -}}
+{{-         else -}}
+{{-           if $src -}}
+{{-             $_ := set $volumes $volName (dict "dynamic" false "storage" $storage "type" "local" "src" $src) -}}
+{{-           else -}}
+{{-             $_ := set $volumes $volName (dict "dynamic" true "storage" $storage "type" "local") -}}
+{{-           end -}}
+{{-         end -}}
+{{-       end -}}
+{{-     end -}}
+{{-   end -}}
+{{-   range $name, $service := .Values.services -}}
+{{-     range $volIndex, $volName := default (list) $service.volumes -}}
+{{-       $storage := "10Gi" -}}
+{{-       $type := "" -}}
+{{-       if $service.pv -}}
+{{-         $storage = default "10Gi" $service.pv.storage -}}
+{{-         $type := default "local" $service.pv.storageClassName -}}
+{{-       end -}}
+{{-       $list := splitList ":" $volName -}}
+{{-       if hasPrefix "/" (first $list) -}}
+{{-         $_ := set $volumes (printf "%s-%d" $name $volIndex) (dict "dynamic" false "storage" $storage "type" $type "src" (first $list) "dst" (index $list 1)) -}}
+{{-       else -}}
+{{-         $volume := get $volumes (first $list) -}}
+{{-         if $type -}}
+{{-           $_ := set $volume "type" $type -}}
+{{-         end -}}
+{{-         $_ := set $volume "dst" (index $list 1) -}}
+{{-         $_ := set $volumes (first $list) $volume -}}
+{{-       end -}}
+{{-     end -}}
+{{-   end -}}
 {{- $namespace := .Release.Namespace -}}
-{{- $name := .name -}}
-{{- $pv := .service.pv -}}
-{{- range $volIndex, $volName := .service.volumes -}}
-{{- $path := splitList ":" $volName }}
+{{- range $volName, $volValue := $volumes -}}
+{{- if not (get $volValue "dynamic") }}
 ---
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: {{ printf "%s-%s-%d" $namespace $name $volIndex | quote }}
+  name: {{ printf "%s-%s" $namespace $volName | quote }}
 spec:
   claimRef:
     namespace: {{ $namespace }}
-    name: {{ printf "%s-%d" $name $volIndex | quote }}
+    name: {{ $volName | quote }}
   persistentVolumeReclaimPolicy: Delete
   accessModes:
     - ReadWriteOnce
   capacity:
-    storage: {{ if $pv -}} {{- $pv.storage | default "10Gi" -}} {{- else -}} 10Gi {{- end }}
+    storage: {{ get $volValue "storage" }}
+  {{- if eq (default "local" (get $volValue "type")) "local" }}
   hostPath:
-    path: {{ $path | first | quote }}
-{{- end -}}
-{{- end -}}
-
-{{- define "stack.pvc" -}}
-{{- $name := .name -}}
-{{- $pv := .service.pv -}}
-{{ range $volIndex, $volName := .service.volumes }}
+    path: {{ "src" | get $volValue | quote }}
+  {{- end }}
+  {{- if eq (get $volValue "type") "nfs" }}
+  nfs:
+    server: {{ "server" | get $volValue | quote }}
+    path: {{ "src" | get $volValue | quote }}
+  {{- end -}}
+{{- end }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ printf "%s-%d" $name $volIndex | quote }}
+  name: {{ $volName | quote }}
 spec:
   accessModes:
     - ReadWriteOnce
+  storageClassName: {{ if get $volValue "dynamic" -}}
+                      {{- $type := get $volValue "type" -}}
+                      {{- if eq $type "local" -}}
+                        "standard"
+                      {{- else -}}
+                        {{ $type | quote }}
+                      {{- end -}}
+                    {{- else -}}
+                      "manual"
+                    {{- end }}
   resources:
     requests:
-      storage: {{ if $pv -}} {{- $pv.storage | default "10Gi" -}} {{- else -}} 10Gi {{- end }}
+      storage: {{ get $volValue "storage" | quote }}
 {{- end -}}
 {{- end -}}

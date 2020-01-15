@@ -1,10 +1,8 @@
 {{- $Values := .Values -}}
 {{- $Release := .Release -}}
+---
+{{ include "stack.pv" (dict "Values" $Values "Release" $Release) }}
 {{- range $name, $service:= .Values.services }}
----
-{{ include "stack.pv" (dict "name" $name "service" $service "Values" $Values "Release" $Release) }}
----
-{{ include "stack.pvc" (dict "name" $name "service" $service "Values" $Values "Release" $Release) }}
 ---
 {{ include "stack.service.clusterip" (dict "name" $name "service" $service "Values" $Values "Release" $Release) }}
 ---
