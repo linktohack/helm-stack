@@ -96,7 +96,7 @@ Blog post https://linktohack.com/posts/evaluate-options-to-migrate-from-swarm-to
 The same technique can be applied via a proper language instead of using a Helm template but why not standing on the shoulders of giant(s). By using Helm (the de facto package manager) we're having the ability to `namespace`d the stack, rollback and so on... for free.
 
 # Limitation
-- [ ] Volume: Handle external/separated volumes
+- [X] Volume: Handle external/separated volumes
 - [X] Ingress: Handle comma, semicolon separated rule (multiple hosts, path...)
 - [ ] Ingress: Handle segment labels for services that expose multiple ports
 - [ ] Node: Handle placement constraints
@@ -110,10 +110,14 @@ If either `PathPrefixStrip` or `AddPrefix` is available in the label, the annota
 
 `port` and `backend` are supported.
 
+# Note on PV
+Both inlined and separated volumes are supported. Dynamic provisioner should work as expected, for static provisioner, `hostPath` and `nfs` are supported.
+
 # External keys
-- `services.XXX.clusterip.ports`
+- `services.XXX.clusterip.ports` (`services.XXX.ports` are for LoadBalancer)
 - `services.XXX.pv.storage`
-- `volumes.XXX.storage`
+- `services.XXX.pv.storageClassName` (`volume.XXX.type` defines storageClassName)
+- `volumes.XXX.storage` 
 
 # Contribution
 - Additional keys (e.g. `clusterip.ports`) should always be set via `--set` or external `values.yml` but we
