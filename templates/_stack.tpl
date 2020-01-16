@@ -101,6 +101,9 @@ spec:
             nodeSelectorTerms:
               - matchExpressions: {{ $affinities | toYaml | nindent 16 }}
       {{- end }}
+      {{- if .service.imagePullSecrets }}
+      imagePullSecrets: {{ .service.imagePullSecrets | toYaml | nindent 8 }}
+      {{- end }}
       containers:
         - name: {{ .name | quote }}
           image: {{ .service.image | quote }}

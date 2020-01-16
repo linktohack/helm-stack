@@ -135,6 +135,7 @@ The following rules are supported:
 - `services.XXX.clusterip.ports` (`services.XXX.ports` are for LoadBalancer)
 - `services.XXX.pv.storage`
 - `services.XXX.pv.storageClassName` (`volume.XXX.type` defines storageClassName)
+- `services.XXX.imagePullSecrets`
 - `volumes.XXX.storage` 
 
 # Contribution
