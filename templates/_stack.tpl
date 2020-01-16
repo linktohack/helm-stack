@@ -71,9 +71,17 @@
 {{-         end -}}
 {{-       end -}}
 {{-     end -}}
+{{-   end }}
+{{-   $kind := "Deployment " -}}
+{{-   if .service.deploy -}}
+{{-     if .service.deploy.mode -}}
+{{-       if eq .service.deploy.mode "global" -}}
+{{-         $kind = "DaemonSet" -}}
+{{-       end -}}
+{{-     end -}}
 {{-   end -}}
 apiVersion: apps/v1
-kind: Deployment
+kind: {{ $kind }}
 metadata:
   name: {{ .name | quote }}
 spec:
@@ -91,19 +99,18 @@ spec:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
-              - matchExpressions:
-                {{- range $affinity := $affinities }}
-                - key: {{ "key" | get $affinity | quote }}
-                  operator: {{ "operator" | get $affinity | quote }}
-                  {{- if "values" | get $affinity }}
-                  values: {{ "values" | get $affinity | toYaml | nindent 20 }}
-                  {{- end -}}
-                {{- end -}}
+              - matchExpressions: {{ $affinities | toYaml | nindent 16 }}
       {{- end }}
       containers:
         - name: {{ .name | quote }}
           image: {{ .service.image | quote }}
           {{- if or .service.privileged .service.cap_add .service.cap_drop }}
+          {{- if .service.entrypoint }}
+          command: {{ .service.entrypoint | toYaml | nindent 12 }}
+          {{- end }}
+          {{- if .service.command }}
+          args: {{ .service.command | toYaml | nindent 12 }}
+          {{- end }}
           securityContext:
             {{- if .service.privileged }}
             privileged: {{ .service.privileged }}
