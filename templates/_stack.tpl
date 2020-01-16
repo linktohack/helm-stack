@@ -262,6 +262,7 @@ spec:
 {{-   $hosts := list -}}
 {{-   $port := "" -}}
 {{-   $backend := "http" -}}
+{{-   $auth := "" -}}
 {{-   $pathPrefixStrip := list -}}
 {{-   $addPrefix := "" -}}
 {{-   if .service.deploy -}}
@@ -294,6 +295,9 @@ spec:
 {{-         if eq $labelName "traefik.backend" -}}
 {{-           $backend = $labelValue -}}
 {{-         end -}}
+{{-         if eq $labelName "traefik.frontend.auth.basic.users" -}}
+{{-           $auth = $labelValue -}}
+{{-         end -}}
 {{-       end -}}
 {{-     end -}}
 {{-   end -}}
@@ -304,7 +308,14 @@ kind: Ingress
 metadata:
   name: {{ .name | quote }}
   annotations:
+    {{- if ne $backend "http" }}
     ingress.kubernetes.io/protocol: {{ $backend }}
+    {{- end }}
+    {{- if $auth }}
+    ingress.kubernetes.io/auth-type: basic
+    ingress.kubernetes.io/auth-realm: traefik
+    ingress.kubernetes.io/auth-secret: {{ printf "%s-basic-auth" .name | quote }}
+    {{- end }}
     {{- if or $pathPrefixStrip (ne $addPrefix "") }}
     kubernetes.io/ingress.class: traefik
     {{- end }}
@@ -327,6 +338,16 @@ spec:
               servicePort: {{ printf "clusterip-%s" $port | quote }}
           {{- end -}}
     {{- end -}}
+{{- end -}}
+{{- if $auth }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ printf "%s-basic-auth" .name }}
+type: Opaque
+data:
+  auth: {{ $auth | b64enc }}
 {{- end -}}
 {{- end -}}
 

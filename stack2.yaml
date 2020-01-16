@@ -1,5 +1,14 @@
 ---
 # Source: stack/templates/stack.yml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: openvpn-as-basic-auth
+type: Opaque
+data:
+  auth: "Zm9vOiRhcHIxJE9GRzNYeWJwJGNrTDBGSERBa29YWUlsSDkuY3lzVDAK"
+---
+# Source: stack/templates/stack.yml
 ---
 apiVersion: v1
 kind: PersistentVolume
@@ -30,6 +39,20 @@ spec:
   resources:
     requests:
       storage: "10Gi"
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
+kind: Service
+metadata:
+  name: "openvpn-as"
+spec:
+  type: ClusterIP
+  ports:
+    - name: "clusterip-9443"
+      port: 9443
+      targetPort: 9443
+  selector:
+    service: "openvpn-as"
 ---
 # Source: stack/templates/stack.yml
 ---
@@ -67,22 +90,8 @@ spec:
     service: "openvpn-as"
 ---
 # Source: stack/templates/stack.yml
-apiVersion: v1
-kind: Service
-metadata:
-  name: "openvpn-as"
-spec:
-  type: ClusterIP
-  ports:
-    - name: "clusterip-9443"
-      port: 9443
-      targetPort: 9443
-  selector:
-    service: "openvpn-as"
----
-# Source: stack/templates/stack.yml
 apiVersion: apps/v1
-kind: Deployment
+kind: Deployment 
 metadata:
   name: "openvpn-as"
 spec:
@@ -99,11 +108,13 @@ spec:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
-              - matchExpressions:
-                - key: "node-role.kubernetes.io/master"
-                  operator: "In"
-                  values: 
-                    - "true"
+              - matchExpressions: 
+                - key: node-role.kubernetes.io/master
+                  operator: In
+                  values:
+                  - "true"
+      imagePullSecrets: 
+        - name: openvpn-as-basic-auth
       containers:
         - name: "openvpn-as"
           image: "linuxserver/openvpn-as"
@@ -127,6 +138,9 @@ metadata:
   name: "openvpn-as"
   annotations:
     ingress.kubernetes.io/protocol: https
+    ingress.kubernetes.io/auth-type: basic
+    ingress.kubernetes.io/auth-realm: traefik
+    ingress.kubernetes.io/auth-secret: "openvpn-as-basic-auth"
     kubernetes.io/ingress.class: traefik
     traefik.ingress.kubernetes.io/rule-type: PathPrefixStrip
     traefik.ingress.kubernetes.io/request-modifier: AddPrefix:/api
