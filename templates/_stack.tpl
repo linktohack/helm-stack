@@ -1,7 +1,7 @@
 {{- define "stack.deployment" -}}
 {{-   $name := .name -}}
 {{-   $environments := list -}}
-{{-   if .service.enviroment -}}
+{{-   if .service.environment -}}
 {{-     $isList := eq (typeOf .service.environment) "[]interface {}" -}}
 {{-     range $envName, $envValue := .service.environment -}}
 {{-         if $isList -}}
@@ -104,6 +104,12 @@ spec:
       {{- if .service.imagePullSecrets }}
       imagePullSecrets: {{ .service.imagePullSecrets | toYaml | nindent 8 }}
       {{- end }}
+      {{- if .service.serviceAccountName }}
+      serviceAccountName: {{ .service.serviceAccountName | quote }}
+      {{- end }}
+      {{- if .service.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ .service.terminationGracePeriodSeconds }}
+      {{- end }}
       containers:
         - name: {{ .name | quote }}
           image: {{ .service.image | quote }}
@@ -142,7 +148,7 @@ spec:
               name: {{ $volName | quote }}
             {{- end }}
           {{- end }}
-      {{ if $volumes }}
+      {{- if $volumes }}
       volumes:
         {{- range $volName, $volValue := $volumes }}
         - name: {{ $volName | quote }}

@@ -133,9 +133,9 @@ The following rules are supported:
 
 # External keys
 - `services.XXX.clusterip.ports` (`services.XXX.ports` are for LoadBalancer)
-- `services.XXX.pv.storage`
-- `services.XXX.pv.storageClassName` (`volume.XXX.type` defines storageClassName)
 - `services.XXX.imagePullSecrets`
+- `services.XXX.serviceAccountName`
+- `services.XXX.terminationGracePeriodSeconds`
 - `volumes.XXX.storage` 
 - `chdir` in case of relative path in volume
 
