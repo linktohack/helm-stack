@@ -110,6 +110,11 @@ spec:
       {{- if .service.terminationGracePeriodSeconds }}
       terminationGracePeriodSeconds: {{ .service.terminationGracePeriodSeconds }}
       {{- end }}
+      {{- if .service.dns }}
+      dnsPolicy: "None"
+      dnsConfig:
+        nameservers: {{ .service.dns | toYaml | nindent 10 }}
+      {{- end }}
       containers:
         - name: {{ .name | quote }}
           image: {{ .service.image | quote }}
