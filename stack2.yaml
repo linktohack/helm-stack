@@ -6,7 +6,7 @@ metadata:
   name: openvpn-as-basic-auth
 type: Opaque
 data:
-  auth: "Zm9vOiRhcHIxJE9GRzNYeWJwJGNrTDBGSERBa29YWUlsSDkuY3lzVDAK"
+  auth: Wm05dk9pUmhjSEl4SkU5R1J6TlllV0p3SkdOclREQkdTRVJCYTI5WVdVbHNTRGt1WTNselZEQUs=
 ---
 # Source: stack/templates/stack.yml
 ---
@@ -44,13 +44,14 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: "openvpn-as"
+  name: "openvpn-as-loadbalancer-udp"
 spec:
-  type: ClusterIP
+  type: LoadBalancer
   ports:
-    - name: "clusterip-9443"
-      port: 9443
-      targetPort: 9443
+    - name: "loadbalancer-1194-udp"
+      protocol: "UDP"
+      port: 1194
+      targetPort: 1194
   selector:
     service: "openvpn-as"
 ---
@@ -78,14 +79,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: "openvpn-as-loadbalancer-udp"
+  name: "openvpn-as"
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   ports:
-    - name: "loadbalancer-1194-udp"
-      protocol: "UDP"
-      port: 1194
-      targetPort: 1194
+    - name: "clusterip-9443"
+      port: 9443
+      targetPort: 9443
   selector:
     service: "openvpn-as"
 ---

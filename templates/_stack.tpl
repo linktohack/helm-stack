@@ -21,9 +21,9 @@
 {{-     end -}}
 {{-     $list := splitList ":" $volName -}}
 {{-     if or (hasPrefix "/" (first $list)) (hasPrefix "./" (first $list)) -}}
-{{-       $_ := set $volumes (printf "%s-%d" $name $volIndex) (dict "dst" (index $list 1)) -}}
+{{-       $_ := set $volumes (printf "%s-%d" $name $volIndex) (dict "hostPath" true "src" (first $list) "dst" (index $list 1)) -}}
 {{-     else -}}
-{{-       $_ := set $volumes (first $list) (dict "dst" (index $list 1)) -}}
+{{-       $_ := set $volumes (first $list) (dict "hostPath" false "src" (first $list) "dst" (index $list 1)) -}}
 {{-     end -}}
 {{-   end -}}
 {{-   $affinities := list -}}
@@ -146,8 +146,13 @@ spec:
       volumes:
         {{- range $volName, $volValue := $volumes }}
         - name: {{ $volName | quote }}
+          {{- if get $volValue "hostPath" }}
+          hostPath:
+            path: {{ get $volValue "src" | quote }}
+          {{- else }}
           persistentVolumeClaim:
             claimName: {{ $volName | quote }}
+          {{- end -}}
         {{- end -}}
       {{- end -}}
 {{- end -}}
@@ -409,33 +414,6 @@ data:
 {{-             $_ := set $volumes $volName (dict "dynamic" true "storage" $storage "type" "local") -}}
 {{-           end -}}
 {{-         end -}}
-{{-       end -}}
-{{-     end -}}
-{{-   end -}}
-{{-   range $name, $service := .Values.services -}}
-{{-     range $volIndex, $volName := default (list) $service.volumes -}}
-{{-       $storage := "10Gi" -}}
-{{-       $type := "" -}}
-{{-       if $service.pv -}}
-{{-         $storage = default "10Gi" $service.pv.storage -}}
-{{-         $type := default "local" $service.pv.storageClassName -}}
-{{-       end -}}
-{{-       $list := splitList ":" $volName -}}
-{{-       if hasPrefix "/" (first $list) -}}
-{{-         $_ := set $volumes (printf "%s-%d" $name $volIndex) (dict "dynamic" false "storage" $storage "type" $type "src" (first $list) "dst" (index $list 1)) -}}
-{{-       else if hasPrefix "./" (first $list) -}}
-{{-         $src := clean (printf "%s/%s" (default "." $Values.chdir) (first $list)) -}}
-{{-         if not (isAbs $src) -}}
-{{-           fail "volume path or chidir has to be absolute." -}}
-{{-         end -}}
-{{-         $_ := set $volumes (printf "%s-%d" $name $volIndex) (dict "dynamic" false "storage" $storage "type" $type "src" $src "dst" (index $list 1)) -}}
-{{-       else -}}
-{{-         $volume := get $volumes (first $list) -}}
-{{-         if $type -}}
-{{-           $_ := set $volume "type" $type -}}
-{{-         end -}}
-{{-         $_ := set $volume "dst" (index $list 1) -}}
-{{-         $_ := set $volumes (first $list) $volume -}}
 {{-       end -}}
 {{-     end -}}
 {{-   end -}}
