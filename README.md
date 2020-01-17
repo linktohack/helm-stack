@@ -137,6 +137,7 @@ The following rules are supported:
 - `services.XXX.pv.storageClassName` (`volume.XXX.type` defines storageClassName)
 - `services.XXX.imagePullSecrets`
 - `volumes.XXX.storage` 
+- `chdir` in case of relative path in volume
 
 # Contribution
 - Additional keys (e.g. `clusterip.ports`) should always be set via `--set` or external `values.yaml` but we

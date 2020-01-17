@@ -24,24 +24,7 @@ spec:
   capacity:
     storage: 10Gi
   hostPath:
-    path: "/root/data/com-linktohack-redmine/mysql"
----
-# Source: stack/templates/stack.yml
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: "com-linktohack-redmine-redmine-1"
-spec:
-  claimRef:
-    namespace: com-linktohack-redmine
-    name: "redmine-1"
-  persistentVolumeReclaimPolicy: Delete
-  accessModes:
-    - ReadWriteOnce
-  capacity:
-    storage: 10Gi
-  hostPath:
-    path: "/root/data/com-linktohack-redmine/redmine/files"
+    path: "/root/data/com-linktohack-redmine/redmine/root/data/com-linktohack-redmine/mysql"
 ---
 # Source: stack/templates/stack.yml
 apiVersion: v1
@@ -62,6 +45,23 @@ spec:
 ---
 # Source: stack/templates/stack.yml
 apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: "com-linktohack-redmine-redmine-1"
+spec:
+  claimRef:
+    namespace: com-linktohack-redmine
+    name: "redmine-1"
+  persistentVolumeReclaimPolicy: Delete
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 10Gi
+  hostPath:
+    path: "/root/data/com-linktohack-redmine/redmine/files"
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: "redmine-1"
@@ -77,7 +77,7 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: "db-0"
+  name: "redmine-0"
 spec:
   accessModes:
     - ReadWriteOnce
@@ -90,7 +90,7 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: "redmine-0"
+  name: "db-0"
 spec:
   accessModes:
     - ReadWriteOnce

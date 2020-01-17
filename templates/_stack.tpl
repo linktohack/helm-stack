@@ -20,7 +20,7 @@
 {{-       $storage = default "10Gi" $service.pv.storage -}}
 {{-     end -}}
 {{-     $list := splitList ":" $volName -}}
-{{-     if hasPrefix "/" (first $list) -}}
+{{-     if or (hasPrefix "/" (first $list)) (hasPrefix "./" (first $list)) -}}
 {{-       $_ := set $volumes (printf "%s-%d" $name $volIndex) (dict "dst" (index $list 1)) -}}
 {{-     else -}}
 {{-       $_ := set $volumes (first $list) (dict "dst" (index $list 1)) -}}
@@ -369,6 +369,7 @@ data:
 {{- end -}}
 
 {{- define "stack.pv" -}}
+{{-   $Values := .Values -}}
 {{-   $volumes := dict -}}
 {{-   range $volName, $volValue := default (dict) .Values.volumes -}}
 {{-     $storage := "10Gi" -}}
@@ -381,6 +382,12 @@ data:
 {{-       else -}}
 {{-         $type := default "local" $volValue.driver_opts.type -}}
 {{-         $src := $volValue.driver_opts.device -}}
+{{-         if hasPrefix "./" $src -}}
+{{-           $src = clean (printf "%s/%s" (default "." $Values.chdir) $src) -}}
+{{-           if not (isAbs $src) -}}
+{{-             fail "volume path or chidir has to be absolute." -}}
+{{-           end -}}
+{{-         end -}}
 {{-         $server := "" -}}
 {{-         if eq $type "nfs" -}}
 {{-           $o := splitList "," (default "" $volValue.driver_opts.o) -}}
@@ -416,6 +423,12 @@ data:
 {{-       $list := splitList ":" $volName -}}
 {{-       if hasPrefix "/" (first $list) -}}
 {{-         $_ := set $volumes (printf "%s-%d" $name $volIndex) (dict "dynamic" false "storage" $storage "type" $type "src" (first $list) "dst" (index $list 1)) -}}
+{{-       else if hasPrefix "./" (first $list) -}}
+{{-         $src := clean (printf "%s/%s" (default "." $Values.chdir) (first $list)) -}}
+{{-         if not (isAbs $src) -}}
+{{-           fail "volume path or chidir has to be absolute." -}}
+{{-         end -}}
+{{-         $_ := set $volumes (printf "%s-%d" $name $volIndex) (dict "dynamic" false "storage" $storage "type" $type "src" $src "dst" (index $list 1)) -}}
 {{-       else -}}
 {{-         $volume := get $volumes (first $list) -}}
 {{-         if $type -}}

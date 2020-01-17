@@ -4,8 +4,8 @@ services:
   redmine:
     image: redmine
     volumes:
-      - /root/data/com-linktohack-redmine/redmine/config/configuration.yml:/usr/src/redmine/config/configuration.yml
-      - /root/data/com-linktohack-redmine/redmine/files:/usr/src/redmine/files
+      - ./config/configuration.yml:/usr/src/redmine/config/configuration.yml
+      - ./files:/usr/src/redmine/files
     environment:
       REDMINE_DB_MYSQL: db
       REDMINE_DB_PASSWORD: example
