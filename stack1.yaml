@@ -1,5 +1,14 @@
 ---
 # Source: stack/templates/stack.yml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: redmine-basic-auth
+type: Opaque
+data:
+  auth: YWRtaW46JGFwcjEkbnVwYVdaNlckZmwyWFFOYlo2ZmFOMnhwVFlaNzMvLw==
+---
+# Source: stack/templates/stack.yml
 ---
 apiVersion: v1
 kind: PersistentVolume
@@ -21,23 +30,6 @@ spec:
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: "com-linktohack-redmine-redmine-0"
-spec:
-  claimRef:
-    namespace: com-linktohack-redmine
-    name: "redmine-0"
-  persistentVolumeReclaimPolicy: Delete
-  accessModes:
-    - ReadWriteOnce
-  capacity:
-    storage: 10Gi
-  hostPath:
-    path: "/root/data/com-linktohack-redmine/redmine/config/configuration.yml"
----
-# Source: stack/templates/stack.yml
-apiVersion: v1
-kind: PersistentVolume
-metadata:
   name: "com-linktohack-redmine-redmine-1"
 spec:
   claimRef:
@@ -50,6 +42,23 @@ spec:
     storage: 10Gi
   hostPath:
     path: "/root/data/com-linktohack-redmine/redmine/files"
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: "com-linktohack-redmine-redmine-0"
+spec:
+  claimRef:
+    namespace: com-linktohack-redmine
+    name: "redmine-0"
+  persistentVolumeReclaimPolicy: Delete
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 10Gi
+  hostPath:
+    path: "/root/data/com-linktohack-redmine/redmine/config/configuration.yml"
 ---
 # Source: stack/templates/stack.yml
 apiVersion: v1
@@ -110,20 +119,6 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: "redmine"
-spec:
-  type: ClusterIP
-  ports:
-    - name: "clusterip-3000"
-      port: 3000
-      targetPort: 3000
-  selector:
-    service: "redmine"
----
-# Source: stack/templates/stack.yml
-apiVersion: v1
-kind: Service
-metadata:
   name: "db"
 spec:
   type: ClusterIP
@@ -135,9 +130,23 @@ spec:
     service: "db"
 ---
 # Source: stack/templates/stack.yml
+apiVersion: v1
+kind: Service
+metadata:
+  name: "redmine"
+spec:
+  type: ClusterIP
+  ports:
+    - name: "clusterip-3000"
+      port: 3000
+      targetPort: 3000
+  selector:
+    service: "redmine"
+---
+# Source: stack/templates/stack.yml
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: Deployment 
 metadata:
   name: "db"
 spec:
@@ -154,11 +163,11 @@ spec:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
-              - matchExpressions:
-                - key: "node-role.kubernetes.io/master"
-                  operator: "In"
-                  values: 
-                    - "true"
+              - matchExpressions: 
+                - key: node-role.kubernetes.io/master
+                  operator: In
+                  values:
+                  - "true"
       containers:
         - name: "db"
           image: "mysql:5.7"
@@ -173,7 +182,7 @@ spec:
 ---
 # Source: stack/templates/stack.yml
 apiVersion: apps/v1
-kind: Deployment
+kind: Deployment 
 metadata:
   name: "redmine"
 spec:
@@ -190,11 +199,11 @@ spec:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
-              - matchExpressions:
-                - key: "node-role.kubernetes.io/master"
-                  operator: "In"
-                  values: 
-                    - "true"
+              - matchExpressions: 
+                - key: node-role.kubernetes.io/master
+                  operator: In
+                  values:
+                  - "true"
       containers:
         - name: "redmine"
           image: "redmine"
@@ -219,7 +228,13 @@ kind: Ingress
 metadata:
   name: "redmine"
   annotations:
-    ingress.kubernetes.io/protocol: http
+    ingress.kubernetes.io/auth-type: basic
+    ingress.kubernetes.io/auth-realm: traefik
+    ingress.kubernetes.io/auth-secret: "redmine-basic-auth"
+    kubernetes.io/ingress.class: traefik
+    ingress.kubernetes.io/custom-response-headers: "Access-Control-Allow-Origin:*"
+    ingress.kubernetes.io/ssl-redirect: "true"
+    traefik.ingress.kubernetes.io/redirect-entry-point: "https"
 spec:
   rules:
     - host: "redmine.kube.linktohack.com"

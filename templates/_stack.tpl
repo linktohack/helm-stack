@@ -265,6 +265,12 @@ spec:
 {{-   $auth := "" -}}
 {{-   $pathPrefixStrip := list -}}
 {{-   $addPrefix := "" -}}
+{{-   $h1 := dict "src" "traefik.frontend.headers.customRequestHeaders" "dst" "ingress.kubernetes.io/custom-request-headers" "val" "" -}}
+{{-   $h2 := dict "src" "traefik.frontend.headers.customResponseHeaders" "dst" "ingress.kubernetes.io/custom-response-headers" "val" "" -}}
+{{-   $h3 := dict "src" "traefik.frontend.headers.SSLRedirect" "dst" "ingress.kubernetes.io/ssl-redirect" "val" "" -}}
+{{-   $h4 := dict "src" "traefik.frontend.redirect.entryPoint" "dst" "traefik.ingress.kubernetes.io/redirect-entry-point" "val" "" -}}
+{{-   $customHeaders := list $h1 $h2 $h3 $h4 -}}
+{{-   $customHeadersLen := 0 -}}
 {{-   if .service.deploy -}}
 {{-     if .service.deploy.labels -}}
 {{-       $isList := eq (typeOf .service.deploy.labels) "[]interface {}" -}}
@@ -298,6 +304,12 @@ spec:
 {{-         if eq $labelName "traefik.frontend.auth.basic.users" -}}
 {{-           $auth = $labelValue -}}
 {{-         end -}}
+{{-         range $header := $customHeaders -}}
+{{-           if eq $labelName (get $header "src") -}}
+{{-             $_ := set $header "val" $labelValue -}}
+{{-             $customHeadersLen = add1 $customHeadersLen -}}
+{{-           end -}}
+{{-         end -}}
 {{-       end -}}
 {{-     end -}}
 {{-   end -}}
@@ -316,7 +328,7 @@ metadata:
     ingress.kubernetes.io/auth-realm: traefik
     ingress.kubernetes.io/auth-secret: {{ printf "%s-basic-auth" .name | quote }}
     {{- end }}
-    {{- if or $pathPrefixStrip (ne $addPrefix "") }}
+    {{- if or $pathPrefixStrip (ne $addPrefix "") $customHeadersLen }}
     kubernetes.io/ingress.class: traefik
     {{- end }}
     {{- if $pathPrefixStrip }}
@@ -324,6 +336,11 @@ metadata:
     {{- end }}
     {{- if $addPrefix }}
     traefik.ingress.kubernetes.io/request-modifier: {{ printf "AddPrefix:%s" $addPrefix }}
+    {{- end -}}
+    {{- range $header := $customHeaders -}}
+    {{- if get $header "val" }}
+    {{ get $header "dst" }}: {{ get $header "val" | quote }}
+    {{- end -}}
     {{- end }}
 spec:
   rules:

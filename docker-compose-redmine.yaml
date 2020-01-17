@@ -25,6 +25,9 @@ services:
         - 'traefik.frontend.rule=Host:redmine.kube.linktohack.com'
         - 'traefik.port=3000'
         - "traefik.frontend.headers.customResponseHeaders=Access-Control-Allow-Origin:*"
+        - "traefik.frontend.auth.basic.users=admin:$apr1$nupaWZ6W$fl2XQNbZ6faN2xpTYZ73//"
+        - "traefik.frontend.headers.SSLRedirect=true"
+        - "traefik.frontend.redirect.entryPoint=https"
 
   db:
     image: mysql:5.7
