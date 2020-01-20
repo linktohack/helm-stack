@@ -16,10 +16,6 @@
 {{-   end -}}
 {{-   $volumes := dict -}}
 {{-   range $volIndex, $volName := default (list) .service.volumes -}}
-{{-     $storage := "10Gi" -}}
-{{-     if $service.pv -}}
-{{-       $storage = default "10Gi" $service.pv.storage -}}
-{{-     end -}}
 {{-     $list := splitList ":" $volName -}}
 {{-     if hasPrefix "/" (first $list) -}}
 {{-       $_ := set $volumes (printf "%s-%d" $name $volIndex) (dict "hostPath" true "src" (first $list) "dst" (index $list 1)) -}}
