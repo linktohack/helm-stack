@@ -1,5 +1,7 @@
 {{- define "stack.deployment" -}}
 {{-   $name := .name -}}
+{{-   $service := .service -}}
+{{-   $Values := .Values -}}
 {{-   $environments := list -}}
 {{-   if .service.environment -}}
 {{-     $isList := eq (typeOf .service.environment) "[]interface {}" -}}
@@ -12,7 +14,6 @@
 {{-       $environments = append $environments (list $envName $envValue) -}}
 {{-     end -}}
 {{-   end -}}
-{{-   $service := .service -}}
 {{-   $volumes := dict -}}
 {{-   range $volIndex, $volName := default (list) .service.volumes -}}
 {{-     $storage := "10Gi" -}}
@@ -20,8 +21,14 @@
 {{-       $storage = default "10Gi" $service.pv.storage -}}
 {{-     end -}}
 {{-     $list := splitList ":" $volName -}}
-{{-     if or (hasPrefix "/" (first $list)) (hasPrefix "./" (first $list)) -}}
+{{-     if hasPrefix "/" (first $list) -}}
 {{-       $_ := set $volumes (printf "%s-%d" $name $volIndex) (dict "hostPath" true "src" (first $list) "dst" (index $list 1)) -}}
+{{-     else if hasPrefix "./" (first $list) -}}
+{{-       $src := clean (printf "%s/%s" (default "." $Values.chdir) (first $list)) -}}
+{{-       if not (isAbs $src) -}}
+{{-         fail "volume path or chidir has to be absolute." -}}
+{{-       end -}}
+{{-       $_ := set $volumes (printf "%s-%d" $name $volIndex) (dict "hostPath" true "src" $src "dst" (index $list 1)) -}}
 {{-     else -}}
 {{-       $_ := set $volumes (first $list) (dict "hostPath" false "src" (first $list) "dst" (index $list 1)) -}}
 {{-     end -}}
