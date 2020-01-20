@@ -3,12 +3,12 @@ entries:
   stack:
   - apiVersion: v2
     appVersion: 1.16.0
-    created: "2020-01-20T15:10:32.343759+01:00"
-    description: A Helm chart for Kubernetes
-    digest: b045e2c7da240b691f1a66be236b1a08fed50815fc0aa4987b0326818f6fd0c9
+    created: "2020-01-20T15:25:17.645437+01:00"
+    description: Deploy your docker-compose stack with Helm
+    digest: c7e1498a6d9990f74e6c12f510df3a9b5b9d391e336eca23d94f83659b51b914
     name: stack
     type: application
     urls:
-    - stack-0.1.0.tgz
-    version: 0.1.0
-generated: "2020-01-20T15:10:32.340156+01:00"
+    - stack-1.0.0.tgz
+    version: 1.0.0
+generated: "2020-01-20T15:25:17.642946+01:00"

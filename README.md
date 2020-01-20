@@ -7,8 +7,10 @@ See `./values.yaml` for an (opinionated) completed stack and `./stack1.yaml` for
 
 ## TL;DR
 ```sh
+helm repo add link https://linktohack.github.io/helm-stack/
+kubectl create namespace your-name-space
 # docker stack deploy -c docker-compose.yaml your_stack
-helm -n your-name-space upgrade --install your-stack . -f docker-compose.yaml
+helm -n your-name-space upgrade --install your-stack link/stack -f docker-compose.yaml
 ```
 
 ## Samples
@@ -16,7 +18,7 @@ Tested in a K3s cluster with `local-path` provisioner
 
 ### Dockersamples
 ```sh
-❯ helm -n com-linktohack-docker-on-compose upgrade --install sample . -f docker-compose-dockersamples.yaml
+❯ helm -n com-linktohack-docker-on-compose upgrade --install sample link/stack -f docker-compose-dockersamples.yaml
 Release "sample" does not exist. Installing it now.
 NAME: sample
 LAST DEPLOYED: Tue Jan 14 18:38:42 2020
@@ -55,7 +57,7 @@ replicaset.apps/words-6465f956d   5         5         5       2m4s
 
 ### Redmine + MySQL
 ```sh
-helm -n com-linktohack-redmine upgrade --install redmine . -f docker-compose-redmine.yaml \
+helm -n com-linktohack-redmine upgrade --install redmine link/stack -f docker-compose-redmine.yaml \
     --set services.db.clusterip.ports={3306:3306} \
     --set services.db.ports={3306:3306} \
     --set services.db.deploy.placement.constraints={node.role==manager} \
@@ -67,19 +69,19 @@ helm -n com-linktohack-redmine upgrade --install redmine . -f docker-compose-red
 
 ### Bitwarden
 ```sh   
-helm -n com-linktohack-bitwarden upgrade --install bitwarden . -f ./docker-compose-bitwarden.yaml
+helm -n com-linktohack-bitwarden upgrade --install bitwarden link/stack -f ./docker-compose-bitwarden.yaml
 ```
 
 ### OpenVPN
 ```sh
-helm -n com-linktohack-ipsec upgrade --install ipsec . -f docker-compose-openvpn.yaml  \
+helm -n com-linktohack-ipsec upgrade --install ipsec link/stack -f docker-compose-openvpn.yaml  \
     --set services.openvpn-as.pv.storage=1Gi \
     --set volumes.config.driver_opt=null    
 ```
 
 ## Via template
 ```sh
-helm -n com-linktohack-redmine template openvpn . -f docker-compose-redmine.yaml  \
+helm -n com-linktohack-redmine template openvpn link/stack -f docker-compose-redmine.yaml  \
     --set services.db.clusterip.ports={3306:3306} \
     --set services.db.ports={3306:3306} \
     --set services.db.deploy.placement.constraints={node.role==manager} \
@@ -88,7 +90,7 @@ kubectl -n com-linktohack-redmine apply -f stack1.yaml
 ```
 
 ```sh
-helm -n com-linktohack-ipsec template ipsec . -f docker-compose-openvpn.yaml \
+helm -n com-linktohack-ipsec template ipsec link/stack -f docker-compose-openvpn.yaml \
     --set services.openvpn-as.pv.storage=1Gi \
     --set volumes.config.driver_opt=null > stack2.yaml  
 kubectl -n com-linktohack-ipsec apply -f stack2.yaml
