@@ -109,7 +109,8 @@ spec:
               - matchExpressions: {{ $affinities | toYaml | nindent 16 }}
       {{- end }}
       {{- if .service.imagePullSecrets }}
-      imagePullSecrets: {{ .service.imagePullSecrets | toYaml | nindent 8 }}
+      imagePullSecrets:
+        - name: {{ .service.imagePullSecrets }}
       {{- end }}
       {{- if .service.serviceAccountName }}
       serviceAccountName: {{ .service.serviceAccountName | quote }}
@@ -125,13 +126,16 @@ spec:
       containers:
         - name: {{ .name | quote }}
           image: {{ .service.image | quote }}
-          {{- if or .service.privileged .service.cap_add .service.cap_drop }}
+          {{- if .service.imagePullPolicy }}
+          imagePullPolicy: {{ .service.imagePullPolicy }}
+          {{- end }}
           {{- if .service.entrypoint }}
           command: {{ .service.entrypoint | toYaml | nindent 12 }}
           {{- end }}
           {{- if .service.command }}
           args: {{ .service.command | toYaml | nindent 12 }}
           {{- end }}
+          {{- if or .service.privileged .service.cap_add .service.cap_drop }}
           securityContext:
             {{- if .service.privileged }}
             privileged: {{ .service.privileged }}

@@ -134,6 +134,7 @@ The following rules are supported:
 # External keys
 - `services.XXX.clusterip.ports` (`services.XXX.ports` are for LoadBalancer)
 - `services.XXX.imagePullSecrets`
+- `services.XXX.imagePullPolicy`
 - `services.XXX.serviceAccountName`
 - `services.XXX.terminationGracePeriodSeconds`
 - `volumes.XXX.storage` 
