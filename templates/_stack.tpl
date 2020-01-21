@@ -83,15 +83,27 @@
 {{-       end -}}
 {{-     end -}}
 {{-   end -}}
+{{-   if .service.kind -}}
+{{-     $kind = .service.kind -}}
+{{-   end -}}
+{{-   $replicas := 1 -}}
+{{-   if .service.deploy -}}
+{{-     $replicas = default 1 .service.deploy.replicas | int64 -}}
+{{-   end }}
 apiVersion: apps/v1
 kind: {{ $kind }}
 metadata:
   name: {{ .name | quote }}
 spec:
-  replicas: {{ if .service.deploy -}} {{- .service.deploy.replicas | default 1 -}} {{- else -}} 1 {{- end }}
+  {{- if (and (ne $kind "DaemonSet") (ne $replicas 1)) }}
+  replicas: {{ $replicas }}
+  {{- end }}
   selector:
     matchLabels:
       service: {{ .name | quote }}
+  {{- if eq $kind "StatefulSet" }}
+  serviceName: {{ .name | quote }}
+  {{- end }}
   template:
     metadata:
       labels:
@@ -160,7 +172,7 @@ spec:
               name: {{ $volName | quote }}
             {{- end }}
           {{- end }}
-      {{- if $volumes }}
+      {{- if and $volumes (ne $kind "StatefulSet") }}
       volumes:
         {{- range $volName, $volValue := $volumes }}
         - name: {{ $volName | quote }}
@@ -173,6 +185,14 @@ spec:
           {{- end -}}
         {{- end -}}
       {{- end -}}
+  {{- if and $volumes (eq $kind "StatefulSet") }}
+  volumeClaimTemplates:
+    {{- range $volName, $volValue := $volumes -}}
+    {{- $pvc := include "stack.pvc" (dict "volName" $volName "volValue" $volValue) | fromYaml }}
+    - metadata: {{ get $pvc "metadata" | toYaml | nindent 8 }}
+      spec: {{ get $pvc "spec" | toYaml | nindent 8  }}
+    {{- end -}}
+  {{- end -}}
 {{- end -}}
 
 {{- define "stack.service.loadbalancer" -}}
@@ -391,6 +411,33 @@ data:
 {{- end -}}
 {{- end -}}
 
+{{- define "stack.pvc" -}}
+{{- $volName := .volName -}}
+{{- $volValue := .volValue -}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $volName | quote }}
+spec:
+  accessModes:
+    {{- if eq (get $volValue "type") "nfs" }}
+    - ReadWriteMany
+    {{- else }}
+    - ReadWriteOnce
+    {{- end }}
+  {{- if get $volValue "dynamic" -}}
+  {{- $type := get $volValue "type" -}}
+  {{- if ne $type "local" }}
+  storageClassName: {{ $type | quote }}
+  {{- end -}}
+  {{- else }}
+  storageClassName: "manual"
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ get $volValue "storage" | quote }}
+{{- end -}}
+
 {{- define "stack.pv" -}}
 {{-   $Values := .Values -}}
 {{-   $volumes := dict -}}
@@ -449,8 +496,12 @@ spec:
     name: {{ $volName | quote }}
   persistentVolumeReclaimPolicy: Delete
   accessModes:
+    {{- if eq (get $volValue "type") "nfs" }}
+    - ReadWriteMany
+    {{- else }}
     - ReadWriteOnce
-  capacity:
+    {{- end }}
+    capacity:
     storage: {{ get $volValue "storage" }}
   {{- if eq (default "local" (get $volValue "type")) "local" }}
   hostPath:
@@ -463,23 +514,6 @@ spec:
   {{- end -}}
 {{- end }}
 ---
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: {{ $volName | quote }}
-spec:
-  accessModes:
-    - ReadWriteOnce
-  {{- if get $volValue "dynamic" -}}
-  {{- $type := get $volValue "type" -}}
-  {{- if ne $type "local" }}
-  storageClassName: {{ $type | quote }}
-  {{- end -}}
-  {{- else }}
-  storageClassName: "manual"
-  {{- end }}
-  resources:
-    requests:
-      storage: {{ get $volValue "storage" | quote }}
+{{ include "stack.pvc" (dict "volName" $volName "volValue" $volValue) }}
 {{- end -}}
 {{- end -}}
