@@ -6,6 +6,8 @@
 ---
 {{ include "stack.Service.ClusterIP" (dict "name" $name "service" $service "Values" $Values "Release" $Release) }}
 ---
+{{ include "stack.Service.NodePort" (dict "name" $name "service" $service "Values" $Values "Release" $Release) }}
+---
 {{ include "stack.Service.LoadBalancer" (dict "name" $name "service" $service "Values" $Values "Release" $Release) }}
 ---
 {{ include "stack.Ingress" (dict "name" $name "service" $service "Values" $Values "Release" $Release) }}

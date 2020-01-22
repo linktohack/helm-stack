@@ -13,6 +13,33 @@
 {{- end -}}
 
 
+{{- define "stack.helpers.normalizePorts" -}}
+{{-   $tcp := list -}}
+{{-   $udp := list -}}
+{{-   range . -}}
+{{-     $list := splitList ":" . -}}
+{{-     $port := first $list -}}
+{{-     $targetPort := last $list -}}
+{{-     $protocol := "TCP" -}}
+{{-     if ne (len $list) 2 -}}
+{{-       $port = "" -}}
+{{-     end -}}
+{{-     $maybeTargetWithProto := splitList "/" $targetPort -}}
+{{-     if eq (len $maybeTargetWithProto) 2 -}}
+{{-       $targetPort = first $maybeTargetWithProto -}}
+{{-       $protocol = upper (last $maybeTargetWithProto) -}}
+{{-     end -}}
+{{-     if eq $protocol "TCP" -}}
+{{-       $tcp = append $tcp (dict "protocol" $protocol "port" $port "targetPort" $targetPort) -}}
+{{-     end -}}
+{{-     if eq $protocol "UDP" -}}
+{{-       $udp = append $udp (dict "protocol" $protocol "port" $port "targetPort" $targetPort) -}}
+{{-     end -}}
+{{-   end -}}
+{{ dict "tcp" $tcp "udp" $udp "all" (concat $tcp $udp) | toYaml }}
+{{- end -}}
+
+
 {{- define "stack.helpers.kindOfService" -}}
 {{-   $kind := "Deployment" -}}
 {{-   if .deploy -}}
@@ -262,67 +289,34 @@ spec:
 
 
 {{- define "stack.Service.LoadBalancer" -}}
-{{-   $tcpPorts := list -}}
-{{-   $udpPorts := list -}}
-{{-   range .service.ports -}}
-{{-     $pair := splitList ":" . -}}
-{{-     $port := first $pair -}}
-{{-     $targetPort := last $pair -}}
-{{-     $maybeTargetWithProto := splitList "/" $targetPort -}}
-{{-     $protocol := "TCP" -}}
-{{-     if eq (len $maybeTargetWithProto) 2 -}}
-{{-       $targetPort = first $maybeTargetWithProto -}}
-{{-       $protocol = upper (last $maybeTargetWithProto) -}}
-{{-     end -}}
-{{-     if eq $protocol "TCP" -}}
-{{-       $tcpPorts = append $tcpPorts (list $protocol $port $targetPort) -}}
-{{-     end -}}
-{{-     if eq $protocol "UDP" -}}
-{{-       $udpPorts = append $udpPorts (list $protocol $port $targetPort) -}}
-{{-     end -}}
-{{-   end -}}
-{{- if $tcpPorts }}
+{{- $name := .name -}}
+{{- $ports := include "stack.helpers.normalizePorts" .service.ports | fromYaml -}}
+{{- range $protocol, $ports := pick $ports "tcp" "udp" }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ printf "%s-loadbalancer-tcp" .name | quote }}
+  name: {{ printf "%s-loadbalancer-%s" $name $protocol | quote }}
 spec:
   type: LoadBalancer
   ports:
-    {{- range $tcpPorts }}
-    - name: {{ printf "loadbalancer-%s-%s" (index . 1) (index . 0) | lower | quote }}
-      protocol: {{ index . 0 | quote }}
-      port: {{ index . 1 }}
-      targetPort: {{ index . 2 }}
+    {{- range $ports }}
+    - name: {{ printf "loadbalancer-%s-%s" (get . "targetPort") (get . "port" | default (get . "targetPort")) | lower | quote }}
+      protocol: {{ get . "protocol" | quote }}
+      port: {{ get . "port" | default (get . "targetPort") }}
+      targetPort: {{ get . "targetPort" }}
     {{- end }}
   selector:
-    service: {{ .name | quote }}
-{{- end -}}
-{{- if $udpPorts }}
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: {{ printf "%s-loadbalancer-udp" .name | quote }}
-spec:
-  type: LoadBalancer
-  ports:
-    {{- range $udpPorts }}
-    - name: {{ printf "loadbalancer-%s-%s" (index . 1) (index . 0) | lower | quote }}
-      protocol: {{ index . 0 | quote }}
-      port: {{ index . 1 }}
-      targetPort: {{ index . 2 }}
-    {{- end }}
-  selector:
-    service: {{ .name | quote }}
+    service: {{ $name | quote }}
 {{- end -}}
 {{- end -}}
 
 
 {{- define "stack.Service.ClusterIP" -}}
-{{-   $name := .name -}}
 {{-   $ports := list -}}
+{{-   if .service.ClusterIP -}}
+{{-     $ports = get (include "stack.helpers.normalizePorts" .service.ClusterIP.ports | fromYaml) "all" -}}
+{{-   end -}}
 {{-   if .service.deploy -}}
 {{-     if .service.deploy.labels -}}
 {{-       $port := "" -}}
@@ -332,36 +326,68 @@ spec:
 {{-         end -}}
 {{-       end -}}
 {{-       if $port -}}
-{{-         $ports = append $ports $port | uniq -}}
+{{-         $existed := false -}}
+{{-         range $ports -}}
+{{-           if eq (get . "targetPort") $port -}}
+{{-             $existed = true -}}
+{{-           end -}}
+{{-         end -}}
+{{-         if not $existed -}}
+{{-           $ports = append $ports (dict "protocol" "TCP" "port" $port "targetPort" $port) -}}
+{{-         end -}}
 {{-       end -}}
-{{-     end -}}
-{{-   end -}}
-{{-   if .service.ClusterIP -}}
-{{-     range .service.ClusterIP.ports -}}
-{{-       $pair := splitList ":" . -}}
-{{-       $ports = append $ports (last $pair) -}}
 {{-     end -}}
 {{-   end -}}
 {{- if $ports -}}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ printf "%s" .name | quote }}
+  name: {{ printf "%s-clusterip" .name | quote }}
 spec:
   type: ClusterIP
   ports:
     {{- range $ports }}
-    - name: {{ printf "clusterip-%s" . | quote }}
-      port: {{ . }}
-      targetPort: {{ . }}
+    - name: {{ printf "clusterip-%s-%s" (get . "targetPort") (get . "port" | default (get . "targetPort")) | lower | quote }}
+      protocol: {{ get . "protocol" | quote }}
+      port: {{ get . "port" | default (get . "targetPort") }}
+      targetPort: {{ get . "targetPort" }}
     {{- end }}
   selector:
-    service: {{ $name | quote }}
+    service: {{ .name | quote }}
+{{- end -}}
+{{- end -}}
+
+
+{{- define "stack.Service.NodePort" -}}
+{{-   $ports := list -}}
+{{-   if .service.NodePort -}}
+{{-     $ports = get (include "stack.helpers.normalizePorts" .service.NodePort.ports | fromYaml) "all" -}}
+{{-   end -}}
+{{- if $ports -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ printf "%s-nodeport" .name | quote }}
+spec:
+  type: NodePort
+  ports:
+    {{- range $ports }}
+    - name: {{ printf "nodeport-%s-%s" (get . "targetPort") (get . "port" | default (get . "targetPort")) | lower | quote }}
+      protocol: {{ get . "protocol" | quote }}
+      port: {{ get . "targetPort" }}
+      targetPort: {{ get . "targetPort" }}
+      {{- if get . "port" }}
+      nodePort: {{ get . "port" }}
+      {{- end }}
+    {{- end }}
+  selector:
+    service: {{ .name | quote }}
 {{- end -}}
 {{- end -}}
 
 
 {{- define "stack.Ingress" -}}
+{{-   $name := .name -}}
 {{-   $hosts := list -}}
 {{-   $port := "" -}}
 {{-   $backend := "http" -}}
@@ -411,7 +437,6 @@ spec:
 {{-     end -}}
 {{-   end -}}
 {{- if and $hosts (ne $port "") -}}
-{{- $name := .name -}}
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
@@ -448,8 +473,8 @@ spec:
           {{- range $path := default (list "/") $pathPrefixStrip }}
           - path: {{ $path | quote }}
             backend:
-              serviceName: {{ $name | quote }}
-              servicePort: {{ printf "clusterip-%s" $port | quote }}
+              serviceName: {{ printf "%s-clusterip" $name | quote }}
+              servicePort: {{ printf "clusterip-%s-%s" $port $port | quote }}
           {{- end -}}
     {{- end -}}
 {{- end -}}
