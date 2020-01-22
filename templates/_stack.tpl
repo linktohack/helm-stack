@@ -13,58 +13,58 @@
 {{- end -}}
 
 
+{{- define "stack.helpers.kindOfService" -}}
+{{-   $kind := "Deployment" -}}
+{{-   if .deploy -}}
+{{-     if .deploy.mode -}}
+{{-       if eq .deploy.mode "global" -}}
+{{-         $kind = "DaemonSet" -}}
+{{-       end -}}
+{{-     end -}}
+{{-   end -}}
+{{-   if .kind -}}
+{{-     $kind = .kind -}}
+{{-   end -}}
+{{ $kind }}
+{{- end -}}
+
+
 {{- define "stack.helpers.volumes" -}}
 {{-   $Values := .Values -}}
 {{-   $volumes := dict -}}
 {{-   range $volName, $volValue := .Values.volumes -}}
-{{-     $storage := "10Gi" -}}
-{{-     if not $volValue -}}
-{{-       $_ := set $volumes $volName (dict "dynamic" true "storage" $storage) -}}
-{{-     else -}}
-{{-       $storage = default "10Gi" $volValue.storage -}}
-{{-       if not $volValue.driver_opts -}}
-{{-         $_ := set $volumes $volName (dict "dynamic" true "storage" $storage) -}}
-{{-       else -}}
-{{-         $type := $volValue.driver_opts.type -}}
-{{-         $server := "" -}}
-{{-         $src := $volValue.driver_opts.device -}}
-{{-         if hasPrefix "./" $src -}}
-{{-           $src = clean (printf "%s/%s" (default "." $Values.chdir) $src) -}}
-{{-           if not (isAbs $src) -}}
-{{-             fail "volume path or chidir has to be absolute." -}}
-{{-           end -}}
-{{-         end -}}
-{{-         if eq $type "nfs" -}}
-{{-           $o := splitList "," (default "" $volValue.driver_opts.o) -}}
-{{-           range $list := $o -}}
-{{-             $pair := splitList "=" $list -}}
-{{-             if eq (first $pair) "addr" -}}
-{{-               $server = (last $pair) -}}
-{{-             end -}}
-{{-           end -}}
-{{-           if and $src $server -}}
-{{-             $_ := set $volumes $volName (dict "dynamic" false "storage" $storage "type" "nfs" "server" $server "src" $src) -}}
-{{-           else -}}
-{{-             $_ := set $volumes $volName (dict "dynamic" true "storage" $storage "type" "nfs") -}}
-{{-           end -}}
-{{-         else -}}
-{{-           $_ := set $volumes $volName (dict "dynamic" false "storage" $storage "type" $type "src" $src) -}}
+{{-     $dynamic := true -}}
+{{-     $storage := $volValue.storage -}}
+{{-     $type := "" -}}
+{{-     $policy := $volValue.persistentVolumeReclaimPolicy -}}
+{{-     $src := "" -}}
+{{-     $server := "" -}}
+{{-     if $volValue.driver_opts -}}
+{{-       $type = default "" $volValue.driver_opts.type -}}
+{{-       $src = default "" $volValue.driver_opts.device -}}
+{{-       $o := splitList "," (default "" $volValue.driver_opts.o) -}}
+{{-       if hasPrefix "./" $src -}}
+{{-         $src = clean (printf "%s/%s" (default "." $Values.chdir) $src) -}}
+{{-         if not (isAbs $src) -}}
+{{-           fail "volume path or chidir has to be absolute." -}}
 {{-         end -}}
 {{-       end -}}
+{{-       if not $type -}}
+{{-         $dynamic = not $src -}}
+{{-       else if eq $type "nfs" -}}
+{{-         range $list := $o -}}
+{{-           $pair := splitList "=" $list -}}
+{{-           if eq (first $pair) "addr" -}}
+{{-             $server = (last $pair) -}}
+{{-           end -}}
+{{-         end -}}
+{{-         $dynamic = or (not $src) (not $server) -}}
+{{-       end -}}
 {{-     end -}}
+{{-     $_ := set $volumes $volName (dict "dynamic" $dynamic "storage" $storage "policy" $policy "type" $type "src" $src "dst" "" "server" $server) -}}
 {{-   end -}}
 {{-   range $name, $service := .Values.services -}}
-{{-     $kind := "Deployment " -}}
-{{-     if $service.deploy -}}
-{{-       if $service.deploy.mode -}}
-{{-         if eq $service.deploy.mode "global" -}}
-{{-           $kind = "DaemonSet" -}}
-{{-         end -}}
-{{-       end -}}
-{{-     end -}}
-{{-     if $service.kind -}}
-{{-       $kind = $service.kind -}}
-{{-     end -}}
+{{-     $kind := include "stack.helpers.kindOfService" $service -}}
 {{-     range $volIndex, $volName := $service.volumes -}}
 {{-       $list := splitList ":" $volName -}}
 {{-       if and (not (hasPrefix "/" (first $list))) (not (hasPrefix "./" (first $list))) -}}
@@ -81,17 +81,7 @@
 {{-   $Values := .Values -}}
 {{-   $name := .name -}}
 {{-   $service := .service -}}
-{{-   $kind := "Deployment " -}}
-{{-   if .service.deploy -}}
-{{-     if .service.deploy.mode -}}
-{{-       if eq .service.deploy.mode "global" -}}
-{{-         $kind = "DaemonSet" -}}
-{{-       end -}}
-{{-     end -}}
-{{-   end -}}
-{{-   if .service.kind -}}
-{{-     $kind = .service.kind -}}
-{{-   end -}}
+{{-   $kind := include "stack.helpers.kindOfService" .service -}}
 {{-   $replicas := 1 -}}
 {{-   if .service.deploy -}}
 {{-     $replicas = default 1 .service.deploy.replicas | int64 -}}
@@ -489,16 +479,15 @@ spec:
     - ReadWriteOnce
     {{- end }}
   {{- if get .volValue "dynamic" -}}
-  {{- $type := get .volValue "type" -}}
-  {{- if $type }}
-  storageClassName: {{ $type | quote }}
+  {{- if get .volValue "type" }}
+  storageClassName: {{ get .volValue "type" | quote }}
   {{- end -}}
   {{- else }}
   storageClassName: "manual"
   {{- end }}
   resources:
     requests:
-      storage: {{ get .volValue "storage" | quote }}
+      storage: {{ get .volValue "storage" | default "1Gi" | quote }}
 {{- end -}}
 
 
@@ -516,15 +505,15 @@ spec:
   claimRef:
     namespace: {{ $Namespace }}
     name: {{ $volName | quote }}
-  persistentVolumeReclaimPolicy: Delete
+  persistentVolumeReclaimPolicy: {{ get $volValue "policy" | default "Delete" }}
   accessModes:
     {{- if eq (get $volValue "type") "nfs" }}
     - ReadWriteMany
     {{- else }}
     - ReadWriteOnce
     {{- end }}
-    capacity:
-    storage: {{ get $volValue "storage" }}
+  capacity:
+    storage: {{ get $volValue "storage" | default "1Gi" | quote }}
   {{- if and (ne (get $volValue "type") "nfs") (get $volValue "src") }}
   hostPath:
     path: {{ "src" | get $volValue | quote }}
@@ -534,7 +523,7 @@ spec:
     server: {{ "server" | get $volValue | quote }}
     path: {{ "src" | get $volValue | quote }}
   {{- end -}}
-{{- end }}
+{{- end -}}
 {{- if ne (get $volValue "kind") "StatefulSet" }}
 ---
 {{ include "stack.PVC" (dict "volName" $volName "volValue" $volValue) }}

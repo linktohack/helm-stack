@@ -61,7 +61,8 @@ helm -n com-linktohack-redmine upgrade --install redmine link/stack -f docker-co
     --set services.db.ClusterIP.ports={3306:3306} \
     --set services.db.ports={3306:3306} \
     --set services.db.deploy.placement.constraints={node.role==manager} \
-    --set services.redmine.deploy.placement.constraints={node.role==manager}
+    --set services.redmine.deploy.placement.constraints={node.role==manager} \
+    --set chdir=/stack
 ```
 
 - `services.XXX.ports` will be exposed as `LoadBalancer` (if needed)
@@ -137,14 +138,15 @@ The following rules are supported:
 - `node.labels`
 
 # External keys
-- `services.XXX.kind` (override kind: `Deployment`, `DaemonSet`, `StatefulSet`)
-- `services.XXX.imagePullSecrets`
-- `services.XXX.imagePullPolicy`
-- `services.XXX.serviceAccountName`
-- `services.XXX.terminationGracePeriodSeconds`
-- `services.XXX.ClusterIP.ports` (`services.XXX.ports` are for LoadBalancer)
-- `volumes.XXX.storage` 
-- `chdir` in case of relative path in volume
+- `services.XXX.kind` (string, overrides automatic kind detection: `Deployment`, `DaemonSet`, `StatefulSet`)
+- `services.XXX.imagePullSecrets` (string)
+- `services.XXX.imagePullPolicy` (string)
+- `services.XXX.serviceAccountName` (string)
+- `services.XXX.terminationGracePeriodSeconds` (number)
+- `services.XXX.ClusterIP.ports` (array, `services.XXX.ports` are for `LoadBalancer`)
+- `volumes.XXX.storage` (string)
+- `volumes.XXX.persistentVolumeReclaimPolicy` (string, either `Delete` or `Retain`)
+- `chdir` (string, required in case of relative path in volume)
 
 # Contribution
 - Additional keys (e.g. `ClusterIP.ports`) should always be set via `--set` or external `values.yaml` but we

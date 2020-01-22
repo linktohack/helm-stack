@@ -26,8 +26,8 @@ services:
         - "traefik.port=9443"
         - "traefik.frontend.rule=Host:openvpn.kube.linktohack.com,opvn.kube.linktohack.com;PathPrefixStrip:/v2,/v3;AddPrefix:/api"
         - "traefik.frontend.auth.basic.users=Zm9vOiRhcHIxJE9GRzNYeWJwJGNrTDBGSERBa29YWUlsSDkuY3lzVDAK"
-    imagePullSecrets:
-      - name: openvpn-as-basic-auth
+    imagePullSecrets: openvpn-as-basic-auth
+
 volumes:
   config:
     driver_opts:
