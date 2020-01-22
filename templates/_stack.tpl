@@ -1,3 +1,17 @@
+{{- define "stack.helpers.normalizeDict" -}}
+{{-   $dict := dict -}}
+{{-   $isList := eq (typeOf .) "[]interface {}" -}}
+{{-   range $name, $value := . -}}
+{{-     if $isList -}}
+{{-       $list := splitList "=" $value -}}
+{{-       $name = first $list -}}
+{{-       $value = join "=" (rest $list) -}}
+{{-     end -}}
+{{-     $_ := set $dict $name $value -}}
+{{-   end -}}
+{{ $dict | toYaml }}
+{{- end -}}
+
 {{- define "stack.helpers.volumes" -}}
 {{-   $Values := .Values -}}
 {{-   $volumes := dict -}}
@@ -65,18 +79,7 @@
 {{-   $name := .name -}}
 {{-   $service := .service -}}
 {{-   $Values := .Values -}}
-{{-   $environments := list -}}
-{{-   if .service.environment -}}
-{{-     $isList := eq (typeOf .service.environment) "[]interface {}" -}}
-{{-     range $envName, $envValue := .service.environment -}}
-{{-         if $isList -}}
-{{-         $list := splitList "=" $envValue -}}
-{{-         $envName = first $list -}}
-{{-         $envValue = join "=" (rest $list) -}}
-{{-       end -}}
-{{-       $environments = append $environments (list $envName $envValue) -}}
-{{-     end -}}
-{{-   end -}}
+{{-   $environments := include "stack.helpers.normalizeDict" .service.environment | fromYaml -}}
 {{-   $volumes := include "stack.helpers.volumes" (dict "Values" $Values) | fromYaml -}}
 {{-   $serviceVolumes := dict -}}
 {{-   $volumeClaimTemplates := dict -}}
@@ -228,9 +231,9 @@ spec:
           {{- end -}}
           {{- if $environments }}
           env:
-            {{- range $environments }}
-            - name: {{ . | first | quote }}
-              value: {{ . | last | quote }}
+            {{- range $envName, $envValue := $environments }}
+            - name: {{ $envName | quote }}
+              value: {{ $envValue | quote }}
             {{- end -}}
           {{- end -}}
           {{- if $serviceVolumes }}
@@ -328,13 +331,7 @@ spec:
 {{-   if .service.deploy -}}
 {{-     if .service.deploy.labels -}}
 {{-       $port := "" -}}
-{{-       $isList := eq (typeOf .service.deploy.labels) "[]interface {}" -}}
-{{-       range $labelName, $labelValue := .service.deploy.labels -}}
-{{-         if $isList -}}
-{{-           $list := splitList "=" $labelValue -}}
-{{-           $labelName = first $list -}}
-{{-           $labelValue = join "=" (rest $list) -}}
-{{-         end -}}
+{{-       range $labelName, $labelValue := include "stack.helpers.normalizeDict" .service.deploy.labels | fromYaml -}}
 {{-         if eq $labelName "traefik.port" -}}
 {{-           $port = $labelValue -}}
 {{-         end -}}
@@ -384,13 +381,7 @@ spec:
 {{-   $customHeadersLen := 0 -}}
 {{-   if .service.deploy -}}
 {{-     if .service.deploy.labels -}}
-{{-       $isList := eq (typeOf .service.deploy.labels) "[]interface {}" -}}
-{{-       range $labelName, $labelValue := .service.deploy.labels -}}
-{{-         if $isList -}}
-{{-           $list := splitList "=" $labelValue -}}
-{{-           $labelName = first $list -}}
-{{-           $labelValue = join "=" (rest $list) -}}
-{{-         end -}}
+{{-       range $labelName, $labelValue := include "stack.helpers.normalizeDict" .service.deploy.labels | fromYaml -}}
 {{-         if eq $labelName "traefik.frontend.rule" -}}
 {{-           $rules := splitList ";" $labelValue -}}
 {{-           range $rule := $rules -}}
