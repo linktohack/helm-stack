@@ -1,9 +1,7 @@
 # What
 Deploy your `docker-compose` `stack` with Helm.
 
-A lot of assumption has been made of how you structure your stack file, I guess we need to find a way to normalize it (maybe can be found in the source of `docker`)
-
-See `./values.yaml` for an (opinionated) completed stack and `./stack1.yaml` for the geerated stack.
+See `./docker-compose-redmine.yaml` for an (opinionated) completed stack and `./stack1.yaml` for the generated stack.
 
 ## TL;DR
 ```sh
@@ -75,9 +73,8 @@ helm -n com-linktohack-bitwarden upgrade --install bitwarden link/stack -f ./doc
 
 ### OpenVPN
 ```sh
-helm -n com-linktohack-ipsec upgrade --install ipsec link/stack -f docker-compose-openvpn.yaml  \
-    --set services.openvpn-as.pv.storage=1Gi \
-    --set volumes.config.driver_opt=null    
+helm -n com-linktohack-ipsec upgrade --install ipsec link/stack -f docker-compose-openvpn.yaml \
+    --set volumes.config.driver_opts=null,volumes.config.storage=100Mi
 ```
 
 ## Via template

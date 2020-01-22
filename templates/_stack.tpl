@@ -22,6 +22,7 @@
 {{-     $targetPort := last $list -}}
 {{-     $protocol := "TCP" -}}
 {{-     if ne (len $list) 2 -}}
+{{-       $targetPort = $port -}}
 {{-       $port = "" -}}
 {{-     end -}}
 {{-     $maybeTargetWithProto := splitList "/" $targetPort -}}
@@ -60,14 +61,15 @@
 {{-   $Values := .Values -}}
 {{-   $volumes := dict -}}
 {{-   range $volName, $volValue := .Values.volumes -}}
+{{-     $volValue = default dict $volValue -}}
 {{-     $dynamic := true -}}
 {{-     $storage := $volValue.storage -}}
-{{-     $type := "" -}}
+{{-     $type := "none" -}}
 {{-     $policy := $volValue.persistentVolumeReclaimPolicy -}}
 {{-     $src := "" -}}
 {{-     $server := "" -}}
 {{-     if $volValue.driver_opts -}}
-{{-       $type = default "" $volValue.driver_opts.type -}}
+{{-       $type = default "none" $volValue.driver_opts.type -}}
 {{-       $src = default "" $volValue.driver_opts.device -}}
 {{-       $o := splitList "," (default "" $volValue.driver_opts.o) -}}
 {{-       if hasPrefix "./" $src -}}
@@ -76,7 +78,7 @@
 {{-           fail "volume path or chidir has to be absolute." -}}
 {{-         end -}}
 {{-       end -}}
-{{-       if not $type -}}
+{{-       if eq $type "none" -}}
 {{-         $dynamic = not $src -}}
 {{-       else if eq $type "nfs" -}}
 {{-         range $list := $o -}}
@@ -292,6 +294,7 @@ spec:
 {{- $name := .name -}}
 {{- $ports := include "stack.helpers.normalizePorts" .service.ports | fromYaml -}}
 {{- range $protocol, $ports := pick $ports "tcp" "udp" }}
+{{- if $ports }}
 ---
 apiVersion: v1
 kind: Service
@@ -301,13 +304,14 @@ spec:
   type: LoadBalancer
   ports:
     {{- range $ports }}
-    - name: {{ printf "loadbalancer-%s-%s" (get . "targetPort") (get . "port" | default (get . "targetPort")) | lower | quote }}
+    - name: {{ printf "loadbalancer-%s" (get . "port" | default (get . "targetPort")) | lower | quote }}
       protocol: {{ get . "protocol" | quote }}
       port: {{ get . "port" | default (get . "targetPort") }}
       targetPort: {{ get . "targetPort" }}
     {{- end }}
   selector:
     service: {{ $name | quote }}
+{{- end -}}
 {{- end -}}
 {{- end -}}
 
@@ -328,7 +332,7 @@ spec:
 {{-       if $port -}}
 {{-         $existed := false -}}
 {{-         range $ports -}}
-{{-           if eq (get . "targetPort") $port -}}
+{{-           if eq (get . "port" | default (get . "targetPort")) $port -}}
 {{-             $existed = true -}}
 {{-           end -}}
 {{-         end -}}
@@ -342,12 +346,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ printf "%s-clusterip" .name | quote }}
+  name: {{ printf "%s" .name | quote }}
 spec:
   type: ClusterIP
   ports:
     {{- range $ports }}
-    - name: {{ printf "clusterip-%s-%s" (get . "targetPort") (get . "port" | default (get . "targetPort")) | lower | quote }}
+    - name: {{ printf "clusterip-%s" (get . "port" | default (get . "targetPort")) | lower | quote }}
       protocol: {{ get . "protocol" | quote }}
       port: {{ get . "port" | default (get . "targetPort") }}
       targetPort: {{ get . "targetPort" }}
@@ -372,7 +376,7 @@ spec:
   type: NodePort
   ports:
     {{- range $ports }}
-    - name: {{ printf "nodeport-%s-%s" (get . "targetPort") (get . "port" | default (get . "targetPort")) | lower | quote }}
+    - name: {{ printf "nodeport-%s" (get . "port" | default (get . "targetPort")) | lower | quote }}
       protocol: {{ get . "protocol" | quote }}
       port: {{ get . "targetPort" }}
       targetPort: {{ get . "targetPort" }}
@@ -473,8 +477,8 @@ spec:
           {{- range $path := default (list "/") $pathPrefixStrip }}
           - path: {{ $path | quote }}
             backend:
-              serviceName: {{ printf "%s-clusterip" $name | quote }}
-              servicePort: {{ printf "clusterip-%s-%s" $port $port | quote }}
+              serviceName: {{ printf "%s" $name | quote }}
+              servicePort: {{ printf "clusterip-%s" $port | quote }}
           {{- end -}}
     {{- end -}}
 {{- end -}}
@@ -504,7 +508,7 @@ spec:
     - ReadWriteOnce
     {{- end }}
   {{- if get .volValue "dynamic" -}}
-  {{- if get .volValue "type" }}
+  {{- if ne (get .volValue "type") "none" }}
   storageClassName: {{ get .volValue "type" | quote }}
   {{- end -}}
   {{- else }}
