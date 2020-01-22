@@ -64,8 +64,8 @@ helm -n com-linktohack-redmine upgrade --install redmine link/stack -f docker-co
     --set services.redmine.deploy.placement.constraints={node.role==manager}
 ```
 
-- `services.[service].ports` will be exposed as `LoadBalancer` (if needed)
-- addtional key `services.[service].clusterip.ports` will be exposed as `ClusterIP` ports
+- `services.XXX.ports` will be exposed as `LoadBalancer` (if needed)
+- addtional key `services.XXX.clusterip.ports` will be exposed as `ClusterIP` ports
 
 ### Bitwarden
 ```sh   
@@ -134,6 +134,7 @@ The following rules are supported:
 - `node.labels`
 
 # External keys
+- `services.XXX.kind` (override kind: `Deployment`, `DaemonSet`, `StatefulSet`)
 - `services.XXX.clusterip.ports` (`services.XXX.ports` are for LoadBalancer)
 - `services.XXX.imagePullSecrets`
 - `services.XXX.imagePullPolicy`

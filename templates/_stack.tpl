@@ -1,3 +1,66 @@
+{{- define "stack.helpers.volumes" -}}
+{{-   $Values := .Values -}}
+{{-   $volumes := dict -}}
+{{-   range $volName, $volValue := .Values.volumes -}}
+{{-     $storage := "10Gi" -}}
+{{-     if not $volValue -}}
+{{-       $_ := set $volumes $volName (dict "dynamic" true "storage" $storage) -}}
+{{-     else -}}
+{{-       $storage = default "10Gi" $volValue.storage -}}
+{{-       if not $volValue.driver_opts -}}
+{{-         $_ := set $volumes $volName (dict "dynamic" true "storage" $storage) -}}
+{{-       else -}}
+{{-         $type := $volValue.driver_opts.type -}}
+{{-         $server := "" -}}
+{{-         $src := $volValue.driver_opts.device -}}
+{{-         if hasPrefix "./" $src -}}
+{{-           $src = clean (printf "%s/%s" (default "." $Values.chdir) $src) -}}
+{{-           if not (isAbs $src) -}}
+{{-             fail "volume path or chidir has to be absolute." -}}
+{{-           end -}}
+{{-         end -}}
+{{-         if eq $type "nfs" -}}
+{{-           $o := splitList "," (default "" $volValue.driver_opts.o) -}}
+{{-           range $list := $o -}}
+{{-             $pair := splitList "=" $list -}}
+{{-             if eq (first $pair) "addr" -}}
+{{-               $server = (last $pair) -}}
+{{-             end -}}
+{{-           end -}}
+{{-           if and $src $server -}}
+{{-             $_ := set $volumes $volName (dict "dynamic" false "storage" $storage "type" "nfs" "server" $server "src" $src) -}}
+{{-           else -}}
+{{-             $_ := set $volumes $volName (dict "dynamic" true "storage" $storage "type" "nfs") -}}
+{{-           end -}}
+{{-         else -}}
+{{-           $_ := set $volumes $volName (dict "dynamic" false "storage" $storage "type" $type "src" $src) -}}
+{{-         end -}}
+{{-       end -}}
+{{-     end -}}
+{{-   end -}}
+{{-   range $name, $service := .Values.services -}}
+{{-     $kind := "Deployment " -}}
+{{-     if $service.deploy -}}
+{{-       if $service.deploy.mode -}}
+{{-         if eq $service.deploy.mode "global" -}}
+{{-           $kind = "DaemonSet" -}}
+{{-         end -}}
+{{-       end -}}
+{{-     end -}}
+{{-     if $service.kind -}}
+{{-       $kind = $service.kind -}}
+{{-     end -}}
+{{-     range $volIndex, $volName := $service.volumes -}}
+{{-       $list := splitList ":" $volName -}}
+{{-       if and (not (hasPrefix "/" (first $list))) (not (hasPrefix "./" (first $list))) -}}
+{{-         $volume := get $volumes (first $list) -}}
+{{-         $_ := set $volume "kind" $kind -}}
+{{-       end -}}
+{{-     end -}}
+{{-   end }}
+{{ $volumes | toYaml }}
+{{- end -}}
+
 {{- define "stack.deployment" -}}
 {{-   $name := .name -}}
 {{-   $service := .service -}}
@@ -14,19 +77,24 @@
 {{-       $environments = append $environments (list $envName $envValue) -}}
 {{-     end -}}
 {{-   end -}}
-{{-   $volumes := dict -}}
-{{-   range $volIndex, $volName := default (list) .service.volumes -}}
+{{-   $volumes := include "stack.helpers.volumes" (dict "Values" $Values) | fromYaml -}}
+{{-   $serviceVolumes := dict -}}
+{{-   $volumeClaimTemplates := dict -}}
+{{-   range $volIndex, $volName := .service.volumes -}}
 {{-     $list := splitList ":" $volName -}}
 {{-     if hasPrefix "/" (first $list) -}}
-{{-       $_ := set $volumes (printf "%s-%d" $name $volIndex) (dict "hostPath" true "src" (first $list) "dst" (index $list 1)) -}}
+{{-       $_ := set $serviceVolumes (printf "%s-%d" $name $volIndex) (dict "hostPath" true "src" (first $list) "dst" (index $list 1)) -}}
 {{-     else if hasPrefix "./" (first $list) -}}
 {{-       $src := clean (printf "%s/%s" (default "." $Values.chdir) (first $list)) -}}
 {{-       if not (isAbs $src) -}}
 {{-         fail "volume path or chidir has to be absolute." -}}
 {{-       end -}}
-{{-       $_ := set $volumes (printf "%s-%d" $name $volIndex) (dict "hostPath" true "src" $src "dst" (index $list 1)) -}}
+{{-       $_ := set $serviceVolumes (printf "%s-%d" $name $volIndex) (dict "hostPath" true "src" $src "dst" (index $list 1)) -}}
 {{-     else -}}
-{{-       $_ := set $volumes (first $list) (dict "hostPath" false "src" (first $list) "dst" (index $list 1)) -}}
+{{-       $curr := get $volumes (first $list) -}}
+{{-       $curr = merge $curr (dict "dst" (index $list 1)) -}}
+{{-       $_ := set $serviceVolumes (first $list) $curr -}}
+{{-       $_ := set $volumeClaimTemplates (first $list) $curr -}}
 {{-     end -}}
 {{-   end -}}
 {{-   $affinities := list -}}
@@ -89,7 +157,7 @@
 {{-   $replicas := 1 -}}
 {{-   if .service.deploy -}}
 {{-     $replicas = default 1 .service.deploy.replicas | int64 -}}
-{{-   end }}
+{{-   end -}}
 apiVersion: apps/v1
 kind: {{ $kind }}
 metadata:
@@ -165,16 +233,16 @@ spec:
               value: {{ . | last | quote }}
             {{- end -}}
           {{- end -}}
-          {{- if $volumes }}
+          {{- if $serviceVolumes }}
           volumeMounts:
-            {{- range $volName, $volValue := $volumes }}
+            {{- range $volName, $volValue := $serviceVolumes }}
             - mountPath: {{ "dst" | get $volValue | quote }}
               name: {{ $volName | quote }}
             {{- end }}
           {{- end }}
-      {{- if and $volumes (ne $kind "StatefulSet") }}
+      {{- if and $serviceVolumes }}
       volumes:
-        {{- range $volName, $volValue := $volumes }}
+        {{- range $volName, $volValue := $serviceVolumes }}
         - name: {{ $volName | quote }}
           {{- if get $volValue "hostPath" }}
           hostPath:
@@ -185,9 +253,9 @@ spec:
           {{- end -}}
         {{- end -}}
       {{- end -}}
-  {{- if and $volumes (eq $kind "StatefulSet") }}
+  {{- if and $volumeClaimTemplates (eq $kind "StatefulSet") }}
   volumeClaimTemplates:
-    {{- range $volName, $volValue := $volumes -}}
+    {{- range $volName, $volValue := $volumeClaimTemplates -}}
     {{- $pvc := include "stack.pvc" (dict "volName" $volName "volValue" $volValue) | fromYaml }}
     - metadata: {{ get $pvc "metadata" | toYaml | nindent 8 }}
       spec: {{ get $pvc "spec" | toYaml | nindent 8  }}
@@ -427,7 +495,7 @@ spec:
     {{- end }}
   {{- if get $volValue "dynamic" -}}
   {{- $type := get $volValue "type" -}}
-  {{- if ne $type "local" }}
+  {{- if $type }}
   storageClassName: {{ $type | quote }}
   {{- end -}}
   {{- else }}
@@ -439,49 +507,8 @@ spec:
 {{- end -}}
 
 {{- define "stack.pv" -}}
-{{-   $Values := .Values -}}
-{{-   $volumes := dict -}}
-{{-   range $volName, $volValue := default (dict) .Values.volumes -}}
-{{-     $storage := "10Gi" -}}
-{{-     if not $volValue -}}
-{{-       $_ := set $volumes $volName (dict "dynamic" true "storage" $storage "type" "local") -}}
-{{-     else -}}
-{{-       $storage = default "10Gi" $volValue.storage -}}
-{{-       if not $volValue.driver_opts -}}
-{{-         $_ := set $volumes $volName (dict "dynamic" true "storage" $storage "type" "local") -}}
-{{-       else -}}
-{{-         $type := default "local" $volValue.driver_opts.type -}}
-{{-         $src := $volValue.driver_opts.device -}}
-{{-         if hasPrefix "./" $src -}}
-{{-           $src = clean (printf "%s/%s" (default "." $Values.chdir) $src) -}}
-{{-           if not (isAbs $src) -}}
-{{-             fail "volume path or chidir has to be absolute." -}}
-{{-           end -}}
-{{-         end -}}
-{{-         $server := "" -}}
-{{-         if eq $type "nfs" -}}
-{{-           $o := splitList "," (default "" $volValue.driver_opts.o) -}}
-{{-           range $list := $o -}}
-{{-             $pair := splitList "=" $list -}}
-{{-             if eq (first $pair) "addr" -}}
-{{-               $server = (last $pair) -}}
-{{-             end -}}
-{{-           end -}}
-{{-           if and $src $server -}}
-{{-             $_ := set $volumes $volName (dict "dynamic" false "storage" $storage "type" "nfs" "server" $server "src" $src) -}}
-{{-           else -}}
-{{-             $_ := set $volumes $volName (dict "dynamic" true "storage" $storage "type" "nfs") -}}
-{{-           end -}}
-{{-         else -}}
-{{-           if $src -}}
-{{-             $_ := set $volumes $volName (dict "dynamic" false "storage" $storage "type" "local" "src" $src) -}}
-{{-           else -}}
-{{-             $_ := set $volumes $volName (dict "dynamic" true "storage" $storage "type" "local") -}}
-{{-           end -}}
-{{-         end -}}
-{{-       end -}}
-{{-     end -}}
-{{-   end -}}
+{{- $Values := .Values -}}
+{{- $volumes := include "stack.helpers.volumes" (dict "Values" $Values) | fromYaml -}}
 {{- $namespace := .Release.Namespace -}}
 {{- range $volName, $volValue := $volumes -}}
 {{- if not (get $volValue "dynamic") }}
@@ -503,7 +530,7 @@ spec:
     {{- end }}
     capacity:
     storage: {{ get $volValue "storage" }}
-  {{- if eq (default "local" (get $volValue "type")) "local" }}
+  {{- if and (ne (get $volValue "type") "nfs") (get $volValue "src") }}
   hostPath:
     path: {{ "src" | get $volValue | quote }}
   {{- end }}
@@ -513,7 +540,9 @@ spec:
     path: {{ "src" | get $volValue | quote }}
   {{- end -}}
 {{- end }}
+{{- if ne (get $volValue "kind") "StatefulSet" }}
 ---
 {{ include "stack.pvc" (dict "volName" $volName "volValue" $volValue) }}
+{{- end -}}
 {{- end -}}
 {{- end -}}
