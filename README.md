@@ -58,14 +58,14 @@ replicaset.apps/words-6465f956d   5         5         5       2m4s
 ### Redmine + MySQL
 ```sh
 helm -n com-linktohack-redmine upgrade --install redmine link/stack -f docker-compose-redmine.yaml \
-    --set services.db.clusterip.ports={3306:3306} \
+    --set services.db.ClusterIP.ports={3306:3306} \
     --set services.db.ports={3306:3306} \
     --set services.db.deploy.placement.constraints={node.role==manager} \
     --set services.redmine.deploy.placement.constraints={node.role==manager}
 ```
 
 - `services.XXX.ports` will be exposed as `LoadBalancer` (if needed)
-- addtional key `services.XXX.clusterip.ports` will be exposed as `ClusterIP` ports
+- addtional key `services.XXX.ClusterIP.ports` will be exposed as `ClusterIP` ports
 
 ### Bitwarden
 ```sh   
@@ -82,17 +82,20 @@ helm -n com-linktohack-ipsec upgrade --install ipsec link/stack -f docker-compos
 ## Via template
 ```sh
 helm -n com-linktohack-redmine template openvpn link/stack -f docker-compose-redmine.yaml  \
-    --set services.db.clusterip.ports={3306:3306} \
+    --set services.db.ClusterIP.ports={3306:3306} \
     --set services.db.ports={3306:3306} \
     --set services.db.deploy.placement.constraints={node.role==manager} \
-    --set services.redmine.deploy.placement.constraints={node.role==manager} > stack1.yaml
+    --set services.redmine.deploy.placement.constraints={node.role==manager} \
+    --set chdir=/stack \
+    > stack1.yaml
 kubectl -n com-linktohack-redmine apply -f stack1.yaml
 ```
 
 ```sh
 helm -n com-linktohack-ipsec template ipsec link/stack -f docker-compose-openvpn.yaml \
-    --set services.openvpn-as.pv.storage=1Gi \
-    --set volumes.config.driver_opt=null > stack2.yaml  
+    --set volumes.config.storage=1Gi \
+    --set volumes.config.driver_opt=null \
+    > stack2.yaml  
 kubectl -n com-linktohack-ipsec apply -f stack2.yaml
 
 ```
@@ -135,16 +138,16 @@ The following rules are supported:
 
 # External keys
 - `services.XXX.kind` (override kind: `Deployment`, `DaemonSet`, `StatefulSet`)
-- `services.XXX.clusterip.ports` (`services.XXX.ports` are for LoadBalancer)
 - `services.XXX.imagePullSecrets`
 - `services.XXX.imagePullPolicy`
 - `services.XXX.serviceAccountName`
 - `services.XXX.terminationGracePeriodSeconds`
+- `services.XXX.ClusterIP.ports` (`services.XXX.ports` are for LoadBalancer)
 - `volumes.XXX.storage` 
 - `chdir` in case of relative path in volume
 
 # Contribution
-- Additional keys (e.g. `clusterip.ports`) should always be set via `--set` or external `values.yaml` but we
+- Additional keys (e.g. `ClusterIP.ports`) should always be set via `--set` or external `values.yaml` but we
 - Should have the JSON schema of `docker-compose` and additional keys
 
 # License

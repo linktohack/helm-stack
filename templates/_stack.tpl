@@ -12,6 +12,7 @@
 {{ $dict | toYaml }}
 {{- end -}}
 
+
 {{- define "stack.helpers.volumes" -}}
 {{-   $Values := .Values -}}
 {{-   $volumes := dict -}}
@@ -75,10 +76,26 @@
 {{ $volumes | toYaml }}
 {{- end -}}
 
-{{- define "stack.deployment" -}}
+
+{{- define "stack.Deployment" -}}
+{{-   $Values := .Values -}}
 {{-   $name := .name -}}
 {{-   $service := .service -}}
-{{-   $Values := .Values -}}
+{{-   $kind := "Deployment " -}}
+{{-   if .service.deploy -}}
+{{-     if .service.deploy.mode -}}
+{{-       if eq .service.deploy.mode "global" -}}
+{{-         $kind = "DaemonSet" -}}
+{{-       end -}}
+{{-     end -}}
+{{-   end -}}
+{{-   if .service.kind -}}
+{{-     $kind = .service.kind -}}
+{{-   end -}}
+{{-   $replicas := 1 -}}
+{{-   if .service.deploy -}}
+{{-     $replicas = default 1 .service.deploy.replicas | int64 -}}
+{{-   end -}}
 {{-   $environments := include "stack.helpers.normalizeDict" .service.environment | fromYaml -}}
 {{-   $volumes := include "stack.helpers.volumes" (dict "Values" $Values) | fromYaml -}}
 {{-   $serviceVolumes := dict -}}
@@ -97,7 +114,9 @@
 {{-       $curr := get $volumes (first $list) -}}
 {{-       $curr = merge $curr (dict "dst" (index $list 1)) -}}
 {{-       $_ := set $serviceVolumes (first $list) $curr -}}
-{{-       $_ := set $volumeClaimTemplates (first $list) $curr -}}
+{{-       if eq $kind "StatefulSet" -}}
+{{-         $_ := set $volumeClaimTemplates (first $list) $curr -}}
+{{-       end -}}
 {{-     end -}}
 {{-   end -}}
 {{-   $affinities := list -}}
@@ -145,21 +164,6 @@
 {{-         end -}}
 {{-       end -}}
 {{-     end -}}
-{{-   end }}
-{{-   $kind := "Deployment " -}}
-{{-   if .service.deploy -}}
-{{-     if .service.deploy.mode -}}
-{{-       if eq .service.deploy.mode "global" -}}
-{{-         $kind = "DaemonSet" -}}
-{{-       end -}}
-{{-     end -}}
-{{-   end -}}
-{{-   if .service.kind -}}
-{{-     $kind = .service.kind -}}
-{{-   end -}}
-{{-   $replicas := 1 -}}
-{{-   if .service.deploy -}}
-{{-     $replicas = default 1 .service.deploy.replicas | int64 -}}
 {{-   end -}}
 apiVersion: apps/v1
 kind: {{ $kind }}
@@ -256,17 +260,18 @@ spec:
           {{- end -}}
         {{- end -}}
       {{- end -}}
-  {{- if and $volumeClaimTemplates (eq $kind "StatefulSet") }}
+  {{- if $volumeClaimTemplates }}
   volumeClaimTemplates:
     {{- range $volName, $volValue := $volumeClaimTemplates -}}
-    {{- $pvc := include "stack.pvc" (dict "volName" $volName "volValue" $volValue) | fromYaml }}
+    {{- $pvc := include "stack.PVC" (dict "volName" $volName "volValue" $volValue) | fromYaml }}
     - metadata: {{ get $pvc "metadata" | toYaml | nindent 8 }}
       spec: {{ get $pvc "spec" | toYaml | nindent 8  }}
     {{- end -}}
   {{- end -}}
 {{- end -}}
 
-{{- define "stack.service.loadbalancer" -}}
+
+{{- define "stack.Service.LoadBalancer" -}}
 {{-   $tcpPorts := list -}}
 {{-   $udpPorts := list -}}
 {{-   range .service.ports -}}
@@ -325,7 +330,7 @@ spec:
 {{- end -}}
 
 
-{{- define "stack.service.clusterip" -}}
+{{- define "stack.Service.ClusterIP" -}}
 {{-   $name := .name -}}
 {{-   $ports := list -}}
 {{-   if .service.deploy -}}
@@ -336,13 +341,13 @@ spec:
 {{-           $port = $labelValue -}}
 {{-         end -}}
 {{-       end -}}
-{{-       if and (ne $port "") -}}
-{{-         $ports = append $ports $port -}}
+{{-       if $port -}}
+{{-         $ports = append $ports $port | uniq -}}
 {{-       end -}}
 {{-     end -}}
 {{-   end -}}
-{{-   if .service.clusterip -}}
-{{-     range .service.clusterip.ports -}}
+{{-   if .service.ClusterIP -}}
+{{-     range .service.ClusterIP.ports -}}
 {{-       $pair := splitList ":" . -}}
 {{-       $ports = append $ports (last $pair) -}}
 {{-     end -}}
@@ -366,7 +371,7 @@ spec:
 {{- end -}}
 
 
-{{- define "stack.ingress" -}}
+{{- define "stack.Ingress" -}}
 {{-   $hosts := list -}}
 {{-   $port := "" -}}
 {{-   $backend := "http" -}}
@@ -470,22 +475,21 @@ data:
 {{- end -}}
 {{- end -}}
 
-{{- define "stack.pvc" -}}
-{{- $volName := .volName -}}
-{{- $volValue := .volValue -}}
+
+{{- define "stack.PVC" -}}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ $volName | quote }}
+  name: {{ .volName | quote }}
 spec:
   accessModes:
-    {{- if eq (get $volValue "type") "nfs" }}
+    {{- if eq (get .volValue "type") "nfs" }}
     - ReadWriteMany
     {{- else }}
     - ReadWriteOnce
     {{- end }}
-  {{- if get $volValue "dynamic" -}}
-  {{- $type := get $volValue "type" -}}
+  {{- if get .volValue "dynamic" -}}
+  {{- $type := get .volValue "type" -}}
   {{- if $type }}
   storageClassName: {{ $type | quote }}
   {{- end -}}
@@ -494,23 +498,23 @@ spec:
   {{- end }}
   resources:
     requests:
-      storage: {{ get $volValue "storage" | quote }}
+      storage: {{ get .volValue "storage" | quote }}
 {{- end -}}
 
-{{- define "stack.pv" -}}
+
+{{- define "stack.PV" -}}
 {{- $Values := .Values -}}
-{{- $volumes := include "stack.helpers.volumes" (dict "Values" $Values) | fromYaml -}}
-{{- $namespace := .Release.Namespace -}}
-{{- range $volName, $volValue := $volumes -}}
+{{- $Namespace := .Release.Namespace -}}
+{{- range $volName, $volValue := include "stack.helpers.volumes" (dict "Values" $Values) | fromYaml -}}
 {{- if not (get $volValue "dynamic") }}
 ---
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: {{ printf "%s-%s" $namespace $volName | quote }}
+  name: {{ printf "%s-%s" $Namespace $volName | quote }}
 spec:
   claimRef:
-    namespace: {{ $namespace }}
+    namespace: {{ $Namespace }}
     name: {{ $volName | quote }}
   persistentVolumeReclaimPolicy: Delete
   accessModes:
@@ -533,7 +537,7 @@ spec:
 {{- end }}
 {{- if ne (get $volValue "kind") "StatefulSet" }}
 ---
-{{ include "stack.pvc" (dict "volName" $volName "volValue" $volValue) }}
+{{ include "stack.PVC" (dict "volName" $volName "volValue" $volValue) }}
 {{- end -}}
 {{- end -}}
 {{- end -}}
