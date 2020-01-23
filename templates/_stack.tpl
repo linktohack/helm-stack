@@ -69,6 +69,7 @@
 {{-     $policy := $volValue.persistentVolumeReclaimPolicy -}}
 {{-     $src := "" -}}
 {{-     $server := "" -}}
+{{-     $subPath := $volValue.subPath -}}
 {{-     if $volValue.driver_opts -}}
 {{-       $type = default "none" $volValue.driver_opts.type -}}
 {{-       $src = default "" $volValue.driver_opts.device -}}
@@ -91,7 +92,7 @@
 {{-         $dynamic = or (not $src) (not $server) -}}
 {{-       end -}}
 {{-     end -}}
-{{-     $_ := set $volumes $volName (dict "dynamic" $dynamic "storage" $storage "policy" $policy "type" $type "src" $src "dst" "" "server" $server) -}}
+{{-     $_ := set $volumes $volName (dict "dynamic" $dynamic "storage" $storage "policy" $policy "type" $type "src" $src "dst" "" "server" $server "subPath" $subPath) -}}
 {{-   end -}}
 {{-   range $name, $service := .Values.services -}}
 {{-     $kind := include "stack.helpers.kindOfService" $service -}}
@@ -267,6 +268,9 @@ spec:
             {{- range $volName, $volValue := $serviceVolumes }}
             - mountPath: {{ "dst" | get $volValue | quote }}
               name: {{ $volName | quote }}
+              {{- if "subPath" | get $volValue }}
+              subPath: {{ "subPath" | get $volValue | quote }}
+              {{- end }}
             {{- end }}
           {{- end }}
       {{- if and $serviceVolumes }}

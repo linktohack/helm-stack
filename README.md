@@ -142,8 +142,9 @@ The following rules are supported:
 - `services.XXX.terminationGracePeriodSeconds` (number)
 - `services.XXX.NodePort.ports` (array, `services.XXX.ports` are for `LoadBalancer`)
 - `services.XXX.ClusterIP.ports` (array)
-- `volumes.XXX.storage` (string)
+- `volumes.XXX.storage` (string, default `1Gi`)
 - `volumes.XXX.persistentVolumeReclaimPolicy` (string, either `Delete` or `Retain`)
+- `volumes.XXX.subPath` (string)
 - `chdir` (string, required in case of relative path in volume)
 
 # Contribution
