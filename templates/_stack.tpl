@@ -95,10 +95,11 @@
 {{-   end -}}
 {{-   range $name, $service := .Values.services -}}
 {{-     $kind := include "stack.helpers.kindOfService" $service -}}
-{{-     range $volIndex, $volName := $service.volumes -}}
-{{-       $list := splitList ":" $volName -}}
-{{-       if and (not (hasPrefix "/" (first $list | replace "_" "-"))) (not (hasPrefix "./" (first $list | replace "_" "-"))) -}}
-{{-         $volume := get $volumes (first $list | replace "_" "-") -}}
+{{-     range $volIndex, $volValue := $service.volumes -}}
+{{-       $list := splitList ":" $volValue -}}
+{{-       $volName := first $list | replace "_" "-" -}}
+{{-       if and (not (hasPrefix "/" $volName)) (not (hasPrefix "./" $volName)) -}}
+{{-         $volume := get $volumes $volName -}}
 {{-         $_ := set $volume "kind" $kind -}}
 {{-       end -}}
 {{-     end -}}
@@ -120,22 +121,23 @@
 {{-   $volumes := include "stack.helpers.volumes" (dict "Values" $Values) | fromYaml -}}
 {{-   $serviceVolumes := dict -}}
 {{-   $volumeClaimTemplates := dict -}}
-{{-   range $volIndex, $volName := .service.volumes -}}
-{{-     $list := splitList ":" $volName -}}
-{{-     if hasPrefix "/" (first $list | replace "_" "-") -}}
-{{-       $_ := set $serviceVolumes (printf "%s-%d" $name $volIndex) (dict "hostPath" true "src" (first $list | replace "_" "-") "dst" (index $list 1)) -}}
-{{-     else if hasPrefix "./" (first $list | replace "_" "-") -}}
-{{-       $src := clean (printf "%s/%s" (default "." $Values.chdir) (first $list | replace "_" "-")) -}}
+{{-   range $volIndex, $volValue := .service.volumes -}}
+{{-     $list := splitList ":" $volValue -}}
+{{-     $volName := first $list | replace "_" "-" -}}
+{{-     if hasPrefix "/" $volName -}}
+{{-       $_ := set $serviceVolumes (printf "%s-%d" $name $volIndex) (dict "hostPath" true "src" $volName "dst" (index $list 1)) -}}
+{{-     else if hasPrefix "./" $volName -}}
+{{-       $src := clean (printf "%s/%s" (default "." $Values.chdir) $volName) -}}
 {{-       if not (isAbs $src) -}}
 {{-         fail "volume path or chidir has to be absolute." -}}
 {{-       end -}}
 {{-       $_ := set $serviceVolumes (printf "%s-%d" $name $volIndex) (dict "hostPath" true "src" $src "dst" (index $list 1)) -}}
 {{-     else -}}
-{{-       $curr := get $volumes (first $list | replace "_" "-") -}}
+{{-       $curr := get $volumes $volName -}}
 {{-       $curr = merge $curr (dict "dst" (index $list 1)) -}}
-{{-       $_ := set $serviceVolumes (first $list | replace "_" "-") $curr -}}
+{{-       $_ := set $serviceVolumes $volName $curr -}}
 {{-       if eq $kind "StatefulSet" -}}
-{{-         $_ := set $volumeClaimTemplates (first $list | replace "_" "-") $curr -}}
+{{-         $_ := set $volumeClaimTemplates $volName $curr -}}
 {{-       end -}}
 {{-     end -}}
 {{-   end -}}
