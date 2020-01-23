@@ -61,6 +61,7 @@
 {{-   $Values := .Values -}}
 {{-   $volumes := dict -}}
 {{-   range $volName, $volValue := .Values.volumes -}}
+{{-     $volName = $volName | replace "_" "-" -}}
 {{-     $volValue = default dict $volValue -}}
 {{-     $dynamic := true -}}
 {{-     $storage := $volValue.storage -}}
@@ -96,8 +97,8 @@
 {{-     $kind := include "stack.helpers.kindOfService" $service -}}
 {{-     range $volIndex, $volName := $service.volumes -}}
 {{-       $list := splitList ":" $volName -}}
-{{-       if and (not (hasPrefix "/" (first $list))) (not (hasPrefix "./" (first $list))) -}}
-{{-         $volume := get $volumes (first $list) -}}
+{{-       if and (not (hasPrefix "/" (first $list | replace "_" "-"))) (not (hasPrefix "./" (first $list | replace "_" "-"))) -}}
+{{-         $volume := get $volumes (first $list | replace "_" "-") -}}
 {{-         $_ := set $volume "kind" $kind -}}
 {{-       end -}}
 {{-     end -}}
@@ -108,7 +109,7 @@
 
 {{- define "stack.Deployment" -}}
 {{-   $Values := .Values -}}
-{{-   $name := .name -}}
+{{-   $name := .name | replace "_" "-" -}}
 {{-   $service := .service -}}
 {{-   $kind := include "stack.helpers.kindOfService" .service -}}
 {{-   $replicas := 1 -}}
@@ -121,20 +122,20 @@
 {{-   $volumeClaimTemplates := dict -}}
 {{-   range $volIndex, $volName := .service.volumes -}}
 {{-     $list := splitList ":" $volName -}}
-{{-     if hasPrefix "/" (first $list) -}}
-{{-       $_ := set $serviceVolumes (printf "%s-%d" $name $volIndex) (dict "hostPath" true "src" (first $list) "dst" (index $list 1)) -}}
-{{-     else if hasPrefix "./" (first $list) -}}
-{{-       $src := clean (printf "%s/%s" (default "." $Values.chdir) (first $list)) -}}
+{{-     if hasPrefix "/" (first $list | replace "_" "-") -}}
+{{-       $_ := set $serviceVolumes (printf "%s-%d" $name $volIndex) (dict "hostPath" true "src" (first $list | replace "_" "-") "dst" (index $list 1)) -}}
+{{-     else if hasPrefix "./" (first $list | replace "_" "-") -}}
+{{-       $src := clean (printf "%s/%s" (default "." $Values.chdir) (first $list | replace "_" "-")) -}}
 {{-       if not (isAbs $src) -}}
 {{-         fail "volume path or chidir has to be absolute." -}}
 {{-       end -}}
 {{-       $_ := set $serviceVolumes (printf "%s-%d" $name $volIndex) (dict "hostPath" true "src" $src "dst" (index $list 1)) -}}
 {{-     else -}}
-{{-       $curr := get $volumes (first $list) -}}
+{{-       $curr := get $volumes (first $list | replace "_" "-") -}}
 {{-       $curr = merge $curr (dict "dst" (index $list 1)) -}}
-{{-       $_ := set $serviceVolumes (first $list) $curr -}}
+{{-       $_ := set $serviceVolumes (first $list | replace "_" "-") $curr -}}
 {{-       if eq $kind "StatefulSet" -}}
-{{-         $_ := set $volumeClaimTemplates (first $list) $curr -}}
+{{-         $_ := set $volumeClaimTemplates (first $list | replace "_" "-") $curr -}}
 {{-       end -}}
 {{-     end -}}
 {{-   end -}}
@@ -187,21 +188,21 @@
 apiVersion: apps/v1
 kind: {{ $kind }}
 metadata:
-  name: {{ .name | quote }}
+  name: {{ $name | quote }}
 spec:
   {{- if (and (ne $kind "DaemonSet") (ne $replicas 1)) }}
   replicas: {{ $replicas }}
   {{- end }}
   selector:
     matchLabels:
-      service: {{ .name | quote }}
+      service: {{ $name | quote }}
   {{- if eq $kind "StatefulSet" }}
-  serviceName: {{ .name | quote }}
+  serviceName: {{ $name | quote }}
   {{- end }}
   template:
     metadata:
       labels:
-        service: {{ .name | quote }}
+        service: {{ $name | quote }}
     spec:
       {{- if $affinities }}
       affinity:
@@ -226,7 +227,7 @@ spec:
         nameservers: {{ .service.dns | toYaml | nindent 10 }}
       {{- end }}
       containers:
-        - name: {{ .name | quote }}
+        - name: {{ $name | quote }}
           image: {{ .service.image | quote }}
           {{- if .service.imagePullPolicy }}
           imagePullPolicy: {{ .service.imagePullPolicy }}
@@ -291,7 +292,7 @@ spec:
 
 
 {{- define "stack.Service.LoadBalancer" -}}
-{{- $name := .name -}}
+{{- $name := .name | replace "_" "-" -}}
 {{- $ports := include "stack.helpers.normalizePorts" .service.ports | fromYaml -}}
 {{- range $protocol, $ports := pick $ports "tcp" "udp" }}
 {{- if $ports }}
@@ -317,6 +318,7 @@ spec:
 
 
 {{- define "stack.Service.ClusterIP" -}}
+{{-   $name := .name | replace "_" "-" -}}
 {{-   $ports := list -}}
 {{-   if .service.ClusterIP -}}
 {{-     $ports = get (include "stack.helpers.normalizePorts" .service.ClusterIP.ports | fromYaml) "all" -}}
@@ -346,7 +348,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ printf "%s" .name | quote }}
+  name: {{ printf "%s" $name | quote }}
 spec:
   type: ClusterIP
   ports:
@@ -357,12 +359,13 @@ spec:
       targetPort: {{ get . "targetPort" }}
     {{- end }}
   selector:
-    service: {{ .name | quote }}
+    service: {{ $name | quote }}
 {{- end -}}
 {{- end -}}
 
 
 {{- define "stack.Service.NodePort" -}}
+{{-   $name := .name | replace "_" "-" -}}
 {{-   $ports := list -}}
 {{-   if .service.NodePort -}}
 {{-     $ports = get (include "stack.helpers.normalizePorts" .service.NodePort.ports | fromYaml) "all" -}}
@@ -371,7 +374,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ printf "%s-nodeport" .name | quote }}
+  name: {{ printf "%s-nodeport" $name | quote }}
 spec:
   type: NodePort
   ports:
@@ -385,13 +388,13 @@ spec:
       {{- end }}
     {{- end }}
   selector:
-    service: {{ .name | quote }}
+    service: {{ $name | quote }}
 {{- end -}}
 {{- end -}}
 
 
 {{- define "stack.Ingress" -}}
-{{-   $name := .name -}}
+{{-   $name := .name | replace "_" "-" -}}
 {{-   $hosts := list -}}
 {{-   $port := "" -}}
 {{-   $backend := "http" -}}
@@ -444,7 +447,7 @@ spec:
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
-  name: {{ .name | quote }}
+  name: {{ $name | quote }}
   annotations:
     {{- if ne $backend "http" }}
     ingress.kubernetes.io/protocol: {{ $backend }}
@@ -452,7 +455,7 @@ metadata:
     {{- if $auth }}
     ingress.kubernetes.io/auth-type: basic
     ingress.kubernetes.io/auth-realm: traefik
-    ingress.kubernetes.io/auth-secret: {{ printf "%s-basic-auth" .name | quote }}
+    ingress.kubernetes.io/auth-secret: {{ printf "%s-basic-auth" $name | quote }}
     {{- end }}
     {{- if or $pathPrefixStrip (ne $addPrefix "") $customHeadersLen }}
     kubernetes.io/ingress.class: traefik
@@ -487,7 +490,7 @@ spec:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: {{ printf "%s-basic-auth" .name }}
+  name: {{ printf "%s-basic-auth" $name }}
 type: Opaque
 data:
   auth: {{ $auth | b64enc }}
