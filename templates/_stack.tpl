@@ -43,12 +43,9 @@
 
 {{- define "stack.helpers.deploymentKind" -}}
 {{-   $kind := "Deployment" -}}
-{{-   if .deploy -}}
-{{-     if .deploy.mode -}}
-{{-       if eq .deploy.mode "global" -}}
-{{-         $kind = "DaemonSet" -}}
-{{-       end -}}
-{{-     end -}}
+{{-   $mode := pluck "deploy" . | first | default list | pluck "mode" | first | default "replicated" -}}
+{{-   if eq $mode "global" -}}
+{{-      $kind = "DaemonSet" -}}
 {{-   end -}}
 {{-   if .kind -}}
 {{-     $kind = .kind -}}
@@ -203,48 +200,45 @@
 {{-       $_ := set $serviceVolumes $volName $curr -}}
 {{-   end -}}
 {{-   $affinities := list -}}
-{{-   if .service.deploy -}}
-{{-     if .service.deploy.placement -}}
-{{-       range $constraint := .service.deploy.placement.constraints -}}
-{{-         $op := "" -}}
-{{-         $pair := list -}}
-{{-         $curr := splitList "==" $constraint -}}
-{{-         if eq (len $curr) 2 -}}
-{{-           $op = "In" -}}
-{{-           $pair = $curr -}}
+{{-   $constraints := pluck "service" . | first | default dict | pluck "deploy" | first | default dict | pluck "placement" | first | default dict | pluck "constraints" | first | default list -}}
+{{-   range $constraint := $constraints -}}
+{{-     $op := "" -}}
+{{-     $pair := list -}}
+{{-     $curr := splitList "==" $constraint -}}
+{{-     if eq (len $curr) 2 -}}
+{{-       $op = "In" -}}
+{{-       $pair = $curr -}}
+{{-     end -}}
+{{-     $curr := splitList "!=" $constraint -}}
+{{-     if eq (len $curr) 2 -}}
+{{-       $op = "NotIn" -}}
+{{-       $pair = $curr -}}
+{{-     end -}}
+{{-     if and (not (contains "==" $constraint)) (not (contains "!=" $constraint)) (hasPrefix "node.labels" $constraint) -}}
+{{-       $op = "Exists" -}}
+{{-     end -}}
+{{-     if or (eq $op "In") (eq $op "NotIn") -}}
+{{-       $first := trim (first $pair) -}}
+{{-       $last := trim (last $pair) -}}
+{{-       if eq $first "node.role" -}}
+{{-         $val := false -}}
+{{-         if eq $op "In" -}}
+{{-            $val = toString (eq $last "manager") -}}
+{{-         else -}}
+{{-           $val = toString (ne $last "manager") -}}
 {{-         end -}}
-{{-         $curr := splitList "!=" $constraint -}}
-{{-         if eq (len $curr) 2 -}}
-{{-           $op = "NotIn" -}}
-{{-           $pair = $curr -}}
-{{-         end -}}
-{{-         if and (not (contains "==" $constraint)) (not (contains "!=" $constraint)) (hasPrefix "node.labels" $constraint) -}}
-{{-           $op = "Exists" -}}
-{{-         end -}}
-{{-         if or (eq $op "In") (eq $op "NotIn") -}}
-{{-           $first := trim (first $pair) -}}
-{{-           $last := trim (last $pair) -}}
-{{-           if eq $first "node.role" -}}
-{{-             $val := false -}}
-{{-             if eq $op "In" -}}
-{{-                $val = toString (eq $last "manager") -}}
-{{-             else -}}
-{{-               $val = toString (ne $last "manager") -}}
-{{-             end -}}
-{{-             $affinities = append $affinities (dict "key" "node-role.kubernetes.io/master" "operator" $op "values" (list $val)) -}}
-{{-           end -}}
-{{-           if eq $first "node.hostname" -}}
-{{-             $affinities = append $affinities (dict "key" "kubernetes.io/hostname" "operator" $op "values" (list $last)) -}}
-{{-           end -}}
-{{-           if hasPrefix "node.labels" $first -}}
-{{-             $affinities = append $affinities (dict "key" (replace "node.labels." ""  $first) "operator" $op "values" (list $last)) -}}
-{{-           end -}}
-{{-         end -}}
-{{-         if (eq $op "Exists") -}}
-{{-           if hasPrefix "node.labels" $constraint -}}
-{{-             $affinities = append $affinities (dict "key" (replace "node.labels." "" $constraint) "operator" $op) -}}
-{{-           end -}}
-{{-         end -}}
+{{-         $affinities = append $affinities (dict "key" "node-role.kubernetes.io/master" "operator" $op "values" (list $val)) -}}
+{{-       end -}}
+{{-       if eq $first "node.hostname" -}}
+{{-         $affinities = append $affinities (dict "key" "kubernetes.io/hostname" "operator" $op "values" (list $last)) -}}
+{{-       end -}}
+{{-       if hasPrefix "node.labels" $first -}}
+{{-         $affinities = append $affinities (dict "key" (replace "node.labels." ""  $first) "operator" $op "values" (list $last)) -}}
+{{-       end -}}
+{{-     end -}}
+{{-     if (eq $op "Exists") -}}
+{{-       if hasPrefix "node.labels" $constraint -}}
+{{-         $affinities = append $affinities (dict "key" (replace "node.labels." "" $constraint) "operator" $op) -}}
 {{-       end -}}
 {{-     end -}}
 {{-   end -}}
@@ -404,25 +398,22 @@ spec:
 {{-   if .service.ClusterIP -}}
 {{-     $ports = get (include "stack.helpers.normalizePorts" .service.ClusterIP.ports | fromYaml) "all" -}}
 {{-   end -}}
-{{-   if .service.deploy -}}
-{{-     if .service.deploy.labels -}}
-{{-       $port := "" -}}
-{{-       range $labelName, $labelValue := include "stack.helpers.normalizeDict" .service.deploy.labels | fromYaml -}}
-{{-         if eq $labelName "traefik.port" -}}
-{{-           $port = $labelValue -}}
-{{-         end -}}
+{{-   $labels := pluck "service" . | first | default dict | pluck "deploy" | first | default dict | pluck "labels" | first | default list -}}
+{{-   $port := "" -}}
+{{-   range $labelName, $labelValue := include "stack.helpers.normalizeDict" $labels | fromYaml -}}
+{{-     if eq $labelName "traefik.port" -}}
+{{-       $port = $labelValue -}}
+{{-     end -}}
+{{-   end -}}
+{{-   if $port -}}
+{{-     $existed := false -}}
+{{-     range $ports -}}
+{{-       if eq (get . "port" | default (get . "targetPort")) $port -}}
+{{-         $existed = true -}}
 {{-       end -}}
-{{-       if $port -}}
-{{-         $existed := false -}}
-{{-         range $ports -}}
-{{-           if eq (get . "port" | default (get . "targetPort")) $port -}}
-{{-             $existed = true -}}
-{{-           end -}}
-{{-         end -}}
-{{-         if not $existed -}}
-{{-           $ports = append $ports (dict "protocol" "TCP" "port" $port "targetPort" $port) -}}
-{{-         end -}}
-{{-       end -}}
+{{-     end -}}
+{{-     if not $existed -}}
+{{-       $ports = append $ports (dict "protocol" "TCP" "port" $port "targetPort" $port) -}}
 {{-     end -}}
 {{-   end -}}
 {{- if $ports -}}
@@ -488,39 +479,36 @@ spec:
 {{-   $h4 := dict "src" "traefik.frontend.redirect.entryPoint" "dst" "traefik.ingress.kubernetes.io/redirect-entry-point" "val" "" -}}
 {{-   $customHeaders := list $h1 $h2 $h3 $h4 -}}
 {{-   $customHeadersLen := 0 -}}
-{{-   if .service.deploy -}}
-{{-     if .service.deploy.labels -}}
-{{-       range $labelName, $labelValue := include "stack.helpers.normalizeDict" .service.deploy.labels | fromYaml -}}
-{{-         if eq $labelName "traefik.frontend.rule" -}}
-{{-           $rules := splitList ";" $labelValue -}}
-{{-           range $rule := $rules -}}
-{{-             $pair := splitList ":" $rule -}}
-{{-             if eq (first $pair) "Host" -}}
-{{-               $hosts = concat $hosts (splitList "," (last $pair)) -}}
-{{-             end -}}
-{{-             if eq (first $pair) "PathPrefixStrip" -}}
-{{-               $pathPrefixStrip = concat $pathPrefixStrip (splitList "," (last $pair)) -}}
-{{-             end -}}
-{{-             if eq (first $pair) "AddPrefix" -}}
-{{-               $addPrefix = last $pair -}}
-{{-             end -}}
-{{-           end -}}
+{{-   $labels := pluck "service" . | first | default dict | pluck "deploy" | first | default dict | pluck "labels" | first | default list -}}
+{{-   range $labelName, $labelValue := include "stack.helpers.normalizeDict" $labels | fromYaml -}}
+{{-     if eq $labelName "traefik.frontend.rule" -}}
+{{-       $rules := splitList ";" $labelValue -}}
+{{-       range $rule := $rules -}}
+{{-         $pair := splitList ":" $rule -}}
+{{-         if eq (first $pair) "Host" -}}
+{{-           $hosts = concat $hosts (splitList "," (last $pair)) -}}
 {{-         end -}}
-{{-         if eq $labelName "traefik.port" -}}
-{{-           $port = $labelValue -}}
+{{-         if eq (first $pair) "PathPrefixStrip" -}}
+{{-           $pathPrefixStrip = concat $pathPrefixStrip (splitList "," (last $pair)) -}}
 {{-         end -}}
-{{-         if eq $labelName "traefik.backend" -}}
-{{-           $backend = $labelValue -}}
+{{-         if eq (first $pair) "AddPrefix" -}}
+{{-           $addPrefix = last $pair -}}
 {{-         end -}}
-{{-         if eq $labelName "traefik.frontend.auth.basic.users" -}}
-{{-           $auth = $labelValue -}}
-{{-         end -}}
-{{-         range $header := $customHeaders -}}
-{{-           if eq $labelName (get $header "src") -}}
-{{-             $_ := set $header "val" $labelValue -}}
-{{-             $customHeadersLen = add1 $customHeadersLen -}}
-{{-           end -}}
-{{-         end -}}
+{{-       end -}}
+{{-     end -}}
+{{-     if eq $labelName "traefik.port" -}}
+{{-       $port = $labelValue -}}
+{{-     end -}}
+{{-     if eq $labelName "traefik.backend" -}}
+{{-       $backend = $labelValue -}}
+{{-     end -}}
+{{-     if eq $labelName "traefik.frontend.auth.basic.users" -}}
+{{-       $auth = $labelValue -}}
+{{-     end -}}
+{{-     range $header := $customHeaders -}}
+{{-       if eq $labelName (get $header "src") -}}
+{{-         $_ := set $header "val" $labelValue -}}
+{{-         $customHeadersLen = add1 $customHeadersLen -}}
 {{-       end -}}
 {{-     end -}}
 {{-   end -}}
