@@ -2,6 +2,7 @@
 {{- $Release := .Release -}}
 {{/* volumes */}}
 {{- range $volName, $volValue := include "stack.helpers.volumes" (dict "Values" $Values) | fromYaml -}}
+{{- if not (get $volValue "external") -}}
 {{- if not (get $volValue "dynamic") -}}
 {{- $pv := include "stack.pv" (dict "volName" $volName "volValue" $volValue "Values" $Values "Release" $Release) | fromYaml -}}
 {{- $override := pluck "volumes" $Values | first | default dict | pluck (get $volValue "originalName") | first | default dict | pluck "PV" | first | default dict }}
@@ -16,8 +17,10 @@
 {{ $pvc | merge $override | toYaml }}
 {{- end -}}
 {{- end -}}
+{{- end -}}
 {{/* configs */}}
 {{- range $volName, $volValue := include "stack.helpers.configs" (dict "Values" $Values) | fromYaml -}}
+{{- if not (get $volValue "external") -}}
 {{- $config := include "stack.configMap" (dict "volName" $volName "volValue" $volValue "Values" $Values "Release" $Release) | fromYaml -}}
 {{- $override := pluck "configs" $Values | first | default dict | pluck (get $volValue "originalName") | first | default dict | pluck "ConfigMap" | first | default dict }}
 {{- if $config }}
@@ -25,13 +28,16 @@
 {{ $config | merge $override | toYaml }}
 {{- end -}}
 {{- end -}}
+{{- end -}}
 {{/* secrets */}}
 {{- range $volName, $volValue := include "stack.helpers.secrets" (dict "Values" $Values) | fromYaml -}}
+{{- if not (get $volValue "external") -}}
 {{- $secret := include "stack.secret" (dict "volName" $volName "volValue" $volValue "Values" $Values "Release" $Release) | fromYaml -}}
 {{- $override := pluck "secrets" $Values | first | default dict | pluck (get $volValue "originalName") | first | default dict | pluck "Secret" | first | default dict }}
 {{- if $secret }}
 ---
 {{ $secret | merge $override | toYaml }}
+{{- end -}}
 {{- end -}}
 {{- end -}}
 {{/* services */}}

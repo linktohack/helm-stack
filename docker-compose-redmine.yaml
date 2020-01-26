@@ -72,4 +72,6 @@ configs:
 
 secrets:
   not_tested:
+    external: true
+    name: with_external_name
     file: ./not_tested

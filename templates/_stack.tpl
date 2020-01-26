@@ -64,6 +64,8 @@
 {{-     $originalName := $volName -}}
 {{-     $volName = $volName | replace "_" "-" -}}
 {{-     $volValue = default dict $volValue -}}
+{{-     $external := pluck "external" $volValue | first | default false -}}
+{{-     $externalName := pluck "name" $volValue | first | default $originalName | replace "_" "-" -}}
 {{-     $dynamic := true -}}
 {{-     $storage := $volValue.storage -}}
 {{-     $type := "none" -}}
@@ -92,7 +94,7 @@
 {{-         $dynamic = or (not $src) (not $server) -}}
 {{-       end -}}
 {{-     end -}}
-{{-     $_ := set $volumes $volName (dict "volumeKind" "Volume" "dynamic" $dynamic "storage" $storage "type" $type "src" $src "dst" "" "server" $server "subPath" $subPath "originalName" $originalName) -}}
+{{-     $_ := set $volumes $volName (dict "volumeKind" "Volume" "dynamic" $dynamic "storage" $storage "type" $type "src" $src "dst" "" "server" $server "subPath" $subPath "originalName" $originalName "external" $external "externalName" $externalName) -}}
 {{-   end -}}
 {{-   range $name, $service := .Values.services -}}
 {{-     $kind := include "stack.helpers.deploymentKind" $service -}}
@@ -116,7 +118,9 @@
 {{-     $originalName := $volName -}}
 {{-     $volName = $volName | replace "_" "-" -}}
 {{-     $volValue = default dict $volValue -}}
-{{-     $_ := set $configs $volName (dict "volumeKind" "ConfigMap" "originalName" $originalName) -}}
+{{-     $external := pluck "external" $volValue | first | default false -}}
+{{-     $externalName := pluck "name" $volValue | first | default $originalName | replace "_" "-" -}}
+{{-     $_ := set $configs $volName (dict "volumeKind" "ConfigMap" "originalName" $originalName "external" $external "externalName" $externalName) -}}
 {{-   end -}}
 {{-   range $name, $service := .Values.services -}}
 {{-     range $volValue := $service.configs -}}
@@ -137,7 +141,9 @@
 {{-     $originalName := $volName -}}
 {{-     $volName = $volName | replace "_" "-" -}}
 {{-     $volValue = default dict $volValue -}}
-{{-     $_ := set $secrets $volName (dict "volumeKind" "Secret" "originalName" $originalName) -}}
+{{-     $external := pluck "external" $volValue | first | default false -}}
+{{-     $externalName := pluck "name" $volValue | first | default $originalName | replace "_" "-" -}}
+{{-     $_ := set $secrets $volName (dict "volumeKind" "Secret" "originalName" $originalName "external" $external "externalName" $externalName) -}}
 {{-   end -}}
 {{-   range $name, $service := .Values.services -}}
 {{-     range $volValue := $service.secrets -}}
@@ -340,18 +346,18 @@ spec:
             path: {{ get $volValue "src" | quote }}
           {{- else }}
           persistentVolumeClaim:
-            claimName: {{ $volName | quote }}
+            claimName: {{ get $volValue "externalName" | quote }}
           {{- end -}}
         {{- end -}}
         {{- if eq (get $volValue "volumeKind") "ConfigMap" }}
         - name: {{ $volName | quote }}
           configMap:
-            name: {{ $volName | quote }}
+            name: {{ get $volValue "externalName" | quote }}
         {{- end -}}
         {{- if eq (get $volValue "volumeKind") "Secret" }}
         - name: {{ $volName | quote }}
           secret:
-            secretName: {{ $volName | quote }}
+            secretName: {{ get $volValue "externalName" | quote }}
         {{- end -}}
         {{- end -}}
       {{- end -}}
