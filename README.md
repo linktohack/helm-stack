@@ -145,7 +145,7 @@ The following rules are supported:
 - `chdir` (string, required in case of relative path in volume)
 
 # Advance: Full override
-The properies of the manifests can be overridden (merged) with the values from `Services.XXX.Kind` (upper <kbd>S</kbd>)
+The properies of the manifests can be overridden (merged) with the values from `Services.XXX.KIND` (upper <kbd>S</kbd>) and `Volumes.XXX.KIND` (upper <kbd>V</kbd>)
 You now to take the full responsablity because while this is a deep merge operation, you cannot set the value of an invidual item inside a list but the whole list instead.
 ```yaml
 Services:
@@ -166,15 +166,21 @@ Services:
                   value: example
                 image: redmine
                 name: redmine
+                imagePullPolicy: Always
                 volumeMounts:
                 - mountPath: /usr/src/redmine/config/configuration.yml
                   name: redmine-0
                 - mountPath: /usr/src/redmine/files
                   name: redmine-1
-                imagePullPolicy: Always
-    StatefulSet: {}
-    DaemonSet: {}
   db: {}
+
+Volumes:
+  db:
+    PV:
+      spec:
+        persistentVolumeReclaimPolicy: Retain
+    PVC: {}
+
 ```
 
 # Contribution

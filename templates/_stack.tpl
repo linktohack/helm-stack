@@ -61,6 +61,7 @@
 {{-   $Values := .Values -}}
 {{-   $volumes := dict -}}
 {{-   range $volName, $volValue := .Values.volumes -}}
+{{-     $originalName := $volName -}}
 {{-     $volName = $volName | replace "_" "-" -}}
 {{-     $volValue = default dict $volValue -}}
 {{-     $dynamic := true -}}
@@ -92,7 +93,7 @@
 {{-         $dynamic = or (not $src) (not $server) -}}
 {{-       end -}}
 {{-     end -}}
-{{-     $_ := set $volumes $volName (dict "dynamic" $dynamic "storage" $storage "policy" $policy "type" $type "src" $src "dst" "" "server" $server "subPath" $subPath) -}}
+{{-     $_ := set $volumes $volName (dict "dynamic" $dynamic "storage" $storage "policy" $policy "type" $type "src" $src "dst" "" "server" $server "subPath" $subPath "originalName" $originalName) -}}
 {{-   end -}}
 {{-   range $name, $service := .Values.services -}}
 {{-     $kind := include "stack.helpers.kindOfService" $service -}}

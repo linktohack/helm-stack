@@ -4,8 +4,8 @@ services:
   redmine:
     image: redmine
     volumes:
-      - ./config/configuration.yml:/usr/src/redmine/config/configuration.yml
-      - ./files:/usr/src/redmine/files
+      - redmine-config:/usr/src/redmine/config/configuration.yml
+      - redmine-files:/usr/src/redmine/files
     environment:
       REDMINE_DB_MYSQL: db
       REDMINE_DB_PASSWORD: example
@@ -32,7 +32,7 @@ services:
   db:
     image: mysql:5.7
     volumes:
-      - /root/data/com-linktohack-redmine/mysql:/var/lib/mysql
+      - db:/var/lib/mysql
     environment:
       MYSQL_ROOT_PASSWORD: example
       MYSQL_DATABASE: redmine
@@ -46,3 +46,12 @@ services:
 networks:
   web:
     external: true
+
+volumes:
+  redmine-config:
+  redmine-files:
+  db:
+    driver_opts: 
+      type: none
+      device: /path/to/db
+

@@ -23,3 +23,9 @@ Services:
                 - mountPath: /usr/src/redmine/files
                   name: redmine-1
   db: {}
+
+Volumes:
+  db:
+    PV:
+      spec:
+        persistentVolumeReclaimPolicy: Retain
