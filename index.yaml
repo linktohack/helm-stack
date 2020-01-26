@@ -3,7 +3,17 @@ entries:
   stack:
   - apiVersion: v2
     appVersion: 1.16.0
-    created: "2020-01-23T14:16:01.367215+01:00"
+    created: "2020-01-26T16:11:01.687867+01:00"
+    description: Deploy your docker-compose stack with Helm
+    digest: df953b89cd6b8ca966a274500e0e57214d2110b51a00c6e71f04685c3ed38aa2
+    name: stack
+    type: application
+    urls:
+    - stack-1.0.5.tgz
+    version: 1.0.5
+  - apiVersion: v2
+    appVersion: 1.16.0
+    created: "2020-01-26T16:11:01.687134+01:00"
     description: Deploy your docker-compose stack with Helm
     digest: bda3ddf6bfd00973b02ca9919b9c77c82510d8dce787cef70047df2885a4b3cb
     name: stack
@@ -13,7 +23,7 @@ entries:
     version: 1.0.4
   - apiVersion: v2
     appVersion: 1.16.0
-    created: "2020-01-23T14:16:01.366589+01:00"
+    created: "2020-01-26T16:11:01.685567+01:00"
     description: Deploy your docker-compose stack with Helm
     digest: 52a323293a9d6960065e40e1fa447d74612edbe904e52cb638bc9b90c1a2c84c
     name: stack
@@ -23,7 +33,7 @@ entries:
     version: 1.0.3
   - apiVersion: v2
     appVersion: 1.16.0
-    created: "2020-01-23T14:16:01.364614+01:00"
+    created: "2020-01-26T16:11:01.684141+01:00"
     description: Deploy your docker-compose stack with Helm
     digest: c94a374bba69d79098f903ecb3e515c4882dadaea50417b2174107decaac602c
     name: stack
@@ -33,7 +43,7 @@ entries:
     version: 1.0.2
   - apiVersion: v2
     appVersion: 1.16.0
-    created: "2020-01-23T14:16:01.348772+01:00"
+    created: "2020-01-26T16:11:01.658197+01:00"
     description: Deploy your docker-compose stack with Helm
     digest: 52df33b38608de609680e3940c2f2f2d1135bf417762717bcffd344857653d36
     name: stack
@@ -43,7 +53,7 @@ entries:
     version: 1.0.1
   - apiVersion: v2
     appVersion: 1.16.0
-    created: "2020-01-23T14:16:01.344301+01:00"
+    created: "2020-01-26T16:11:01.65393+01:00"
     description: Deploy your docker-compose stack with Helm
     digest: c7e1498a6d9990f74e6c12f510df3a9b5b9d391e336eca23d94f83659b51b914
     name: stack
@@ -51,4 +61,4 @@ entries:
     urls:
     - stack-1.0.0.tgz
     version: 1.0.0
-generated: "2020-01-23T14:16:01.340586+01:00"
+generated: "2020-01-26T16:11:01.649598+01:00"
