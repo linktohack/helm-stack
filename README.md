@@ -146,7 +146,7 @@ The following rules are supported:
 
 # Advance: Full override
 The properies of the manifests can be overridden (merged) with the values from `Services.XXX.Kind` (upper <kbd>S</kbd>)
-You now to take the full responsablity becasuse while this is a deep merge operation, you cannot set the value of an invidual item inside a list but the whole list instead.
+You now to take the full responsablity because while this is a deep merge operation, you cannot set the value of an invidual item inside a list but the whole list instead.
 ```yaml
 Services:
   redmine:

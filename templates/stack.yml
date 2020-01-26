@@ -1,37 +1,52 @@
 {{- $Values := .Values -}}
 {{- $Release := .Release -}}
+{{/* volumes */}}
+{{- range $volName, $volValue := include "stack.helpers.volumes" (dict "Values" $Values) | fromYaml -}}
+{{- if not (get $volValue "dynamic") }}
 ---
-{{ include "stack.pv" (dict "Values" $Values "Release" $Release) }}
+{{ include "stack.pv" (dict "volName" $volName "volValue" $volValue "Values" $Values "Release" $Release) }}
+{{- end }}
+{{- if ne (get $volValue "kind") "StatefulSet" }}
+---
+{{ include "stack.pvc" (dict "volName" $volName "volValue" $volValue) }}
+{{- end -}}
+{{- end -}}
+{{/* services */}}
 {{- range $name, $service:= .Values.services }}
----
+{{/* clusterIP */}}
 {{- $clusterIP := include "stack.service.clusterIP" (dict "name" $name "service" $service "Values" $Values "Release" $Release) -}}
 {{- $override := pluck "Services" $Values | first | default dict | pluck $name | first | default dict | pluck "ClusterIP" | first | default dict -}}
 {{- if $clusterIP }}
+---
 {{ $clusterIP | fromYaml | merge $override | toYaml }}
 {{- end }}
----
-{{ $nodePort := include "stack.service.nodePort" (dict "name" $name "service" $service "Values" $Values "Release" $Release) -}}
+{{/* nodePort */}}
+{{- $nodePort := include "stack.service.nodePort" (dict "name" $name "service" $service "Values" $Values "Release" $Release) -}}
 {{- $override := pluck "Services" $Values | first | default dict | pluck $name | first | default dict | pluck "NodePort" | first | default dict -}}
 {{- if $nodePort }}
+---
 {{ $nodePort  | fromYaml | merge $override | toYaml }}
 {{- end }}
----
-{{ $loadBalancer := include "stack.service.loadBalancer" (dict "name" $name "service" $service "Values" $Values "Release" $Release) -}}
+{{/* loadBalancer */}}
+{{- $loadBalancer := include "stack.service.loadBalancer" (dict "name" $name "service" $service "Values" $Values "Release" $Release) -}}
 {{- $override := pluck "Services" $Values | first | default dict | pluck $name | first | default dict | pluck "LoadBalancer" | first | default dict -}}
 {{- if $loadBalancer }}
+---
 {{ $loadBalancer | fromYaml | merge $override | toYaml }}
 {{- end }}
----
-{{ $ingress := include "stack.ingress" (dict "name" $name "service" $service "Values" $Values "Release" $Release) -}}
+{{/* ingress */}}
+{{- $ingress := include "stack.ingress" (dict "name" $name "service" $service "Values" $Values "Release" $Release) -}}
 {{- $override := pluck "Services" $Values | first | default dict | pluck $name | first | default dict | pluck "Ingress" | first | default dict -}}
 {{- if $ingress }}
+---
 {{ $ingress | fromYaml | merge $override | toYaml }}
 {{- end }}
----
+{{/* deployment */}}
 {{- $deployment := include "stack.deployment" (dict "name" $name "service" $service "Values" $Values "Release" $Release) | fromYaml -}}
 {{- $kind := get $deployment "kind" -}}
 {{- $override := pluck "Services" $Values | first | default dict | pluck $name | first | default dict | pluck $kind | first | default dict -}}
 {{- if $deployment }}
+---
 {{ $deployment | merge $override | toYaml }}
 {{- end -}}
 {{- end -}}

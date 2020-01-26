@@ -526,39 +526,30 @@ spec:
 {{- define "stack.pv" -}}
 {{- $Values := .Values -}}
 {{- $Namespace := .Release.Namespace -}}
-{{- range $volName, $volValue := include "stack.helpers.volumes" (dict "Values" $Values) | fromYaml -}}
-{{- if not (get $volValue "dynamic") }}
----
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: {{ printf "%s-%s" $Namespace $volName | quote }}
+  name: {{ printf "%s-%s" $Namespace .volName | quote }}
 spec:
   claimRef:
     namespace: {{ $Namespace }}
-    name: {{ $volName | quote }}
-  persistentVolumeReclaimPolicy: {{ get $volValue "policy" | default "Delete" }}
+    name: {{ .volName | quote }}
+  persistentVolumeReclaimPolicy: {{ get .volValue "policy" | default "Delete" }}
   accessModes:
-    {{- if eq (get $volValue "type") "nfs" }}
+    {{- if eq (get .volValue "type") "nfs" }}
     - ReadWriteMany
     {{- else }}
     - ReadWriteOnce
     {{- end }}
   capacity:
-    storage: {{ get $volValue "storage" | default "1Gi" | quote }}
-  {{- if and (ne (get $volValue "type") "nfs") (get $volValue "src") }}
+    storage: {{ get .volValue "storage" | default "1Gi" | quote }}
+  {{- if and (ne (get .volValue "type") "nfs") (get .volValue "src") }}
   hostPath:
-    path: {{ "src" | get $volValue | quote }}
+    path: {{ "src" | get .volValue | quote }}
   {{- end }}
-  {{- if eq (get $volValue "type") "nfs" }}
+  {{- if eq (get .volValue "type") "nfs" }}
   nfs:
-    server: {{ "server" | get $volValue | quote }}
-    path: {{ "src" | get $volValue | quote }}
+    server: {{ "server" | get .volValue | quote }}
+    path: {{ "src" | get .volValue | quote }}
   {{- end -}}
-{{- end -}}
-{{- if ne (get $volValue "kind") "StatefulSet" }}
----
-{{ include "stack.pvc" (dict "volName" $volName "volValue" $volValue) }}
-{{- end -}}
-{{- end -}}
 {{- end -}}
