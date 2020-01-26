@@ -1,0 +1,25 @@
+Services:
+  redmine:
+    ClusterIP: {}
+    NodePort: {}
+    LoadBalancer: {}
+    Ingress: {}
+    Deployment:
+      spec:
+        template:
+          spec:
+            containers:
+              - env:
+                - name: REDMINE_DB_MYSQL
+                  value: db
+                - name: REDMINE_DB_PASSWORD
+                  value: example
+                image: redmine
+                name: redmine
+                imagePullPolicy: Always
+                volumeMounts:
+                - mountPath: /usr/src/redmine/config/configuration.yml
+                  name: redmine-0
+                - mountPath: /usr/src/redmine/files
+                  name: redmine-1
+  db: {}

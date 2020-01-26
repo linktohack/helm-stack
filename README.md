@@ -137,15 +137,45 @@ The following rules are supported:
 # External keys
 - `services.XXX.kind` (string, overrides automatic kind detection: `Deployment`, `DaemonSet`, `StatefulSet`)
 - `services.XXX.imagePullSecrets` (string)
-- `services.XXX.imagePullPolicy` (string)
-- `services.XXX.serviceAccountName` (string)
-- `services.XXX.terminationGracePeriodSeconds` (number)
-- `services.XXX.nodePort.ports` (array, `services.XXX.ports` are for `LoadBalancer`)
 - `services.XXX.clusterIP.ports` (array)
+- `services.XXX.nodePort.ports` (array, `services.XXX.ports` are for `LoadBalancer`)
 - `volumes.XXX.storage` (string, default `1Gi`)
 - `volumes.XXX.persistentVolumeReclaimPolicy` (string, either `Delete` or `Retain`)
 - `volumes.XXX.subPath` (string)
 - `chdir` (string, required in case of relative path in volume)
+
+# Advance: Full override
+The properies of the manifests can be overridden (merged) with the values from `Services.XXX.Kind` (upper <kbd>S</kbd>)
+You now to take the full responsablity becasuse while this is a deep merge operation, you cannot set the value of an invidual item inside a list but the whole list instead.
+```yaml
+Services:
+  redmine:
+    ClusterIP: {}
+    NodePort: {}
+    LoadBalancer: {}
+    Ingress: {}
+    Deployment:
+      spec:
+        template:
+          spec:
+            containers:
+              - env:
+                - name: REDMINE_DB_MYSQL
+                  value: db
+                - name: REDMINE_DB_PASSWORD
+                  value: example
+                image: redmine
+                name: redmine
+                volumeMounts:
+                - mountPath: /usr/src/redmine/config/configuration.yml
+                  name: redmine-0
+                - mountPath: /usr/src/redmine/files
+                  name: redmine-1
+                imagePullPolicy: Always
+    StatefulSet: {}
+    DaemonSet: {}
+  db: {}
+```
 
 # Contribution
 - Additional keys (e.g. `clusterIP.ports`) should always be set via `--set` or external `values.yaml` but we

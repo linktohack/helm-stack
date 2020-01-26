@@ -218,12 +218,6 @@ spec:
       imagePullSecrets:
         - name: {{ .service.imagePullSecrets }}
       {{- end }}
-      {{- if .service.serviceAccountName }}
-      serviceAccountName: {{ .service.serviceAccountName | quote }}
-      {{- end }}
-      {{- if .service.terminationGracePeriodSeconds }}
-      terminationGracePeriodSeconds: {{ .service.terminationGracePeriodSeconds }}
-      {{- end }}
       {{- if .service.dns }}
       dnsPolicy: "None"
       dnsConfig:
