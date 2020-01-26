@@ -19,39 +19,41 @@
 {{/* services */}}
 {{- range $name, $service:= .Values.services }}
 {{/* services: clusterIP */}}
-{{- $clusterIP := include "stack.service.clusterIP" (dict "name" $name "service" $service "Values" $Values "Release" $Release) -}}
+{{- $clusterIP := include "stack.service.clusterIP" (dict "name" $name "service" $service "Values" $Values "Release" $Release) | fromYaml -}}
 {{- $override := pluck "services" $Values | first | default dict | pluck $name | first | default dict | pluck "ClusterIP" | first | default dict -}}
 {{- if $clusterIP }}
 ---
-{{ $clusterIP | fromYaml | merge $override | toYaml }}
+{{ $clusterIP | merge $override | toYaml }}
 {{- end }}
 {{/* services: nodePort */}}
-{{- $nodePort := include "stack.service.nodePort" (dict "name" $name "service" $service "Values" $Values "Release" $Release) -}}
+{{- $nodePort := include "stack.service.nodePort" (dict "name" $name "service" $service "Values" $Values "Release" $Release) | fromYaml -}}
 {{- $override := pluck "services" $Values | first | default dict | pluck $name | first | default dict | pluck "NodePort" | first | default dict -}}
 {{- if $nodePort }}
 ---
-{{ $nodePort  | fromYaml | merge $override | toYaml }}
+{{ $nodePort  | merge $override | toYaml }}
 {{- end }}
 {{/* services: loadBalancer */}}
-{{- $loadBalancer := include "stack.service.loadBalancer" (dict "name" $name "service" $service "Values" $Values "Release" $Release) -}}
+{{- $loadBalancer := include "stack.service.loadBalancer" (dict "name" $name "service" $service "Values" $Values "Release" $Release) | fromYaml -}}
 {{- $override := pluck "services" $Values | first | default dict | pluck $name | first | default dict | pluck "LoadBalancer" | first | default dict -}}
 {{- if $loadBalancer }}
 ---
-{{ $loadBalancer | fromYaml | merge $override | toYaml }}
+{{ $loadBalancer | merge $override | toYaml }}
 {{- end }}
 {{/* services: ingress */}}
-{{- $ingress := include "stack.ingress" (dict "name" $name "service" $service "Values" $Values "Release" $Release) -}}
+{{- $ingress := include "stack.ingress" (dict "name" $name "service" $service "Values" $Values "Release" $Release) | fromYaml -}}
 {{- $override := pluck "services" $Values | first | default dict | pluck $name | first | default dict | pluck "Ingress" | first | default dict -}}
 {{- if $ingress }}
 ---
-{{ $ingress | fromYaml | merge $override | toYaml }}
+{{ $ingress | merge $override | toYaml }}
 {{- end }}
 {{/* services: deployment */}}
 {{- $deployment := include "stack.deployment" (dict "name" $name "service" $service "Values" $Values "Release" $Release) | fromYaml -}}
 {{- $kind := get $deployment "kind" -}}
 {{- $override := pluck "services" $Values | first | default dict | pluck $name | first | default dict | pluck $kind | first | default dict -}}
-{{- if $deployment }}
+{{- $src := pluck "spec" $override | first | default dict | pluck "template" | first | default dict | pluck "spec" | first | default dict | pluck "containers" | first | default list | first | default dict }}
+{{- $dst := pluck "spec" $deployment | first | pluck "template" | first | pluck "spec" | first | pluck "containers" | first | first -}}
+{{- $dst = merge $src $dst }}
+{{- $withContainers := (dict "spec" (dict "template" (dict "spec" (dict "containers" (list $dst))))) -}}
 ---
-{{ $deployment | merge $override | toYaml }}
-{{- end -}}
+{{ $deployment | merge $override | merge $withContainers | toYaml }}
 {{- end -}}

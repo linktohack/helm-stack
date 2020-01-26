@@ -112,6 +112,8 @@ The same technique can be applied via a proper language instead of using a Helm 
 
 # Limitation
 - [X] Volume: Handle external/separated volumes
+- [ ] Config: Handle external/separated configs
+- [ ] Secret: Handle external/separated secrets
 - [X] Ingress: Handle comma, semicolon separated rule (multiple hosts, path...)
 - [ ] Ingress: Handle segment labels for services that expose multiple ports
 - [X] Node: Handle placement constraints
@@ -134,7 +136,7 @@ The following rules are supported:
 - `node.hostname`
 - `node.labels`
 
-# External keys
+# Extra keys
 - Services
   - `services.XXX.kind` (string, overrides automatic kind detection: `Deployment`, `DaemonSet`, `StatefulSet`)
   - `services.XXX.imagePullSecrets` (string)
@@ -149,9 +151,10 @@ The following rules are supported:
 
 # Advance: Full override
 The properies of the manifests can be overridden (merged) with the values from `services.XXX.Kind` and `volumes.XXX.Kind`.
-You now to take the full responsablity because while this is a deep merge operation, you cannot set the value of an invidual item inside a list but the whole list instead.
 
-The full list of all the `Kind`s can be found in the example bellow, please note that `services.XXX.imagePullPolicy` and `volumes.XXX.storage` has already existed as external keys
+You will now to have full control of the output manifests. While this is a deep merge operation, apart from the `containers` properties bellow, you cannot set the value of an invidual item inside a list but have to replace the whole list instead.
+
+The full list of all the `Kind`s can be found in the example bellow, please note that `services.XXX.imagePullPolicy` and `volumes.XXX.storage` have already existed as extra keys
 
 ```yaml
 services:
@@ -165,19 +168,7 @@ services:
         template:
           spec:
             containers:
-              - env:
-                - name: REDMINE_DB_MYSQL
-                  value: db
-                - name: REDMINE_DB_PASSWORD
-                  value: example
-                image: redmine
-                name: redmine
-                volumeMounts:
-                - mountPath: /usr/src/redmine/config/configuration.yml
-                  name: redmine-0
-                - mountPath: /usr/src/redmine/files
-                  name: redmine-1
-                imagePullPolicy: Always
+              - imagePullPolicy: Always
 volumes:
   db:
     PV:
