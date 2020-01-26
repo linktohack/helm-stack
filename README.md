@@ -112,8 +112,8 @@ The same technique can be applied via a proper language instead of using a Helm 
 
 # Limitation
 - [X] Volume: Handle external/separated volumes
-- [ ] Config: Handle external/separated configs
-- [ ] Secret: Handle external/separated secrets
+- [X] Config: Handle external/separated configs (manually, Helm doesn't allow to import external file atm)
+- [X] Secret: Handle external/separated secrets (manually, Helm doesn't allow to import external file atm)
 - [X] Ingress: Handle comma, semicolon separated rule (multiple hosts, path...)
 - [ ] Ingress: Handle segment labels for services that expose multiple ports
 - [X] Node: Handle placement constraints
@@ -168,7 +168,8 @@ services:
         template:
           spec:
             containers:
-              - imagePullPolicy: Always
+              - name: override-namexxx
+                imagePullPolicy: Always
 volumes:
   db:
     PV:
@@ -181,6 +182,11 @@ volumes:
         resouces:
           requests:
             storage: 10Gi
+configs:
+  redmine_config:
+    ConfigMap:
+      data:
+        hello.yaml: there
 
 ```
 

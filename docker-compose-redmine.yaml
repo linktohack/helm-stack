@@ -4,8 +4,19 @@ services:
   redmine:
     image: redmine
     volumes:
-      - redmine-config:/usr/src/redmine/config/configuration.yml
-      - redmine-files:/usr/src/redmine/files
+      - redmine_files:/usr/src/redmine/files
+    configs:
+      - source: redmine_config
+        target: /usr/src/redmine/config/configuration.yml
+        uid: '103'
+        gid: '103'
+        mode: 0444
+    secrets:
+      - source: not_tested
+        target: /tpm/not_tested
+        uid: '103'
+        gid: '103'
+        mode: 0444
     environment:
       REDMINE_DB_MYSQL: db
       REDMINE_DB_PASSWORD: example
@@ -48,10 +59,17 @@ networks:
     external: true
 
 volumes:
-  redmine-config:
-  redmine-files:
+  redmine_config:
+  redmine_files:
   db:
     driver_opts: 
       type: none
       device: /path/to/db
 
+configs: 
+  redmine_config:
+    file: ./config.yml
+
+secrets:
+  not_tested:
+    file: ./not_tested

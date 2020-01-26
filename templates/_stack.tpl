@@ -41,7 +41,7 @@
 {{- end -}}
 
 
-{{- define "stack.helpers.kindOfService" -}}
+{{- define "stack.helpers.deploymentKind" -}}
 {{-   $kind := "Deployment" -}}
 {{-   if .deploy -}}
 {{-     if .deploy.mode -}}
@@ -92,16 +92,16 @@
 {{-         $dynamic = or (not $src) (not $server) -}}
 {{-       end -}}
 {{-     end -}}
-{{-     $_ := set $volumes $volName (dict "dynamic" $dynamic "storage" $storage "type" $type "src" $src "dst" "" "server" $server "subPath" $subPath "originalName" $originalName) -}}
+{{-     $_ := set $volumes $volName (dict "volumeKind" "Volume" "dynamic" $dynamic "storage" $storage "type" $type "src" $src "dst" "" "server" $server "subPath" $subPath "originalName" $originalName) -}}
 {{-   end -}}
 {{-   range $name, $service := .Values.services -}}
-{{-     $kind := include "stack.helpers.kindOfService" $service -}}
+{{-     $kind := include "stack.helpers.deploymentKind" $service -}}
 {{-     range $volIndex, $volValue := $service.volumes -}}
 {{-       $list := splitList ":" $volValue -}}
 {{-       $volName := first $list | replace "_" "-" -}}
 {{-       if and (not (hasPrefix "/" $volName)) (not (hasPrefix "./" $volName)) -}}
 {{-         $volume := get $volumes $volName -}}
-{{-         $_ := set $volume "kind" $kind -}}
+{{-         $_ := set $volume "deploymentKind" $kind -}}
 {{-       end -}}
 {{-     end -}}
 {{-   end }}
@@ -109,17 +109,61 @@
 {{- end -}}
 
 
+{{- define "stack.helpers.configs" -}}
+{{-   $Values := .Values -}}
+{{-   $configs := dict -}}
+{{-   range $volName, $volValue := .Values.configs -}}
+{{-     $originalName := $volName -}}
+{{-     $volName = $volName | replace "_" "-" -}}
+{{-     $volValue = default dict $volValue -}}
+{{-     $_ := set $configs $volName (dict "volumeKind" "ConfigMap" "originalName" $originalName) -}}
+{{-   end -}}
+{{-   range $name, $service := .Values.services -}}
+{{-     range $volValue := $service.configs -}}
+{{-       $volName := get $volValue "source" | replace "_" "-" -}}
+{{-       $config := get $configs $volName -}}
+{{-       $config = merge $config $volValue -}}
+{{-       $_ := set $configs $volName $config -}}
+{{-     end -}}
+{{-   end }}
+{{ $configs | toYaml }}
+{{- end -}}
+
+
+{{- define "stack.helpers.secrets" -}}
+{{-   $Values := .Values -}}
+{{-   $secrets := dict -}}
+{{-   range $volName, $volValue := .Values.secrets -}}
+{{-     $originalName := $volName -}}
+{{-     $volName = $volName | replace "_" "-" -}}
+{{-     $volValue = default dict $volValue -}}
+{{-     $_ := set $secrets $volName (dict "volumeKind" "Secret" "originalName" $originalName) -}}
+{{-   end -}}
+{{-   range $name, $service := .Values.services -}}
+{{-     range $volValue := $service.secrets -}}
+{{-       $volName := get $volValue "source" | replace "_" "-" -}}
+{{-       $secret := get $secrets $volName -}}
+{{-       $secret = merge $secret $volValue -}}
+{{-       $_ := set $secrets $volName $secret -}}
+{{-     end -}}
+{{-   end }}
+{{ $secrets | toYaml }}
+{{- end -}}
+
+
 {{- define "stack.deployment" -}}
 {{-   $Values := .Values -}}
 {{-   $name := .name | replace "_" "-" -}}
 {{-   $service := .service -}}
-{{-   $kind := include "stack.helpers.kindOfService" .service -}}
+{{-   $kind := include "stack.helpers.deploymentKind" .service -}}
 {{-   $replicas := 1 -}}
 {{-   if .service.deploy -}}
 {{-     $replicas = default 1 .service.deploy.replicas | int64 -}}
 {{-   end -}}
 {{-   $environments := include "stack.helpers.normalizeDict" .service.environment | fromYaml -}}
 {{-   $volumes := include "stack.helpers.volumes" (dict "Values" $Values) | fromYaml -}}
+{{-   $configs := include "stack.helpers.configs" (dict "Values" $Values) | fromYaml -}}
+{{-   $secrets := include "stack.helpers.secrets" (dict "Values" $Values) | fromYaml -}}
 {{-   $serviceVolumes := dict -}}
 {{-   $volumeClaimTemplates := dict -}}
 {{-   range $volIndex, $volValue := .service.volumes -}}
@@ -141,6 +185,16 @@
 {{-         $_ := set $volumeClaimTemplates $volName $curr -}}
 {{-       end -}}
 {{-     end -}}
+{{-   end -}}
+{{-   range $volValue := .service.configs -}}
+{{-       $volName := get $volValue "source" | replace "_" "-" -}}
+{{-       $curr := get $configs $volName -}}
+{{-       $_ := set $serviceVolumes $volName $curr -}}
+{{-   end -}}
+{{-   range $volValue := .service.secrets -}}
+{{-       $volName := get $volValue "source" | replace "_" "-" -}}
+{{-       $curr := get $secrets $volName -}}
+{{-       $_ := set $serviceVolumes $volName $curr -}}
 {{-   end -}}
 {{-   $affinities := list -}}
 {{-   if .service.deploy -}}
@@ -259,17 +313,27 @@ spec:
           {{- end -}}
           {{- if $serviceVolumes }}
           volumeMounts:
-            {{- range $volName, $volValue := $serviceVolumes }}
+            {{- range $volName, $volValue := $serviceVolumes -}}
+            {{- if eq (get $volValue "volumeKind") "Volume" }}
             - mountPath: {{ "dst" | get $volValue | quote }}
               name: {{ $volName | quote }}
               {{- if "subPath" | get $volValue }}
               subPath: {{ "subPath" | get $volValue | quote }}
               {{- end }}
-            {{- end }}
+            {{- end -}}
+            {{- if or (eq (get $volValue "volumeKind") "ConfigMap") (eq (get $volValue "volumeKind") "Secret") }}
+            - mountPath: {{ "target" | get $volValue | dir | quote }}
+              name: {{ $volName | quote }}
+              {{- if "mode" | get $volValue }}
+              mode: {{ "mode" | get $volValue }}
+              {{- end }}
+            {{- end -}}
+            {{- end -}}
           {{- end }}
       {{- if and $serviceVolumes }}
       volumes:
-        {{- range $volName, $volValue := $serviceVolumes }}
+        {{- range $volName, $volValue := $serviceVolumes -}}
+        {{- if eq (get $volValue "volumeKind") "Volume" }}
         - name: {{ $volName | quote }}
           {{- if get $volValue "hostPath" }}
           hostPath:
@@ -278,6 +342,17 @@ spec:
           persistentVolumeClaim:
             claimName: {{ $volName | quote }}
           {{- end -}}
+        {{- end -}}
+        {{- if eq (get $volValue "volumeKind") "ConfigMap" }}
+        - name: {{ $volName | quote }}
+          configMap:
+            name: {{ $volName | quote }}
+        {{- end -}}
+        {{- if eq (get $volValue "volumeKind") "Secret" }}
+        - name: {{ $volName | quote }}
+          secret:
+            secretName: {{ $volName | quote }}
+        {{- end -}}
         {{- end -}}
       {{- end -}}
   {{- if $volumeClaimTemplates }}
@@ -552,4 +627,30 @@ spec:
     server: {{ "server" | get .volValue | quote }}
     path: {{ "src" | get .volValue | quote }}
   {{- end -}}
+{{- end -}}
+
+
+{{- define "stack.configMap" -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .volName | quote }}
+{{- if get .volValue "data" }}  
+data: {{ get .volValue "data" | toYaml | nindent 2 }}
+{{- end -}}
+{{- end -}}
+
+
+{{- define "stack.secret" -}}
+apiVersion: v1
+kind: Secret
+type: Opaque
+metadata:
+  name: {{ .volName | quote }}
+{{- if get .volValue "data" }}  
+data: {{ get .volValue "data" | toYaml | nindent 2 }}
+{{- end }}
+{{- if get .volValue "stringData" }}  
+data: {{ get .volValue "data" | toYaml | nindent 2 }}
+{{- end -}}
 {{- end -}}
