@@ -109,7 +109,7 @@
 {{- end -}}
 
 
-{{- define "stack.Deployment" -}}
+{{- define "stack.deployment" -}}
 {{-   $Values := .Values -}}
 {{-   $name := .name | replace "_" "-" -}}
 {{-   $service := .service -}}
@@ -289,7 +289,7 @@ spec:
   {{- if $volumeClaimTemplates }}
   volumeClaimTemplates:
     {{- range $volName, $volValue := $volumeClaimTemplates -}}
-    {{- $pvc := include "stack.PVC" (dict "volName" $volName "volValue" $volValue) | fromYaml }}
+    {{- $pvc := include "stack.pvc" (dict "volName" $volName "volValue" $volValue) | fromYaml }}
     - metadata: {{ get $pvc "metadata" | toYaml | nindent 8 }}
       spec: {{ get $pvc "spec" | toYaml | nindent 8  }}
     {{- end -}}
@@ -297,7 +297,7 @@ spec:
 {{- end -}}
 
 
-{{- define "stack.Service.LoadBalancer" -}}
+{{- define "stack.service.loadBalancer" -}}
 {{- $name := .name | replace "_" "-" -}}
 {{- $ports := include "stack.helpers.normalizePorts" .service.ports | fromYaml -}}
 {{- range $protocol, $ports := pick $ports "tcp" "udp" }}
@@ -323,7 +323,7 @@ spec:
 {{- end -}}
 
 
-{{- define "stack.Service.ClusterIP" -}}
+{{- define "stack.service.clusterIP" -}}
 {{-   $name := .name | replace "_" "-" -}}
 {{-   $ports := list -}}
 {{-   if .service.ClusterIP -}}
@@ -370,7 +370,7 @@ spec:
 {{- end -}}
 
 
-{{- define "stack.Service.NodePort" -}}
+{{- define "stack.service.nodePort" -}}
 {{-   $name := .name | replace "_" "-" -}}
 {{-   $ports := list -}}
 {{-   if .service.NodePort -}}
@@ -399,7 +399,7 @@ spec:
 {{- end -}}
 
 
-{{- define "stack.Ingress" -}}
+{{- define "stack.ingress" -}}
 {{-   $name := .name | replace "_" "-" -}}
 {{-   $hosts := list -}}
 {{-   $port := "" -}}
@@ -504,7 +504,7 @@ data:
 {{- end -}}
 
 
-{{- define "stack.PVC" -}}
+{{- define "stack.pvc" -}}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -529,7 +529,7 @@ spec:
 {{- end -}}
 
 
-{{- define "stack.PV" -}}
+{{- define "stack.pv" -}}
 {{- $Values := .Values -}}
 {{- $Namespace := .Release.Namespace -}}
 {{- range $volName, $volValue := include "stack.helpers.volumes" (dict "Values" $Values) | fromYaml -}}
@@ -564,7 +564,7 @@ spec:
 {{- end -}}
 {{- if ne (get $volValue "kind") "StatefulSet" }}
 ---
-{{ include "stack.PVC" (dict "volName" $volName "volValue" $volValue) }}
+{{ include "stack.pvc" (dict "volName" $volName "volValue" $volValue) }}
 {{- end -}}
 {{- end -}}
 {{- end -}}

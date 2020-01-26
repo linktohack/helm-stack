@@ -56,7 +56,7 @@ replicaset.apps/words-6465f956d   5         5         5       2m4s
 ### Redmine + MySQL
 ```sh
 helm -n com-linktohack-redmine upgrade --install redmine link/stack -f docker-compose-redmine.yaml \
-    --set services.db.ClusterIP.ports={3306:3306} \
+    --set services.db.clusterIP.ports={3306:3306} \
     --set services.db.ports={3306:3306} \
     --set services.db.deploy.placement.constraints={node.role==manager} \
     --set services.redmine.deploy.placement.constraints={node.role==manager} \
@@ -64,7 +64,7 @@ helm -n com-linktohack-redmine upgrade --install redmine link/stack -f docker-co
 ```
 
 - `services.XXX.ports` will be exposed as `LoadBalancer` (if needed)
-- addtional key `services.XXX.ClusterIP.ports` will be exposed as `ClusterIP` ports
+- addtional key `services.XXX.clusterIP.ports` will be exposed as `ClusterIP` ports
 
 ### Bitwarden
 ```sh   
@@ -80,7 +80,7 @@ helm -n com-linktohack-ipsec upgrade --install ipsec link/stack -f docker-compos
 ## Via template
 ```sh
 helm -n com-linktohack-redmine template openvpn link/stack -f docker-compose-redmine.yaml  \
-    --set services.db.ClusterIP.ports={3306:3306} \
+    --set services.db.clusterIP.ports={3306:3306} \
     --set services.db.ports={3306:3306} \
     --set services.db.deploy.placement.constraints={node.role==manager} \
     --set services.redmine.deploy.placement.constraints={node.role==manager} \
@@ -140,15 +140,15 @@ The following rules are supported:
 - `services.XXX.imagePullPolicy` (string)
 - `services.XXX.serviceAccountName` (string)
 - `services.XXX.terminationGracePeriodSeconds` (number)
-- `services.XXX.NodePort.ports` (array, `services.XXX.ports` are for `LoadBalancer`)
-- `services.XXX.ClusterIP.ports` (array)
+- `services.XXX.nodePort.ports` (array, `services.XXX.ports` are for `LoadBalancer`)
+- `services.XXX.clusterIP.ports` (array)
 - `volumes.XXX.storage` (string, default `1Gi`)
 - `volumes.XXX.persistentVolumeReclaimPolicy` (string, either `Delete` or `Retain`)
 - `volumes.XXX.subPath` (string)
 - `chdir` (string, required in case of relative path in volume)
 
 # Contribution
-- Additional keys (e.g. `ClusterIP.ports`) should always be set via `--set` or external `values.yaml` but we
+- Additional keys (e.g. `clusterIP.ports`) should always be set via `--set` or external `values.yaml` but we
 - Should have the JSON schema of `docker-compose` and additional keys
 
 # License

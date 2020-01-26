@@ -1,16 +1,16 @@
 {{- $Values := .Values -}}
 {{- $Release := .Release -}}
 ---
-{{ include "stack.PV" (dict "Values" $Values "Release" $Release) }}
+{{ include "stack.pv" (dict "Values" $Values "Release" $Release) }}
 {{- range $name, $service:= .Values.services }}
 ---
-{{ include "stack.Service.ClusterIP" (dict "name" $name "service" $service "Values" $Values "Release" $Release) }}
+{{ include "stack.service.clusterIP" (dict "name" $name "service" $service "Values" $Values "Release" $Release) }}
 ---
-{{ include "stack.Service.NodePort" (dict "name" $name "service" $service "Values" $Values "Release" $Release) }}
+{{ include "stack.service.nodePort" (dict "name" $name "service" $service "Values" $Values "Release" $Release) }}
 ---
-{{ include "stack.Service.LoadBalancer" (dict "name" $name "service" $service "Values" $Values "Release" $Release) }}
+{{ include "stack.service.loadBalancer" (dict "name" $name "service" $service "Values" $Values "Release" $Release) }}
 ---
-{{ include "stack.Ingress" (dict "name" $name "service" $service "Values" $Values "Release" $Release) }}
+{{ include "stack.ingress" (dict "name" $name "service" $service "Values" $Values "Release" $Release) }}
 ---
-{{ include "stack.Deployment" (dict "name" $name "service" $service "Values" $Values "Release" $Release) }}
+{{ include "stack.deployment" (dict "name" $name "service" $service "Values" $Values "Release" $Release) }}
 {{- end -}}
