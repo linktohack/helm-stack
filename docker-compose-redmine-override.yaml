@@ -1,4 +1,4 @@
-Services:
+services:
   redmine:
     ClusterIP: {}
     NodePort: {}
@@ -16,16 +16,21 @@ Services:
                   value: example
                 image: redmine
                 name: redmine
-                imagePullPolicy: Always
                 volumeMounts:
                 - mountPath: /usr/src/redmine/config/configuration.yml
                   name: redmine-0
                 - mountPath: /usr/src/redmine/files
                   name: redmine-1
-  db: {}
-
-Volumes:
+                imagePullPolicy: Always
+volumes:
   db:
     PV:
       spec:
+        capacity:
+          storage: 10Gi
         persistentVolumeReclaimPolicy: Retain
+    PVC:
+      spec:
+        resouces:
+          requests:
+            storage: 10Gi

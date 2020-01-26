@@ -135,20 +135,26 @@ The following rules are supported:
 - `node.labels`
 
 # External keys
-- `services.XXX.kind` (string, overrides automatic kind detection: `Deployment`, `DaemonSet`, `StatefulSet`)
-- `services.XXX.imagePullSecrets` (string)
-- `services.XXX.clusterIP.ports` (array)
-- `services.XXX.nodePort.ports` (array, `services.XXX.ports` are for `LoadBalancer`)
-- `volumes.XXX.storage` (string, default `1Gi`)
-- `volumes.XXX.persistentVolumeReclaimPolicy` (string, either `Delete` or `Retain`)
-- `volumes.XXX.subPath` (string)
-- `chdir` (string, required in case of relative path in volume)
+- Services
+  - `services.XXX.kind` (string, overrides automatic kind detection: `Deployment`, `DaemonSet`, `StatefulSet`)
+  - `services.XXX.imagePullSecrets` (string)
+  - `services.XXX.imagePullPolicy` (string)
+  - `services.XXX.clusterIP.ports` (array)
+  - `services.XXX.nodePort.ports` (array, `services.XXX.ports` are for `LoadBalancer`)
+- Volumes
+  - `volumes.XXX.storage` (string, default `1Gi`)
+  - `volumes.XXX.subPath` (string)
+- Top levels
+  - `chdir` (string, required in case of relative path in volume)
 
 # Advance: Full override
-The properies of the manifests can be overridden (merged) with the values from `Services.XXX.KIND` (upper <kbd>S</kbd>) and `Volumes.XXX.KIND` (upper <kbd>V</kbd>)
+The properies of the manifests can be overridden (merged) with the values from `services.XXX.Kind` and `volumes.XXX.Kind`.
 You now to take the full responsablity because while this is a deep merge operation, you cannot set the value of an invidual item inside a list but the whole list instead.
+
+The full list of all the `Kind`s can be found in the example bellow, please note that `services.XXX.imagePullPolicy` and `volumes.XXX.storage` has already existed as external keys
+
 ```yaml
-Services:
+services:
   redmine:
     ClusterIP: {}
     NodePort: {}
@@ -166,20 +172,24 @@ Services:
                   value: example
                 image: redmine
                 name: redmine
-                imagePullPolicy: Always
                 volumeMounts:
                 - mountPath: /usr/src/redmine/config/configuration.yml
                   name: redmine-0
                 - mountPath: /usr/src/redmine/files
                   name: redmine-1
-  db: {}
-
-Volumes:
+                imagePullPolicy: Always
+volumes:
   db:
     PV:
       spec:
+        capacity:
+          storage: 10Gi
         persistentVolumeReclaimPolicy: Retain
-    PVC: {}
+    PVC:
+      spec:
+        resouces:
+          requests:
+            storage: 10Gi
 
 ```
 

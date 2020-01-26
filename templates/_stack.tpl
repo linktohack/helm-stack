@@ -67,7 +67,6 @@
 {{-     $dynamic := true -}}
 {{-     $storage := $volValue.storage -}}
 {{-     $type := "none" -}}
-{{-     $policy := $volValue.persistentVolumeReclaimPolicy -}}
 {{-     $src := "" -}}
 {{-     $server := "" -}}
 {{-     $subPath := $volValue.subPath -}}
@@ -93,7 +92,7 @@
 {{-         $dynamic = or (not $src) (not $server) -}}
 {{-       end -}}
 {{-     end -}}
-{{-     $_ := set $volumes $volName (dict "dynamic" $dynamic "storage" $storage "policy" $policy "type" $type "src" $src "dst" "" "server" $server "subPath" $subPath "originalName" $originalName) -}}
+{{-     $_ := set $volumes $volName (dict "dynamic" $dynamic "storage" $storage "type" $type "src" $src "dst" "" "server" $server "subPath" $subPath "originalName" $originalName) -}}
 {{-   end -}}
 {{-   range $name, $service := .Values.services -}}
 {{-     $kind := include "stack.helpers.kindOfService" $service -}}
@@ -535,7 +534,7 @@ spec:
   claimRef:
     namespace: {{ $Namespace }}
     name: {{ .volName | quote }}
-  persistentVolumeReclaimPolicy: {{ get .volValue "policy" | default "Delete" }}
+  persistentVolumeReclaimPolicy: Delete
   accessModes:
     {{- if eq (get .volValue "type") "nfs" }}
     - ReadWriteMany
