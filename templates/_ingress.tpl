@@ -57,8 +57,11 @@ All the ingresses
 {{-       if eq $labelName (regexReplaceAllLiteral "^traefik" "traefik.backend" $segmentPrefix) -}}
 {{-         $backend = $labelValue -}}
 {{-       end -}}
+{{-       if eq $labelName (regexReplaceAllLiteral "^traefik" "traefik.frontend.auth.basic" $segmentPrefix) -}}
+{{-         $auth = $labelValue | replace "$$" "$" -}}
+{{-       end -}}
 {{-       if eq $labelName (regexReplaceAllLiteral "^traefik" "traefik.frontend.auth.basic.users" $segmentPrefix) -}}
-{{-         $auth = $labelValue -}}
+{{-         $auth = $labelValue | replace "$$" "$" -}}
 {{-       end -}}
 {{-       range $header := $customHeadersDef -}}
 {{-         if eq $labelName (regexReplaceAllLiteral "^traefik" (get $header "src") $segmentPrefix) -}}
@@ -95,7 +98,7 @@ metadata:
     {{- if $auth }}
     ingress.kubernetes.io/auth-type: basic
     ingress.kubernetes.io/auth-realm: traefik
-    ingress.kubernetes.io/auth-secret: {{ printf "%s-basic-auth" $name | quote }}
+    ingress.kubernetes.io/auth-secret: {{ printf "%s-%s-basic-auth"  $name $segment | replace "_" "-" | quote }}
     {{- end }}
     {{- if or $pathPrefixStrip (ne $addPrefix "") $customHeaders }}
     kubernetes.io/ingress.class: traefik
@@ -132,7 +135,7 @@ spec:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: {{ printf "%s-%s-basic-auth" $name $segment | replace "_" "-" | quote}}
+  name: {{ printf "%s-%s-basic-auth" $name $segment | replace "_" "-" | quote }}
 type: Opaque
 data:
   auth: {{ $auth | b64enc }}
