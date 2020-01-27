@@ -153,6 +153,76 @@
 {{ $secrets | toYaml }}
 {{- end -}}
 
+{{- define "stack.helpers.ingress" -}}
+{{-   $name := .name -}}
+{{-   $ingresses := dict -}}
+{{-   $h1 := dict "src" "traefik.frontend.headers.customRequestHeaders" "dst" "ingress.kubernetes.io/custom-request-headers" "val" "" -}}
+{{-   $h2 := dict "src" "traefik.frontend.headers.customResponseHeaders" "dst" "ingress.kubernetes.io/custom-response-headers" "val" "" -}}
+{{-   $h3 := dict "src" "traefik.frontend.headers.SSLRedirect" "dst" "ingress.kubernetes.io/ssl-redirect" "val" "" -}}
+{{-   $h4 := dict "src" "traefik.frontend.redirect.entryPoint" "dst" "traefik.ingress.kubernetes.io/redirect-entry-point" "val" "" -}}
+{{-   $customHeadersDef := list $h1 $h2 $h3 $h4 -}}
+{{-   $labels := pluck "service" . | first | default dict | pluck "deploy" | first | default dict | pluck "labels" | first | default list -}}
+{{-   $segments := list -}}
+{{-   range $labelName, $labelValue := include "stack.helpers.normalizeDict" $labels | fromYaml -}}
+{{-     $match := regexFind "traefik\\.(\\w+\\.)?frontend\\.rule" $labelName -}}
+{{-     if $match -}}
+{{-       $segment := "" -}}
+{{-       $list := $match | splitList "." -}}
+{{-       if eq (len $list) 4 -}}
+{{-         $segment = index $list 1 -}}
+{{-       end -}}
+{{-       $segments = append $segments $segment -}}
+{{-     end -}}
+{{-   end -}}
+{{-   range $segment := $segments -}}
+{{-     $hosts := list -}}
+{{-     $port := "" -}}
+{{-     $backend := "http" -}}
+{{-     $auth := "" -}}
+{{-     $pathPrefixStrip := list -}}
+{{-     $addPrefix := "" -}}
+{{-     $customHeaders := list -}}
+{{-     $segmentPrefix := "traefik" -}}
+{{-     if ($segment) -}}
+{{-       $segmentPrefix = printf "traefik.%s" $segment -}}
+{{-     end -}}
+{{-     range $labelName, $labelValue := include "stack.helpers.normalizeDict" $labels | fromYaml -}}
+{{-       if eq $labelName (regexReplaceAllLiteral "^traefik" "traefik.frontend.rule" $segmentPrefix) -}}
+{{-         $rules := splitList ";" $labelValue -}}
+{{-         range $rule := $rules -}}
+{{-           $pair := splitList ":" $rule -}}
+{{-           if eq (first $pair) "Host" -}}
+{{-             $hosts = concat $hosts (splitList "," (last $pair)) -}}
+{{-           end -}}
+{{-           if eq (first $pair) "PathPrefixStrip" -}}
+{{-             $pathPrefixStrip = concat $pathPrefixStrip (splitList "," (last $pair)) -}}
+{{-           end -}}
+{{-           if eq (first $pair) "AddPrefix" -}}
+{{-             $addPrefix = last $pair -}}
+{{-           end -}}
+{{-         end -}}
+{{-       end -}}
+{{-       if eq $labelName (regexReplaceAllLiteral "^traefik" "traefik.port" $segmentPrefix) -}}
+{{-         $port = $labelValue -}}
+{{-       end -}}
+{{-       if eq $labelName (regexReplaceAllLiteral "^traefik" "traefik.backend" $segmentPrefix) -}}
+{{-         $backend = $labelValue -}}
+{{-       end -}}
+{{-       if eq $labelName (regexReplaceAllLiteral "^traefik" "traefik.frontend.auth.basic.users" $segmentPrefix) -}}
+{{-         $auth = $labelValue -}}
+{{-       end -}}
+{{-       range $header := $customHeadersDef -}}
+{{-         if eq $labelName (regexReplaceAllLiteral "^traefik" (get $header "src") $segmentPrefix) -}}
+{{-           $header := $header | deepCopy | merge (dict "val" $labelValue) -}}
+{{-           $customHeaders = append $customHeaders $header -}}
+{{-         end -}}
+{{-       end -}}
+{{-     end -}}
+{{-     $_ := set $ingresses (default "default" $segment) (dict "hosts" $hosts "port" $port "backend" $backend "auth" $auth "pathPrefixStrip" $pathPrefixStrip "addPrefix" $addPrefix "customHeaders" $customHeaders) -}}
+{{-   end  }}
+{{ $ingresses | toYaml }}
+{{- end -}}
+
 
 {{- define "stack.deployment" -}}
 {{-   $Values := .Values -}}
@@ -367,28 +437,21 @@ spec:
 
 
 {{- define "stack.service.loadBalancer" -}}
-{{- $name := .name | replace "_" "-" -}}
-{{- $ports := include "stack.helpers.normalizePorts" .service.ports | fromYaml -}}
-{{- range $protocol, $ports := pick $ports "tcp" "udp" }}
-{{- if $ports }}
----
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ printf "%s-loadbalancer-%s" $name $protocol | quote }}
+  name: {{ printf "%s-loadbalancer-%s" .name .protocol | replace "_" "-" | quote }}
 spec:
   type: LoadBalancer
   ports:
-    {{- range $ports }}
+    {{- range .ports }}
     - name: {{ printf "loadbalancer-%s" (get . "port" | default (get . "targetPort")) | lower | quote }}
       protocol: {{ get . "protocol" | quote }}
       port: {{ get . "port" | default (get . "targetPort") }}
       targetPort: {{ get . "targetPort" }}
     {{- end }}
   selector:
-    service: {{ $name | quote }}
-{{- end -}}
-{{- end -}}
+    service: {{ .name | quote }}
 {{- end -}}
 
 
@@ -466,84 +529,17 @@ spec:
 
 
 {{- define "stack.ingress" -}}
-{{-   $name := .name -}}
-{{-   $ingresses := dict -}}
-{{-   $h1 := dict "src" "traefik.frontend.headers.customRequestHeaders" "dst" "ingress.kubernetes.io/custom-request-headers" "val" "" -}}
-{{-   $h2 := dict "src" "traefik.frontend.headers.customResponseHeaders" "dst" "ingress.kubernetes.io/custom-response-headers" "val" "" -}}
-{{-   $h3 := dict "src" "traefik.frontend.headers.SSLRedirect" "dst" "ingress.kubernetes.io/ssl-redirect" "val" "" -}}
-{{-   $h4 := dict "src" "traefik.frontend.redirect.entryPoint" "dst" "traefik.ingress.kubernetes.io/redirect-entry-point" "val" "" -}}
-{{-   $customHeadersDef := list $h1 $h2 $h3 $h4 -}}
-{{-   $labels := pluck "service" . | first | default dict | pluck "deploy" | first | default dict | pluck "labels" | first | default list -}}
-{{-   $segments := list -}}
-{{-   range $labelName, $labelValue := include "stack.helpers.normalizeDict" $labels | fromYaml -}}
-{{-     $match := regexFind "traefik\\.(\\w+\\.)?frontend\\.rule" $labelName -}}
-{{-     if $match -}}
-{{-       $segment := "" -}}
-{{-       $list := $match | splitList "." -}}
-{{-       if eq (len $list) 4 -}}
-{{-         $segment = index $list 1 -}}
-{{-       end -}}
-{{-       $segments = append $segments $segment -}}
-{{-     end -}}
-{{-   end -}}
-{{-   range $segment := $segments -}}
-{{-     $hosts := list -}}
-{{-     $port := "" -}}
-{{-     $backend := "http" -}}
-{{-     $auth := "" -}}
-{{-     $pathPrefixStrip := list -}}
-{{-     $addPrefix := "" -}}
-{{-     $customHeaders := list -}}
-{{-     $segmentPrefix := "traefik" -}}
-{{-     if ($segment) -}}
-{{-       $segmentPrefix = printf "traefik.%s" $segment -}}
-{{-     end -}}
-{{-     range $labelName, $labelValue := include "stack.helpers.normalizeDict" $labels | fromYaml -}}
-{{-       if eq $labelName (regexReplaceAllLiteral "^traefik" "traefik.frontend.rule" $segmentPrefix) -}}
-{{-         $rules := splitList ";" $labelValue -}}
-{{-         range $rule := $rules -}}
-{{-           $pair := splitList ":" $rule -}}
-{{-           if eq (first $pair) "Host" -}}
-{{-             $hosts = concat $hosts (splitList "," (last $pair)) -}}
-{{-           end -}}
-{{-           if eq (first $pair) "PathPrefixStrip" -}}
-{{-             $pathPrefixStrip = concat $pathPrefixStrip (splitList "," (last $pair)) -}}
-{{-           end -}}
-{{-           if eq (first $pair) "AddPrefix" -}}
-{{-             $addPrefix = last $pair -}}
-{{-           end -}}
-{{-         end -}}
-{{-       end -}}
-{{-       if eq $labelName (regexReplaceAllLiteral "^traefik" "traefik.port" $segmentPrefix) -}}
-{{-         $port = $labelValue -}}
-{{-       end -}}
-{{-       if eq $labelName (regexReplaceAllLiteral "^traefik" "traefik.backend" $segmentPrefix) -}}
-{{-         $backend = $labelValue -}}
-{{-       end -}}
-{{-       if eq $labelName (regexReplaceAllLiteral "^traefik" "traefik.frontend.auth.basic.users" $segmentPrefix) -}}
-{{-         $auth = $labelValue -}}
-{{-       end -}}
-{{-       range $header := $customHeadersDef -}}
-{{-         if eq $labelName (regexReplaceAllLiteral "^traefik" (get $header "src") $segmentPrefix) -}}
-{{-           $header := $header | deepCopy | merge (dict "val" $labelValue) -}}
-{{-           $customHeaders = append $customHeaders $header -}}
-{{-         end -}}
-{{-       end -}}
-{{-     end -}}
-{{-     $_ := set $ingresses (default "default" $segment) (dict "hosts" $hosts "port" $port "backend" $backend "auth" $auth "pathPrefixStrip" $pathPrefixStrip "addPrefix" $addPrefix "customHeaders" $customHeaders) -}}
-{{-   end  -}}
-{{- range $segment, $ingress := $ingresses -}}
-{{- $hosts := get $ingress "hosts" -}}
-{{- $port := get $ingress "port" -}}
-{{- $backend := get $ingress "backend" -}}
-{{- $auth := get $ingress "auth" -}}
-{{- $pathPrefixStrip := get $ingress "pathPrefixStrip" -}}
-{{- $addPrefix := get $ingress "addPrefix" -}}
-{{- $customHeaders := get $ingress "customHeaders" -}}
-{{- if and $hosts (ne $port "") }}
----
+{{- $name := .name -}}
+{{- $segment := .segment -}}
+{{- $hosts := .ingress.hosts -}}
+{{- $port := .ingress.port -}}
+{{- $backend := .ingress.backend -}}
+{{- $auth := .ingress.auth -}}
+{{- $pathPrefixStrip := .ingress.pathPrefixStrip -}}
+{{- $addPrefix := .ingress.addPrefix -}}
+{{- $customHeaders := .ingress.customHeaders -}}
 apiVersion: extensions/v1beta1
-kind: {{ $ingresses | toYaml | quote  }}
+kind: Ingress
 metadata:
   name: {{ printf "%s-%s" $name $segment | replace "_" "-" | quote }}
   annotations:
@@ -581,8 +577,12 @@ spec:
           {{- end -}}
     {{- end -}}
 {{- end -}}
-{{- if $auth }}
----
+
+
+{{- define "stack.ingress.auth" -}}
+{{- $name := .name -}}
+{{- $segment := .segment -}}
+{{- $auth := .ingress.auth -}}
 apiVersion: v1
 kind: Secret
 metadata:
@@ -590,8 +590,6 @@ metadata:
 type: Opaque
 data:
   auth: {{ $auth | b64enc }}
-{{- end -}}
-{{- end -}}
 {{- end -}}
 
 

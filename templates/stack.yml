@@ -57,18 +57,31 @@
 {{ $nodePort  | merge $override | toYaml }}
 {{- end }}
 {{/* services: loadBalancer */}}
-{{- $loadBalancer := include "stack.service.loadBalancer" (dict "name" $name "service" $service "Values" $Values "Release" $Release) | fromYaml -}}
+{{- $ports := include "stack.helpers.normalizePorts" $service.ports | fromYaml -}}
+{{- range $protocol, $ports := pick $ports "tcp" "udp" -}}
+{{- if $ports }}
+{{- $loadBalancer := include "stack.service.loadBalancer" (dict "name" $name "ports" $ports) | fromYaml -}}
 {{- $override := pluck "services" $Values | first | default dict | pluck $name | first | default dict | pluck "LoadBalancer" | first | default dict -}}
 {{- if $loadBalancer }}
 ---
 {{ $loadBalancer | merge $override | toYaml }}
-{{- end }}
+{{- end -}}
+{{- end -}}
+{{- end -}}
 {{/* services: ingress */}}
-{{- $ingress := include "stack.ingress" (dict "name" $name "service" $service "Values" $Values "Release" $Release) | fromYaml -}}
-{{- $override := pluck "services" $Values | first | default dict | pluck $name | first | default dict | pluck "Ingress" | first | default dict -}}
-{{- if $ingress }}
+{{- range $segment, $ingressValue := include "stack.helpers.ingress" (dict "name" $name "service" $service "Values" $Values "Release" $Release) | fromYaml -}}
+{{- if and (get $ingressValue "hosts") (get $ingressValue "port") -}}
+{{- $ingress := include "stack.ingress" (dict "name" $name "segment" $segment "ingress" $ingressValue) | fromYaml -}}
+{{- $override := pluck "services" $Values | first | default dict | pluck $name | first | default dict | pluck "Ingress" | first | default dict }}
 ---
 {{ $ingress | merge $override | toYaml }}
+{{- end -}}
+{{- if get $ingressValue "auth" -}}
+{{- $ingress := include "stack.ingress.auth"  (dict "name" $name "segment" $segment "ingress" $ingressValue) | fromYaml -}}
+{{- $override := pluck "services" $Values | first | default dict | pluck $name | first | default dict | pluck "Auth" | first | default dict }}
+---
+{{ $ingress | merge $override | toYaml }}
+{{- end -}}
 {{- end }}
 {{/* services: deployment */}}
 {{- $deployment := include "stack.deployment" (dict "name" $name "service" $service "Values" $Values "Release" $Release) | fromYaml -}}
