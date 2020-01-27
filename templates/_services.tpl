@@ -11,7 +11,7 @@ spec:
   type: LoadBalancer
   ports:
     {{- range $ports }}
-    - name: {{ printf "loadbalancer-%s" (get . "port") | lower | quote }}
+    - name: {{ printf "%s-%s" $protocol (get . "port") | lower | quote }}
       protocol: {{ get . "protocol" | quote }}
       port: {{ get . "port" }}
       targetPort: {{ get . "targetPort" }}
@@ -56,7 +56,7 @@ spec:
   type: ClusterIP
   ports:
     {{- range $ports }}
-    - name: {{ printf "clusterip-%s" (get . "port") | lower | quote }}
+    - name: {{ printf "%s-%s" (get . "protocol") (get . "port") | lower | quote }}
       protocol: {{ get . "protocol" | quote }}
       port: {{ get . "port" }}
       targetPort: {{ get . "targetPort" }}
@@ -83,7 +83,7 @@ spec:
   type: NodePort
   ports:
     {{- range $ports }}
-    - name: {{ printf "nodeport-%s" (get . "port") | lower | quote }}
+    - name: {{ printf "%s-%s" (get . "protocol") (get . "port") | lower | quote }}
       protocol: {{ get . "protocol" | quote }}
       port: {{ get . "targetPort" }}
       targetPort: {{ get . "targetPort" }}

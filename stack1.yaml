@@ -37,18 +37,6 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: redmine-files
-spec:
-  accessModes:
-  - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
----
-# Source: stack/templates/stack.yml
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
   name: db
 spec:
   accessModes:
@@ -72,12 +60,39 @@ spec:
 ---
 # Source: stack/templates/stack.yml
 apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redmine-files
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+spec:
+  ports:
+  - name: tcp-3306
+    port: 3306
+    protocol: TCP
+    targetPort: 3306
+  selector:
+    service: db
+  type: ClusterIP
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
 kind: Service
 metadata:
   name: redmine
 spec:
   ports:
-  - name: clusterip-3000
+  - name: tcp-3000
     port: 3000
     protocol: TCP
     targetPort: 3000
@@ -92,7 +107,7 @@ metadata:
   name: db-loadbalancer-tcp
 spec:
   ports:
-  - name: loadbalancer-3306
+  - name: tcp-3306
     port: 3306
     protocol: TCP
     targetPort: 3306
@@ -203,7 +218,7 @@ spec:
       paths:
       - backend:
           serviceName: redmine
-          servicePort: clusterip-3001
+          servicePort: tcp-3001
         path: /
 ---
 # Source: stack/templates/stack.yml
@@ -226,5 +241,5 @@ spec:
       paths:
       - backend:
           serviceName: redmine
-          servicePort: clusterip-3000
+          servicePort: tcp-3000
         path: /

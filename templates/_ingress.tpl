@@ -119,7 +119,7 @@ spec:
           - path: {{ $path | quote }}
             backend:
               serviceName: {{ printf "%s" $name | quote }}
-              servicePort: {{ printf "clusterip-%s" $port | quote }}
+              servicePort: {{ printf "tcp-%s" $port | quote }}
           {{- end -}}
     {{- end -}}
 {{- end -}}
