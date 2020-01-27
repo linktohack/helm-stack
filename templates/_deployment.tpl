@@ -13,19 +13,20 @@ Kind of the deployment
 {{ $kind }}
 {{- end -}}
 
+
 {{- define "stack.deployment" -}}
-{{-   $Values := .Values -}}
 {{-   $name := .name | replace "_" "-" -}}
 {{-   $service := .service -}}
-{{-   $kind := include "stack.helpers.deploymentKind" .service -}}
-{{-   $replicas := .service | pluck "deploy"| first | default dict | pluck "replicas" | first | default 1 | int64 -}}
-{{-   $environments := include "stack.helpers.normalizeKV" .service.environment | fromYaml -}}
+{{-   $Values := .Values -}}
+{{-   $kind := include "stack.helpers.deploymentKind" $service -}}
+{{-   $replicas := $service | pluck "deploy"| first | default dict | pluck "replicas" | first | default 1 | int64 -}}
+{{-   $environments := include "stack.helpers.normalizeKV" $service.environment | fromYaml -}}
 {{-   $volumes := include "stack.helpers.volumes" (dict "Values" $Values) | fromYaml -}}
 {{-   $configs := include "stack.helpers.configs" (dict "Values" $Values) | fromYaml -}}
 {{-   $secrets := include "stack.helpers.secrets" (dict "Values" $Values) | fromYaml -}}
 {{-   $serviceVolumes := dict -}}
 {{-   $volumeClaimTemplates := dict -}}
-{{-   range $volIndex, $volValue := .service.volumes -}}
+{{-   range $volIndex, $volValue := $service.volumes -}}
 {{-     $list := splitList ":" $volValue -}}
 {{-     $volName := first $list | replace "_" "-" -}}
 {{-     if hasPrefix "/" $volName -}}
@@ -45,13 +46,13 @@ Kind of the deployment
 {{-       end -}}
 {{-     end -}}
 {{-   end -}}
-{{-   range $volValue := .service.configs -}}
+{{-   range $volValue := $service.configs -}}
 {{-       $volName := get $volValue "source" | replace "_" "-" -}}
 {{-       $curr := get $configs $volName | deepCopy -}}
 {{-       $curr = merge $curr $volValue -}}
 {{-       $_ := set $serviceVolumes $volName $curr -}}
 {{-   end -}}
-{{-   range $volValue := .service.secrets -}}
+{{-   range $volValue := $service.secrets -}}
 {{-       $volName := get $volValue "source" | replace "_" "-" -}}
 {{-       $curr := get $secrets $volName | deepCopy -}}
 {{-       $curr = merge $curr $volValue -}}
@@ -126,39 +127,39 @@ spec:
             nodeSelectorTerms:
               - matchExpressions: {{ $affinities | toYaml | nindent 16 }}
       {{- end }}
-      {{- if .service.imagePullSecrets }}
+      {{- if $service.imagePullSecrets }}
       imagePullSecrets:
-        - name: {{ .service.imagePullSecrets }}
+        - name: {{ $service.imagePullSecrets }}
       {{- end }}
-      {{- if .service.dns }}
+      {{- if $service.dns }}
       dnsPolicy: "None"
       dnsConfig:
-        nameservers: {{ .service.dns | toYaml | nindent 10 }}
+        nameservers: {{ $service.dns | toYaml | nindent 10 }}
       {{- end }}
       containers:
         - name: {{ $name | quote }}
-          image: {{ .service.image | quote }}
-          {{- if .service.imagePullPolicy }}
-          imagePullPolicy: {{ .service.imagePullPolicy }}
+          image: {{ $service.image | quote }}
+          {{- if $service.imagePullPolicy }}
+          imagePullPolicy: {{ $service.imagePullPolicy }}
           {{- end }}
-          {{- if .service.entrypoint }}
-          command: {{ .service.entrypoint | toYaml | nindent 12 }}
+          {{- if $service.entrypoint }}
+          command: {{ $service.entrypoint | toYaml | nindent 12 }}
           {{- end }}
-          {{- if .service.command }}
-          args: {{ .service.command | toYaml | nindent 12 }}
+          {{- if $service.command }}
+          args: {{ $service.command | toYaml | nindent 12 }}
           {{- end }}
-          {{- if or .service.privileged .service.cap_add .service.cap_drop }}
+          {{- if or $service.privileged $service.cap_add $service.cap_drop }}
           securityContext:
-            {{- if .service.privileged }}
-            privileged: {{ .service.privileged }}
+            {{- if $service.privileged }}
+            privileged: {{ $service.privileged }}
             {{- end }}
-            {{- if or .service.cap_add .service.cap_drop }}
+            {{- if or $service.cap_add $service.cap_drop }}
             capabilities:
-              {{- if .service.cap_add }}
-              add: {{ .service.cap_add | toYaml | nindent 16 }}
+              {{- if $service.cap_add }}
+              add: {{ $service.cap_add | toYaml | nindent 16 }}
               {{- end }}
-              {{- if .service.cap_drop }}
-              drop: {{ .service.cap_drop | toYaml | nindent 16 }}
+              {{- if $service.cap_drop }}
+              drop: {{ $service.cap_drop | toYaml | nindent 16 }}
               {{- end }}
             {{- end }}
           {{- end -}}

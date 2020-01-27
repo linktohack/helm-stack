@@ -85,25 +85,27 @@ spec:
 
 
 {{- define "stack.pvc" -}}
+{{-   $volName := .volName -}}
+{{-   $volValue := .volValue -}}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ .volName | quote }}
+  name: {{ $volName | quote }}
 spec:
   accessModes:
-    {{- if eq (get .volValue "type") "nfs" }}
+    {{- if eq (get $volValue "type") "nfs" }}
     - ReadWriteMany
     {{- else }}
     - ReadWriteOnce
     {{- end }}
-  {{- if get .volValue "dynamic" -}}
-  {{- if ne (get .volValue "type") "none" }}
-  storageClassName: {{ get .volValue "type" | quote }}
+  {{- if get $volValue "dynamic" -}}
+  {{- if ne (get $volValue "type") "none" }}
+  storageClassName: {{ get $volValue "type" | quote }}
   {{- end -}}
   {{- else }}
   storageClassName: "manual"
   {{- end }}
   resources:
     requests:
-      storage: {{ get .volValue "storage" | default "1Gi" | quote }}
+      storage: {{ get $volValue "storage" | default "1Gi" | quote }}
 {{- end -}}

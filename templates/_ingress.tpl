@@ -74,15 +74,16 @@ All the ingresses
 
 
 {{- define "stack.ingress" -}}
-{{- $name := .name -}}
-{{- $segment := .segment -}}
-{{- $hosts := .ingress.hosts -}}
-{{- $port := .ingress.port -}}
-{{- $backend := .ingress.backend -}}
-{{- $auth := .ingress.auth -}}
-{{- $pathPrefixStrip := .ingress.pathPrefixStrip -}}
-{{- $addPrefix := .ingress.addPrefix -}}
-{{- $customHeaders := .ingress.customHeaders -}}
+{{-   $name := .name -}}
+{{-   $segment := .segment -}}
+{{-   $ingress := .ingress -}}
+{{-   $hosts := $ingress.hosts -}}
+{{-   $port := $ingress.port -}}
+{{-   $backend := $ingress.backend -}}
+{{-   $auth := $ingress.auth -}}
+{{-   $pathPrefixStrip := $ingress.pathPrefixStrip -}}
+{{-   $addPrefix := $ingress.addPrefix -}}
+{{-   $customHeaders := $ingress.customHeaders -}}
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
