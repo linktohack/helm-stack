@@ -1,7 +1,7 @@
 # What
 Deploy your `docker-compose` `stack` with Helm.
 
-See `./docker-compose-redmine.yaml` for an (opinionated) completed stack and `./stack1.yaml` for the generated stack.
+See `./docker-compose-redmine.yaml` for a completed stack and `./stack1.yaml` for the generated manifest. External keys can be found in `./docker-compose-redmine-override.yaml`s.
 
 # TL;DR
 ```sh
@@ -12,17 +12,20 @@ helm -n your-stack upgrade --install your-stack link/stack -f docker-compose.yam
 ```
 
 # Features
-The chart is still in its early days, but it is already quite complete and I was able to deploy complex stacks with it. In all cases, there is a mechanism to override the output manifest with full possibility of K8S API (see bellow.)
+The chart is still in its early days, but it is already quite complete and I was able to deploy complex stacks with it. In all cases, there is a mechanism to override the output manifest with full possibilities of K8S API (see bellow.)
 
 - [X] Deployment: Automatically or manually: `Deployment`, `DaemonSet`, `StatefulSet`
 - [X] Node: Handle placement constraints
   - `node.role`
   - `node.hostname`
   - `node.labels`
-- [X] Service: `LoadBlancer` by default, easy to expose `ClusterIP` and `NodePort`
-- [X] Ingress: Support `traefik` labels as input with annotations. Advance features require `traefik` as Ingress controller
-- [X] Ingress: Handle segment labels for services that expose multiple ports
-- [X] Volume: Handle inline/external/separated volumes. Automatic switch to `volumeClaimTemplates` for `StatefulSet`. Dynamic provisioner should work as expected, for static provisioner, `hostPath` and `nfs` are supported.
+- [X] Service: `LoadBlancer` by default, easy to expose `ClusterIP` and `NodePort` via an extra key
+- [X] Ingress
+  - Support `traefik` labels as input with annotations. Advance features require `traefik` as Ingress controller
+  - Support segment labels for services that expose multiple ports
+- [X] Volume: Handle inline/external/separated volumes
+  - Automatic switch to `volumeClaimTemplates` for `StatefulSet`.
+  - Dynamic provisioner should work as expected, for static provisioner, `hostPath` and `nfs` are supported.
 - [X] Config: Handle external/separated configs (manually, Helm doesn't allow to import external file at the moment)
 - [X] Secret: Handle external/separated secrets (manually, Helm doesn't allow to import external file at the moment)
 

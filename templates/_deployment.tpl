@@ -30,13 +30,13 @@ Kind of the deployment
 {{-     $list := splitList ":" $volValue -}}
 {{-     $volName := first $list | replace "_" "-" -}}
 {{-     if hasPrefix "/" $volName -}}
-{{-       $_ := set $serviceVolumes (printf "%s-%d" $name $volIndex) (dict "hostPath" true "src" $volName "dst" (index $list 1)) -}}
+{{-       $_ := set $serviceVolumes (printf "%s-%d" $name $volIndex) (dict "volumeKind" "Volume" "hostPath" true "src" $volName "dst" (index $list 1)) -}}
 {{-     else if hasPrefix "./" $volName -}}
 {{-       $src := clean (printf "%s/%s" (default "." $Values.chdir) $volName) -}}
 {{-       if not (isAbs $src) -}}
 {{-         fail "volume path or chidir has to be absolute." -}}
 {{-       end -}}
-{{-       $_ := set $serviceVolumes (printf "%s-%d" $name $volIndex) (dict "hostPath" true "src" $src "dst" (index $list 1)) -}}
+{{-       $_ := set $serviceVolumes (printf "%s-%d" $name $volIndex) (dict "volumeKind" "Volume" "hostPath" true "src" $src "dst" (index $list 1)) -}}
 {{-     else -}}
 {{-       $curr := get $volumes $volName -}}
 {{-       $curr = merge $curr (dict "dst" (index $list 1)) -}}

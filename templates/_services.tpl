@@ -26,8 +26,8 @@ spec:
 {{-   $name := .name -}}
 {{-   $service := .service -}}
 {{-   $ports := list -}}
-{{-   if $service.ClusterIP -}}
-{{-     $ports = get (include "stack.helpers.normalizePorts" $service.ClusterIP.ports | fromYaml) "all" -}}
+{{-   if $service.clusterIP -}}
+{{-     $ports = get (include "stack.helpers.normalizePorts" $service.clusterIP.ports | fromYaml) "all" -}}
 {{-   end -}}
 {{-   $labels := $service | pluck "deploy" | first | default dict | pluck "labels" | first | default list -}}
 {{-   $port := "" -}}
@@ -71,8 +71,8 @@ spec:
 {{-   $name := .name -}}
 {{-   $service := .service -}}
 {{-   $ports := list -}}
-{{-   if $service.NodePort -}}
-{{-     $ports = get (include "stack.helpers.normalizePorts" $service.NodePort.ports | fromYaml) "all" -}}
+{{-   if $service.nodePort -}}
+{{-     $ports = get (include "stack.helpers.normalizePorts" $service.nodePort.ports | fromYaml) "all" -}}
 {{-   end -}}
 {{- if $ports -}}
 apiVersion: v1
