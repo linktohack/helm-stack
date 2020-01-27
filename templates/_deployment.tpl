@@ -3,7 +3,7 @@ Kind of the deployment
 */}}
 {{- define "stack.helpers.deploymentKind" -}}
 {{-   $kind := "Deployment" -}}
-{{-   $mode := . | pluck "deploy" | first | default list | pluck "mode" | first | default "replicated" -}}
+{{-   $mode := . | pluck "deploy" | first | default dict | pluck "mode" | first | default "replicated" -}}
 {{-   if eq $mode "global" -}}
 {{-      $kind = "DaemonSet" -}}
 {{-   end -}}
@@ -138,16 +138,16 @@ spec:
         nameservers: {{ $service.dns | toYaml | nindent 10 }}
       {{- end }}
       containers:
-        - name: {{ $name | quote }}
+        - name: {{ $service.container_name | default $name | replace "_" "-" | quote }}
           image: {{ $service.image | quote }}
           {{- if $service.imagePullPolicy }}
           imagePullPolicy: {{ $service.imagePullPolicy }}
           {{- end }}
           {{- if $service.entrypoint }}
-          command: {{ $service.entrypoint | toYaml | nindent 12 }}
+          command: {{ $service.entrypoint | include "stack.helpers.normalizeCommand" | nindent 12 }}
           {{- end }}
           {{- if $service.command }}
-          args: {{ $service.command | toYaml | nindent 12 }}
+          args: {{ $service.command | include "stack.helpers.normalizeCommand" | nindent 12 }}
           {{- end }}
           {{- if or $service.privileged $service.cap_add $service.cap_drop }}
           securityContext:
@@ -182,8 +182,9 @@ spec:
               {{- end }}
             {{- end -}}
             {{- if or (eq (get $volValue "volumeKind") "ConfigMap") (eq (get $volValue "volumeKind") "Secret") }}
-            - mountPath: {{ get $volValue "target" | dir | quote }}
+            - mountPath: {{ get $volValue "target" | quote }}
               name: {{ $volName | quote }}
+              subPath: {{ get $volValue "file" | base | quote }}
             {{- end -}}
             {{- end -}}
           {{- end }}
@@ -204,6 +205,9 @@ spec:
         - name: {{ $volName | quote }}
           configMap:
             name: {{ get $volValue "externalName" | quote }}
+            {{- if get $volValue "mode" }}
+            defaultMode: {{ get $volValue "mode" }}
+            {{- end }}
         {{- end -}}
         {{- if eq (get $volValue "volumeKind") "Secret" }}
         - name: {{ $volName | quote }}

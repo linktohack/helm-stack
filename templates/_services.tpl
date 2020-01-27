@@ -39,7 +39,7 @@ spec:
 {{-   if $port -}}
 {{-     $existed := false -}}
 {{-     range $ports -}}
-{{-       if eq (get . "port") $port -}}
+{{-       if eq (get . "targetPort") $port -}}
 {{-         $existed = true -}}
 {{-       end -}}
 {{-     end -}}

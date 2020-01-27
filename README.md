@@ -92,6 +92,11 @@ The same technique can be applied via a proper language instead of using a Helm 
 - Volumes
   - `volumes.XXX.storage` (string, default `1Gi`)
   - `volumes.XXX.subPath` (string)
+- Config
+  - `configs.XXX.data` (string)
+- Secret
+  - `secrets.XXX.data` (string)
+  - `secrets.XXX.stringData` (string)
 - Top levels
   - `chdir` (string, required in case of relative path in volume)
 

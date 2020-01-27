@@ -79,6 +79,20 @@ Normalize k:v or k=v style. Useful for volumes and labels
 {{ $dict | toYaml }}
 {{- end -}}
 
+
+{{/*
+Normalize command and entrypoint
+*/}}
+{{- define "stack.helpers.normalizeCommand" -}}
+{{-   $command := . -}}
+{{-   $isList := eq (typeOf $command) "[]interface {}" -}}
+{{-   if not $isList -}}
+{{-     $command = splitList " " $command -}}
+{{-   end -}}
+{{ $command | toYaml }}
+{{- end -}}
+
+
 {{/*
 Normalize ports:
 - port:target/UDP
