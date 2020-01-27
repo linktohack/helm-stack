@@ -3,18 +3,33 @@ Deploy your `docker-compose` `stack` with Helm.
 
 See `./docker-compose-redmine.yaml` for an (opinionated) completed stack and `./stack1.yaml` for the generated stack.
 
-## TL;DR
+# TL;DR
 ```sh
 helm repo add link https://linktohack.github.io/helm-stack/
-kubectl create namespace your-name-space
+kubectl create namespace your-stack
 # docker stack deploy -c docker-compose.yaml your_stack
-helm -n your-name-space upgrade --install your-stack link/stack -f docker-compose.yaml
+helm -n your-stack upgrade --install your-stack link/stack -f docker-compose.yaml
 ```
 
-## Samples
+# Features
+The chart is still in its early days, but it is already quite complete and I was able to deploy complex stacks with it. In all cases, there is a mechanism to override the output manifest with full possibility of K8S API (see bellow.)
+
+- [X] Deployment: Automatically or manually: `Deployment`, `DaemonSet`, `StatefulSet`
+- [X] Node: Handle placement constraints
+  - `node.role`
+  - `node.hostname`
+  - `node.labels`
+- [X] Service: `LoadBlancer` by default, easy to expose `ClusterIP` and `NodePort`
+- [X] Ingress: Support `traefik` labels as input with annotations. Advance features require `traefik` as Ingress controller
+- [X] Ingress: Handle segment labels for services that expose multiple ports
+- [X] Volume: Handle inline/external/separated volumes. Automatic switch to `volumeClaimTemplates` for `StatefulSet`. Dynamic provisioner should work as expected, for static provisioner, `hostPath` and `nfs` are supported.
+- [X] Config: Handle external/separated configs (manually, Helm doesn't allow to import external file at the moment)
+- [X] Secret: Handle external/separated secrets (manually, Helm doesn't allow to import external file at the moment)
+
+# Example
+## Dockersamples
 Tested in a K3s cluster with `local-path` provisioner
 
-### Dockersamples
 ```sh
 ❯ helm -n com-linktohack-docker-on-compose upgrade --install sample link/stack -f docker-compose-dockersamples.yaml
 Release "sample" does not exist. Installing it now.
@@ -53,88 +68,16 @@ replicaset.apps/db-769769498d     1         1         1       2m4s
 replicaset.apps/words-6465f956d   5         5         5       2m4s
 ```
 
-### Redmine + MySQL
-```sh
-helm -n com-linktohack-redmine upgrade --install redmine link/stack -f docker-compose-redmine.yaml \
-    --set services.db.clusterIP.ports={3306:3306} \
-    --set services.db.ports={3306:3306} \
-    --set services.db.deploy.placement.constraints={node.role==manager} \
-    --set services.redmine.deploy.placement.constraints={node.role==manager} \
-    --set chdir=/stack
-```
-
-- `services.XXX.ports` will be exposed as `LoadBalancer` (if needed)
-- addtional key `services.XXX.clusterIP.ports` will be exposed as `ClusterIP` ports
-
-### Bitwarden
-```sh   
-helm -n com-linktohack-bitwarden upgrade --install bitwarden link/stack -f ./docker-compose-bitwarden.yaml
-```
-
-### OpenVPN
-```sh
-helm -n com-linktohack-ipsec upgrade --install ipsec link/stack -f docker-compose-openvpn.yaml \
-    --set volumes.config.driver_opts=null,volumes.config.storage=100Mi
-```
-
-## Via template
-```sh
-helm -n com-linktohack-redmine template openvpn link/stack -f docker-compose-redmine.yaml  \
-    --set services.db.clusterIP.ports={3306:3306} \
-    --set services.db.ports={3306:3306} \
-    --set services.db.deploy.placement.constraints={node.role==manager} \
-    --set services.redmine.deploy.placement.constraints={node.role==manager} \
-    --set chdir=/stack \
-    > stack1.yaml
-kubectl -n com-linktohack-redmine apply -f stack1.yaml
-```
-
-```sh
-helm -n com-linktohack-ipsec template ipsec link/stack -f docker-compose-openvpn.yaml \
-    --set volumes.config.storage=1Gi \
-    --set volumes.config.driver_opt=null \
-    > stack2.yaml  
-kubectl -n com-linktohack-ipsec apply -f stack2.yaml
-
-```
-
-# Other works (may related)
-- [kompose](https://github.com/kubernetes/kompose)
-- [compose-on-kubernetes](https://github.com/docker/compose-on-kubernetes)
+## More complex examples
+Please see below.
 
 # How
-For each of services defined in `docker-compose.yaml`, we try to extract the information into 5 kinds of K8s object: PV, PVC, Service (ClusterIP and LoadBalancer), Ingress and Deployment.
+Golang template + Sprig is quite pleasure to work as a full-feature language.
 
 # Why
 Blog post https://linktohack.com/posts/evaluate-options-to-migrate-from-swarm-to-k8s/
 
 The same technique can be applied via a proper language instead of using a Helm template but why not standing on the shoulders of giant(s). By using Helm (the de facto package manager) we're having the ability to `namespace`d the stack, rollback and so on... for free.
-
-# Limitation
-- [X] Volume: Handle external/separated volumes
-- [X] Config: Handle external/separated configs (manually, Helm doesn't allow to import external file atm)
-- [X] Secret: Handle external/separated secrets (manually, Helm doesn't allow to import external file atm)
-- [X] Ingress: Handle comma, semicolon separated rule (multiple hosts, path...)
-- [X] Ingress: Handle segment labels for services that expose multiple ports
-- [X] Node: Handle placement constraints
-
-# Note on Ingress
-We currently support parsing `traefik` labels with three rules: `Host`, `PathPrefixStrip` and `AddPrefix`.
-If either `PathPrefixStrip` or `AddPrefix` is available in the label, the annotation class of the Ingress will be set to traefik.
-```
-    kubernetes.io/ingress.class: traefik
-```
-
-`port` and `backend` are supported.
-
-# Note on PV
-Both inlined and separated volumes are supported. Dynamic provisioner should work as expected, for static provisioner, `hostPath` and `nfs` are supported.
-
-# Note on node constraints
-The following rules are supported:
-- `node.role`
-- `node.hostname`
-- `node.labels`
 
 # Extra keys
 - Services
@@ -161,8 +104,15 @@ services:
   redmine:
     ClusterIP: {}
     NodePort: {}
-    LoadBalancer: {}
-    Ingress: {}
+    LoadBalancer:
+      tcp: {}
+      upd: {}
+    Ingress:
+      default: {}
+      seg: {}
+    Auth:
+      default: {}
+      seg: {}
     Deployment:
       spec:
         template:
@@ -179,7 +129,7 @@ volumes:
         persistentVolumeReclaimPolicy: Retain
     PVC:
       spec:
-        resouces:
+        resources:
           requests:
             storage: 10Gi
 configs:
@@ -190,9 +140,57 @@ configs:
 
 ```
 
+# Other works (may related)
+- [kompose](https://github.com/kubernetes/kompose)
+- [compose-on-kubernetes](https://github.com/docker/compose-on-kubernetes)
+
 # Contribution
 - Additional keys (e.g. `clusterIP.ports`) should always be set via `--set` or external `values.yaml` but we
 - Should have the JSON schema of `docker-compose` and additional keys
 
+# More samples
+## Redmine + MySQL
+```sh
+helm -n com-linktohack-redmine upgrade --install redmine /Users/qle/Downloads/sup/stack -f docker-compose-redmine.yaml -f docker-compose-redmine-override.yaml \
+    --set services.db.clusterIP.ports={3306:3306} \
+    --set services.db.ports={3306:3306} \
+    --set services.db.deploy.placement.constraints={node.role==manager} \
+    --set services.redmine.deploy.placement.constraints={node.role==manager} \
+    --set chdir=/stack --debug --dry-run
+```
+
+- `services.XXX.ports` will be exposed as `LoadBalancer` (if needed)
+- addtional key `services.XXX.clusterIP.ports` will be exposed as `ClusterIP` ports
+
+## Bitwarden
+```sh   
+helm -n com-linktohack-bitwarden upgrade --install bitwarden link/stack -f ./docker-compose-bitwarden.yaml
+```
+
+## OpenVPN
+```sh
+helm -n com-linktohack-ipsec upgrade --install ipsec link/stack -f docker-compose-openvpn.yaml \
+    --set volumes.config.driver_opts=null,volumes.config.storage=100Mi
+```
+
+## Via template
+```sh
+helm -n com-linktohack-redmine template redmine /Users/qle/Downloads/sup/stack -f docker-compose-redmine.yaml -f docker-compose-redmine-override.yaml \
+    --set services.db.clusterIP.ports={3306:3306} \
+    --set services.db.ports={3306:3306} \ 
+    --set services.db.deploy.placement.constraints={node.role==manager} \
+    --set services.redmine.deploy.placement.constraints={node.role==manager} \
+    --set chdir=/stack --debug > stack1.yaml
+kubectl -n com-linktohack-redmine apply -f stack1.yaml
+```
+
+```sh
+helm -n com-linktohack-ipsec template ipsec link/stack -f docker-compose-openvpn.yaml \
+    --set volumes.config.storage=1Gi \
+    --set volumes.config.driver_opt=null \
+    > stack2.yaml  
+kubectl -n com-linktohack-ipsec apply -f stack2.yaml
+
+```
 # License
 MIT
