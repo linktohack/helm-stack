@@ -115,7 +115,7 @@ The same technique can be applied via a proper language instead of using a Helm 
 - [X] Config: Handle external/separated configs (manually, Helm doesn't allow to import external file atm)
 - [X] Secret: Handle external/separated secrets (manually, Helm doesn't allow to import external file atm)
 - [X] Ingress: Handle comma, semicolon separated rule (multiple hosts, path...)
-- [ ] Ingress: Handle segment labels for services that expose multiple ports
+- [X] Ingress: Handle segment labels for services that expose multiple ports
 - [X] Node: Handle placement constraints
 
 # Note on Ingress
