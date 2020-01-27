@@ -148,7 +148,7 @@ configs:
 - Additional keys (e.g. `clusterIP.ports`) should always be set via `--set` or external `values.yaml` but we
 - Should have the JSON schema of `docker-compose` and additional keys
 
-# More samples
+# More examples
 ## Redmine + MySQL
 ```sh
 helm -n com-linktohack-redmine upgrade --install redmine /Users/qle/Downloads/sup/stack -f docker-compose-redmine.yaml -f docker-compose-redmine-override.yaml \
