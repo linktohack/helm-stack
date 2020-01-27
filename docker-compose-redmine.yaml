@@ -24,6 +24,7 @@ services:
       - default
       - web
     deploy:
+      replicas: 2
       placement:
         constraints:
           - node.role != master

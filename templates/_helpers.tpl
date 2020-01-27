@@ -61,3 +61,52 @@ Create the name of the service account to use
     {{ default "default" .Values.serviceAccount.name }}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Normalize k:v or k=v style. Useful for volumes and labels
+*/}}
+{{- define "stack.helpers.normalizeKV" -}}
+{{-   $dict := dict -}}
+{{-   $isList := eq (typeOf .) "[]interface {}" -}}
+{{-   range $name, $value := . -}}
+{{-     if $isList -}}
+{{-       $list := splitList "=" $value -}}
+{{-       $name = first $list -}}
+{{-       $value = join "=" (rest $list) -}}
+{{-     end -}}
+{{-     $_ := set $dict $name $value -}}
+{{-   end -}}
+{{ $dict | toYaml }}
+{{- end -}}
+
+{{/*
+Normalize ports:
+- port:target/UDP
+- port:target
+- port
+*/}}
+{{- define "stack.helpers.normalizePorts" -}}
+{{-   $tcp := list -}}
+{{-   $udp := list -}}
+{{-   range . -}}
+{{-     $list := splitList ":" . -}}
+{{-     $port := first $list -}}
+{{-     $targetPort := last $list -}}
+{{-     $protocol := "TCP" -}}
+{{-     if ne (len $list) 2 -}}
+{{-       $targetPort = $port -}}
+{{-     end -}}
+{{-     $maybeTargetWithProto := splitList "/" $targetPort -}}
+{{-     if eq (len $maybeTargetWithProto) 2 -}}
+{{-       $targetPort = first $maybeTargetWithProto -}}
+{{-       $protocol = upper (last $maybeTargetWithProto) -}}
+{{-     end -}}
+{{-     if eq $protocol "TCP" -}}
+{{-       $tcp = append $tcp (dict "protocol" $protocol "port" $port "targetPort" $targetPort) -}}
+{{-     end -}}
+{{-     if eq $protocol "UDP" -}}
+{{-       $udp = append $udp (dict "protocol" $protocol "port" $port "targetPort" $targetPort) -}}
+{{-     end -}}
+{{-   end -}}
+{{ dict "tcp" $tcp "udp" $udp "all" (concat $tcp $udp) | toYaml }}
+{{- end -}}

@@ -2,95 +2,100 @@
 {{- $Release := .Release -}}
 {{/* volumes */}}
 {{- range $volName, $volValue := include "stack.helpers.volumes" (dict "Values" $Values) | fromYaml -}}
-{{- if not (get $volValue "external") -}}
-{{- if not (get $volValue "dynamic") -}}
-{{- $pv := include "stack.pv" (dict "volName" $volName "volValue" $volValue "Values" $Values "Release" $Release) | fromYaml -}}
-{{- $override := pluck "volumes" $Values | first | default dict | pluck (get $volValue "originalName") | first | default dict | pluck "PV" | first | default dict }}
+{{/* volumes: pv */}}
+{{-   if not (get $volValue "external") -}}
+{{-     if not (get $volValue "dynamic") -}}
+{{-       $pv := include "stack.pv" (dict "volName" $volName "volValue" $volValue "Values" $Values "Release" $Release) | fromYaml -}}
+{{-       $override := $Values | pluck "volumes" | first | default dict | pluck (get $volValue "originalName") | first | default dict | pluck "PV" | first | default dict }}
 ---
 {{ $pv | merge $override | toYaml }}
-{{- end -}}
+{{-     end -}}
 {{/* volumes: pvc */}}
-{{- if ne (get $volValue "deploymentKind") "StatefulSet" -}}
-{{- $pvc := include "stack.pvc" (dict "volName" $volName "volValue" $volValue) | fromYaml -}}
-{{- $override := pluck "volumes" $Values | first | default dict | pluck (get $volValue "originalName") | first | default dict | pluck "PVC" | first | default dict }}
+{{-     if ne (get $volValue "deploymentKind") "StatefulSet" -}}
+{{-       $pvc := include "stack.pvc" (dict "volName" $volName "volValue" $volValue) | fromYaml -}}
+{{-       $override := $Values | pluck "volumes" | first | default dict | pluck (get $volValue "originalName") | first | default dict | pluck "PVC" | first | default dict }}
 ---
 {{ $pvc | merge $override | toYaml }}
+{{-     end -}}
+{{-   end -}}
 {{- end -}}
-{{- end -}}
-{{- end -}}
+{{/* volumes: end */}}
 {{/* configs */}}
 {{- range $volName, $volValue := include "stack.helpers.configs" (dict "Values" $Values) | fromYaml -}}
-{{- if not (get $volValue "external") -}}
-{{- $config := include "stack.configMap" (dict "volName" $volName "volValue" $volValue "Values" $Values "Release" $Release) | fromYaml -}}
-{{- $override := pluck "configs" $Values | first | default dict | pluck (get $volValue "originalName") | first | default dict | pluck "ConfigMap" | first | default dict }}
-{{- if $config }}
+{{-   if not (get $volValue "external") -}}
+{{-     $config := include "stack.configMap" (dict "volName" $volName "volValue" $volValue "Values" $Values "Release" $Release) | fromYaml -}}
+{{-     $override := $Values | pluck "configs" | first | default dict | pluck (get $volValue "originalName") | first | default dict | pluck "ConfigMap" | first | default dict }}
+{{-     if $config }}
 ---
 {{ $config | merge $override | toYaml }}
+{{-     end -}}
+{{-   end -}}
 {{- end -}}
-{{- end -}}
-{{- end -}}
+{{/* configs: end */}}
 {{/* secrets */}}
 {{- range $volName, $volValue := include "stack.helpers.secrets" (dict "Values" $Values) | fromYaml -}}
-{{- if not (get $volValue "external") -}}
-{{- $secret := include "stack.secret" (dict "volName" $volName "volValue" $volValue "Values" $Values "Release" $Release) | fromYaml -}}
-{{- $override := pluck "secrets" $Values | first | default dict | pluck (get $volValue "originalName") | first | default dict | pluck "Secret" | first | default dict }}
-{{- if $secret }}
+{{-   if not (get $volValue "external") -}}
+{{-     $secret := include "stack.secret" (dict "volName" $volName "volValue" $volValue "Values" $Values "Release" $Release) | fromYaml -}}
+{{-     $override := $Values | pluck "secrets" | first | default dict | pluck (get $volValue "originalName") | first | default dict | pluck "Secret" | first | default dict }}
+{{-     if $secret }}
 ---
 {{ $secret | merge $override | toYaml }}
+{{-     end -}}
+{{-   end -}}
 {{- end -}}
-{{- end -}}
-{{- end -}}
+{{/* secrets: end */}}
 {{/* services */}}
 {{- range $name, $service:= .Values.services }}
 {{/* services: clusterIP */}}
-{{- $clusterIP := include "stack.service.clusterIP" (dict "name" $name "service" $service "Values" $Values "Release" $Release) | fromYaml -}}
-{{- $override := pluck "services" $Values | first | default dict | pluck $name | first | default dict | pluck "ClusterIP" | first | default dict -}}
-{{- if $clusterIP }}
+{{-   $clusterIP := include "stack.service.clusterIP" (dict "name" $name "service" $service "Values" $Values "Release" $Release) | fromYaml -}}
+{{-   $override := $Values | pluck "services" | first | default dict | pluck $name | first | default dict | pluck "ClusterIP" | first | default dict -}}
+{{-   if $clusterIP }}
 ---
 {{ $clusterIP | merge $override | toYaml }}
-{{- end }}
+{{-   end }}
 {{/* services: nodePort */}}
-{{- $nodePort := include "stack.service.nodePort" (dict "name" $name "service" $service "Values" $Values "Release" $Release) | fromYaml -}}
-{{- $override := pluck "services" $Values | first | default dict | pluck $name | first | default dict | pluck "NodePort" | first | default dict -}}
-{{- if $nodePort }}
+{{-   $nodePort := include "stack.service.nodePort" (dict "name" $name "service" $service "Values" $Values "Release" $Release) | fromYaml -}}
+{{-   $override := $Values | pluck "services" | first | default dict | pluck $name | first | default dict | pluck "NodePort" | first | default dict -}}
+{{-   if $nodePort }}
 ---
 {{ $nodePort  | merge $override | toYaml }}
-{{- end }}
+{{-   end }}
 {{/* services: loadBalancer */}}
-{{- $ports := include "stack.helpers.normalizePorts" $service.ports | fromYaml -}}
-{{- range $protocol, $ports := pick $ports "tcp" "udp" -}}
-{{- if $ports }}
-{{- $loadBalancer := include "stack.service.loadBalancer" (dict "name" $name "protocol" $protocol "ports" $ports) | fromYaml -}}
-{{- $override := pluck "services" $Values | first | default dict | pluck $name | first | default dict | pluck "LoadBalancer" | first | default dict | pluck $protocol | first | default dict -}}
-{{- if $loadBalancer }}
+{{-   $ports := include "stack.helpers.normalizePorts" $service.ports | fromYaml -}}
+{{-   range $protocol, $ports := pick $ports "tcp" "udp" -}}
+{{-     if $ports }}
+{{-       $loadBalancer := include "stack.service.loadBalancer" (dict "name" $name "protocol" $protocol "ports" $ports) | fromYaml -}}
+{{-       $override := $Values | pluck "services" | first | default dict | pluck $name | first | default dict | pluck "LoadBalancer" | first | default dict | pluck $protocol | first | default dict -}}
+{{-       if $loadBalancer }}
 ---
 {{ $loadBalancer | merge $override | toYaml }}
-{{- end -}}
-{{- end -}}
-{{- end -}}
+{{-       end -}}
+{{-     end -}}
+{{-   end -}}
 {{/* services: ingress */}}
-{{- range $segment, $ingressValue := include "stack.helpers.ingress" (dict "name" $name "service" $service "Values" $Values "Release" $Release) | fromYaml -}}
-{{- if and (get $ingressValue "hosts") (get $ingressValue "port") -}}
-{{- $ingress := include "stack.ingress" (dict "name" $name "segment" $segment "ingress" $ingressValue) | fromYaml -}}
-{{- $override := pluck "services" $Values | first | default dict | pluck $name | first | default dict | pluck "Ingress" | first | default dict | pluck $segment | first | default dict }}
+{{-   range $segment, $ingressValue := include "stack.helpers.ingresses" (dict "name" $name "service" $service "Values" $Values "Release" $Release) | fromYaml -}}
+{{-     if and (get $ingressValue "hosts") (get $ingressValue "port") -}}
+{{-       $ingress := include "stack.ingress" (dict "name" $name "segment" $segment "ingress" $ingressValue) | fromYaml -}}
+{{-       $override := $Values | pluck "services" | first | default dict | pluck $name | first | default dict | pluck "Ingress" | first | default dict | pluck $segment | first | default dict }}
 ---
 {{ $ingress | merge $override | toYaml }}
-{{- end -}}
-{{- if get $ingressValue "auth" -}}
-{{- $ingress := include "stack.ingress.auth"  (dict "name" $name "segment" $segment "ingress" $ingressValue) | fromYaml -}}
-{{- $override := pluck "services" $Values | first | default dict | pluck $name | first | default dict | pluck "Auth" | first | default dict | pluck $segment | first | default dict}}
+{{-     end -}}
+{{-     if get $ingressValue "auth" -}}
+{{-       $auth := include "stack.ingress.auth"  (dict "name" $name "segment" $segment "ingress" $ingressValue) | fromYaml -}}
+{{-       $override := $Values | pluck "services" | first | default dict | pluck $name | first | default dict | pluck "Auth" | first | default dict | pluck $segment | first | default dict}}
 ---
-{{ $ingress | merge $override | toYaml }}
-{{- end -}}
-{{- end }}
+{{ $auth | merge $override | toYaml }}
+{{-     end -}}
+{{-   end }}
 {{/* services: deployment */}}
-{{- $deployment := include "stack.deployment" (dict "name" $name "service" $service "Values" $Values "Release" $Release) | fromYaml -}}
-{{- $kind := get $deployment "kind" -}}
-{{- $override := pluck "services" $Values | first | default dict | pluck $name | first | default dict | pluck $kind | first | default dict -}}
-{{- $src := pluck "spec" $override | first | default dict | pluck "template" | first | default dict | pluck "spec" | first | default dict | pluck "containers" | first | default list | first | default dict }}
-{{- $dst := pluck "spec" $deployment | first | pluck "template" | first | pluck "spec" | first | pluck "containers" | first | first -}}
-{{- $dst = merge $src $dst }}
-{{- $withContainers := (dict "spec" (dict "template" (dict "spec" (dict "containers" (list $dst))))) -}}
+{{-   $deployment := include "stack.deployment" (dict "name" $name "service" $service "Values" $Values "Release" $Release) | fromYaml -}}
+{{-   $kind := get $deployment "kind" -}}
+{{-   $override := $Values | pluck "services" | first | default dict | pluck $name | first | default dict | pluck $kind | first | default dict -}}
+{{-   $src := $override | pluck "spec" | first | default dict | pluck "template" | first | default dict | pluck "spec" | first | default dict | pluck "containers" | first | default list | first | default dict -}}
+{{-   $dst := $deployment | pluck "spec" | first | pluck "template" | first | pluck "spec" | first | pluck "containers" | first | first -}}
+{{-   $dst = merge $src $dst }}
+{{-   $withContainers := (dict "spec" (dict "template" (dict "spec" (dict "containers" (list $dst))))) }}
 ---
 {{ $deployment | merge $override | merge $withContainers | toYaml }}
 {{- end -}}
+{{/* services: end */}}

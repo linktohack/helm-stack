@@ -37,6 +37,18 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
+  name: redmine-files
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
   name: db
 spec:
   accessModes:
@@ -45,18 +57,6 @@ spec:
     requests:
       storage: 10Gi
   storageClassName: manual
----
-# Source: stack/templates/stack.yml
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: redmine-files
-spec:
-  accessModes:
-  - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
 ---
 # Source: stack/templates/stack.yml
 apiVersion: v1
@@ -74,21 +74,6 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: redmine
-spec:
-  ports:
-  - name: clusterip-3000
-    port: 3000
-    protocol: TCP
-    targetPort: 3000
-  selector:
-    service: redmine
-  type: ClusterIP
----
-# Source: stack/templates/stack.yml
-apiVersion: v1
-kind: Service
-metadata:
   name: db-loadbalancer-tcp
 spec:
   ports:
@@ -101,43 +86,19 @@ spec:
   type: LoadBalancer
 ---
 # Source: stack/templates/stack.yml
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: v1
+kind: Service
 metadata:
-  name: db
+  name: redmine
 spec:
+  ports:
+  - name: clusterip-3000
+    port: 3000
+    protocol: TCP
+    targetPort: 3000
   selector:
-    matchLabels:
-      service: db
-  template:
-    metadata:
-      labels:
-        service: db
-    spec:
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: node-role.kubernetes.io/master
-                operator: In
-                values:
-                - "true"
-      containers:
-      - env:
-        - name: MYSQL_DATABASE
-          value: redmine
-        - name: MYSQL_ROOT_PASSWORD
-          value: example
-        image: mysql:5.7
-        name: db
-        volumeMounts:
-        - mountPath: /var/lib/mysql
-          name: db
-      volumes:
-      - name: db
-        persistentVolumeClaim:
-          claimName: db
+    service: redmine
+  type: ClusterIP
 ---
 # Source: stack/templates/stack.yml
 apiVersion: apps/v1
@@ -145,6 +106,7 @@ kind: Deployment
 metadata:
   name: redmine
 spec:
+  replicas: 2
   selector:
     matchLabels:
       service: redmine
@@ -190,6 +152,61 @@ spec:
           claimName: redmine-files
 ---
 # Source: stack/templates/stack.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db
+spec:
+  selector:
+    matchLabels:
+      service: db
+  template:
+    metadata:
+      labels:
+        service: db
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-role.kubernetes.io/master
+                operator: In
+                values:
+                - "true"
+      containers:
+      - env:
+        - name: MYSQL_DATABASE
+          value: redmine
+        - name: MYSQL_ROOT_PASSWORD
+          value: example
+        image: mysql:5.7
+        name: db
+        volumeMounts:
+        - mountPath: /var/lib/mysql
+          name: db
+      volumes:
+      - name: db
+        persistentVolumeClaim:
+          claimName: db
+---
+# Source: stack/templates/stack.yml
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations: null
+  name: redmine-seg
+spec:
+  rules:
+  - host: seg.redmine.kube.linktohack.com
+    http:
+      paths:
+      - backend:
+          serviceName: redmine
+          servicePort: clusterip-3001
+        path: /
+---
+# Source: stack/templates/stack.yml
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
@@ -210,20 +227,4 @@ spec:
       - backend:
           serviceName: redmine
           servicePort: clusterip-3000
-        path: /
----
-# Source: stack/templates/stack.yml
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  annotations: null
-  name: redmine-seg
-spec:
-  rules:
-  - host: seg.redmine.kube.linktohack.com
-    http:
-      paths:
-      - backend:
-          serviceName: redmine
-          servicePort: clusterip-3001
         path: /
