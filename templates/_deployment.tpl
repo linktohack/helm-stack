@@ -28,7 +28,7 @@ Kind of the deployment
 {{-   $volumeClaimTemplates := dict -}}
 {{-   range $volIndex, $volValue := $service.volumes -}}
 {{-     $list := splitList ":" $volValue -}}
-{{-     $volName := first $list | replace "_" "-" -}}
+{{-     $volName := first $list -}}
 {{-     if hasPrefix "/" $volName -}}
 {{-       $_ := set $serviceVolumes (printf "%s-%d" $name $volIndex) (dict "volumeKind" "Volume" "hostPath" true "src" $volName "dst" (index $list 1)) -}}
 {{-     else if hasPrefix "./" $volName -}}
@@ -38,6 +38,7 @@ Kind of the deployment
 {{-       end -}}
 {{-       $_ := set $serviceVolumes (printf "%s-%d" $name $volIndex) (dict "volumeKind" "Volume" "hostPath" true "src" $src "dst" (index $list 1)) -}}
 {{-     else -}}
+{{-       $volName = $volName | replace "_" "-" -}}
 {{-       $curr := get $volumes $volName -}}
 {{-       $curr = merge $curr (dict "dst" (index $list 1)) -}}
 {{-       $_ := set $serviceVolumes $volName $curr -}}
