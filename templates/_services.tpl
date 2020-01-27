@@ -32,19 +32,17 @@ spec:
 {{-   $labels := $service | pluck "deploy" | first | default dict | pluck "labels" | first | default list -}}
 {{-   $port := "" -}}
 {{-   range $labelName, $labelValue := include "stack.helpers.normalizeKV" $labels | fromYaml -}}
-{{-     if eq $labelName "traefik.port" -}}
+{{-     if regexMatch "^traefik\\.(\\w+\\.)?port$" $labelName -}}
 {{-       $port = $labelValue -}}
-{{-     end -}}
-{{-   end -}}
-{{-   if $port -}}
-{{-     $existed := false -}}
-{{-     range $ports -}}
-{{-       if eq (get . "targetPort") $port -}}
-{{-         $existed = true -}}
+{{-       $existed := false -}}
+{{-       range $ports -}}
+{{-         if eq (get . "targetPort") $port -}}
+{{-           $existed = true -}}
+{{-         end -}}
 {{-       end -}}
-{{-     end -}}
-{{-     if not $existed -}}
-{{-       $ports = append $ports (dict "protocol" "TCP" "port" $port "targetPort" $port) -}}
+{{-       if not $existed -}}
+{{-         $ports = append $ports (dict "protocol" "TCP" "port" $port "targetPort" $port) -}}
+{{-       end -}}
 {{-     end -}}
 {{-   end -}}
 {{- if $ports -}}

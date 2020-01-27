@@ -13,7 +13,7 @@ All the ingresses
 {{-   $labels := $service | pluck "deploy" | first | default dict | pluck "labels" | first | default list -}}
 {{-   $segments := list -}}
 {{-   range $labelName, $labelValue := include "stack.helpers.normalizeKV" $labels | fromYaml -}}
-{{-     $match := regexFind "traefik\\.(\\w+\\.)?frontend\\.rule" $labelName -}}
+{{-     $match := regexFind "^traefik\\.(\\w+\\.)?frontend\\.rule$" $labelName -}}
 {{-     if $match -}}
 {{-       $segment := "" -}}
 {{-       $list := $match | splitList "." -}}
