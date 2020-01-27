@@ -60,8 +60,8 @@
 {{- $ports := include "stack.helpers.normalizePorts" $service.ports | fromYaml -}}
 {{- range $protocol, $ports := pick $ports "tcp" "udp" -}}
 {{- if $ports }}
-{{- $loadBalancer := include "stack.service.loadBalancer" (dict "name" $name "ports" $ports) | fromYaml -}}
-{{- $override := pluck "services" $Values | first | default dict | pluck $name | first | default dict | pluck "LoadBalancer" | first | default dict -}}
+{{- $loadBalancer := include "stack.service.loadBalancer" (dict "name" $name "protocol" $protocol "ports" $ports) | fromYaml -}}
+{{- $override := pluck "services" $Values | first | default dict | pluck $name | first | default dict | pluck "LoadBalancer" | first | default dict | pluck $protocol | first | default dict -}}
 {{- if $loadBalancer }}
 ---
 {{ $loadBalancer | merge $override | toYaml }}
@@ -72,13 +72,13 @@
 {{- range $segment, $ingressValue := include "stack.helpers.ingress" (dict "name" $name "service" $service "Values" $Values "Release" $Release) | fromYaml -}}
 {{- if and (get $ingressValue "hosts") (get $ingressValue "port") -}}
 {{- $ingress := include "stack.ingress" (dict "name" $name "segment" $segment "ingress" $ingressValue) | fromYaml -}}
-{{- $override := pluck "services" $Values | first | default dict | pluck $name | first | default dict | pluck "Ingress" | first | default dict }}
+{{- $override := pluck "services" $Values | first | default dict | pluck $name | first | default dict | pluck "Ingress" | first | default dict | pluck $segment | first | default dict }}
 ---
 {{ $ingress | merge $override | toYaml }}
 {{- end -}}
 {{- if get $ingressValue "auth" -}}
 {{- $ingress := include "stack.ingress.auth"  (dict "name" $name "segment" $segment "ingress" $ingressValue) | fromYaml -}}
-{{- $override := pluck "services" $Values | first | default dict | pluck $name | first | default dict | pluck "Auth" | first | default dict }}
+{{- $override := pluck "services" $Values | first | default dict | pluck $name | first | default dict | pluck "Auth" | first | default dict | pluck $segment | first | default dict}}
 ---
 {{ $ingress | merge $override | toYaml }}
 {{- end -}}

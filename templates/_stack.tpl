@@ -394,9 +394,6 @@ spec:
             {{- if or (eq (get $volValue "volumeKind") "ConfigMap") (eq (get $volValue "volumeKind") "Secret") }}
             - mountPath: {{ "target" | get $volValue | dir | quote }}
               name: {{ $volName | quote }}
-              {{- if "mode" | get $volValue }}
-              mode: {{ "mode" | get $volValue }}
-              {{- end }}
             {{- end -}}
             {{- end -}}
           {{- end }}

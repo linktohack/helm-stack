@@ -1,156 +1,229 @@
 ---
 # Source: stack/templates/stack.yml
 apiVersion: v1
-kind: Secret
-metadata:
-  name: redmine-basic-auth
-type: Opaque
 data:
   auth: YWRtaW46JGFwcjEkbnVwYVdaNlckZmwyWFFOYlo2ZmFOMnhwVFlaNzMvLw==
+kind: Secret
+metadata:
+  name: redmine-default-basic-auth
+type: Opaque
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
+data:
+  hello.yaml: there
+kind: ConfigMap
+metadata:
+  name: redmine-config
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: com-linktohack-redmine-db
+spec:
+  accessModes:
+  - ReadWriteOnce
+  capacity:
+    storage: 10Gi
+  claimRef:
+    name: db
+    namespace: com-linktohack-redmine
+  hostPath:
+    path: /path/to/db
+  persistentVolumeReclaimPolicy: Retain
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: db
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: manual
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redmine-files
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redmine-config
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
 ---
 # Source: stack/templates/stack.yml
 apiVersion: v1
 kind: Service
 metadata:
-  name: "redmine"
+  name: redmine
 spec:
-  type: ClusterIP
   ports:
-    - name: "clusterip-3000"
-      port: 3000
-      targetPort: 3000
+  - name: clusterip-3000
+    port: 3000
+    protocol: TCP
+    targetPort: 3000
   selector:
-    service: "redmine"
----
-# Source: stack/templates/stack.yml
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: "db"
-spec:
+    service: redmine
   type: ClusterIP
-  ports:
-    - name: "clusterip-3306"
-      port: 3306
-      targetPort: 3306
-  selector:
-    service: "db"
 ---
 # Source: stack/templates/stack.yml
----
 apiVersion: v1
 kind: Service
 metadata:
-  name: "db-loadbalancer-tcp"
+  name: db-loadbalancer-tcp
 spec:
+  ports:
+  - name: loadbalancer-3306
+    port: 3306
+    protocol: TCP
+    targetPort: 3306
+  selector:
+    service: db
   type: LoadBalancer
-  ports:
-    - name: "loadbalancer-3306-tcp"
-      protocol: "TCP"
-      port: 3306
-      targetPort: 3306
-  selector:
-    service: "db"
 ---
 # Source: stack/templates/stack.yml
 apiVersion: apps/v1
-kind: Deployment 
+kind: Deployment
 metadata:
-  name: "redmine"
+  name: db
 spec:
-  replicas: 1
   selector:
     matchLabels:
-      service: "redmine"
+      service: db
   template:
     metadata:
       labels:
-        service: "redmine"
+        service: db
     spec:
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
-              - matchExpressions: 
-                - key: node-role.kubernetes.io/master
-                  operator: In
-                  values:
-                  - "true"
+            - matchExpressions:
+              - key: node-role.kubernetes.io/master
+                operator: In
+                values:
+                - "true"
       containers:
-        - name: "redmine"
-          image: "redmine"
-          volumeMounts:
-            - mountPath: "/usr/src/redmine/config/configuration.yml"
-              name: "redmine-0"
-            - mountPath: "/usr/src/redmine/files"
-              name: "redmine-1"
-      
+      - env:
+        - name: MYSQL_DATABASE
+          value: redmine
+        - name: MYSQL_ROOT_PASSWORD
+          value: example
+        image: mysql:5.7
+        name: db
+        volumeMounts:
+        - mountPath: /var/lib/mysql
+          name: db
       volumes:
-        - name: "redmine-0"
-          hostPath:
-            path: "./config/configuration.yml"
-        - name: "redmine-1"
-          hostPath:
-            path: "./files"
+      - name: db
+        persistentVolumeClaim:
+          claimName: db
 ---
 # Source: stack/templates/stack.yml
----
 apiVersion: apps/v1
-kind: Deployment 
+kind: Deployment
 metadata:
-  name: "db"
+  name: redmine
 spec:
-  replicas: 1
   selector:
     matchLabels:
-      service: "db"
+      service: redmine
   template:
     metadata:
       labels:
-        service: "db"
+        service: redmine
     spec:
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
-              - matchExpressions: 
-                - key: node-role.kubernetes.io/master
-                  operator: In
-                  values:
-                  - "true"
+            - matchExpressions:
+              - key: node-role.kubernetes.io/master
+                operator: In
+                values:
+                - "true"
       containers:
-        - name: "db"
-          image: "mysql:5.7"
-          volumeMounts:
-            - mountPath: "/var/lib/mysql"
-              name: "db-0"
-      
+      - env:
+        - name: REDMINE_DB_MYSQL
+          value: db
+        - name: REDMINE_DB_PASSWORD
+          value: example
+        image: redmine
+        imagePullPolicy: Always
+        name: override-namexxx
+        volumeMounts:
+        - mountPath: /tpm
+          name: not-tested
+        - mountPath: /usr/src/redmine/config
+          name: redmine-config
+        - mountPath: /usr/src/redmine/files
+          name: redmine-files
       volumes:
-        - name: "db-0"
-          hostPath:
-            path: "/root/data/com-linktohack-redmine/mysql"
+      - name: not-tested
+        secret:
+          secretName: with-external-name
+      - configMap:
+          name: redmine-config
+        name: redmine-config
+      - name: redmine-files
+        persistentVolumeClaim:
+          claimName: redmine-files
 ---
 # Source: stack/templates/stack.yml
----
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
-  name: "redmine"
   annotations:
-    ingress.kubernetes.io/auth-type: basic
     ingress.kubernetes.io/auth-realm: traefik
-    ingress.kubernetes.io/auth-secret: "redmine-basic-auth"
-    kubernetes.io/ingress.class: traefik
-    ingress.kubernetes.io/custom-response-headers: "Access-Control-Allow-Origin:*"
+    ingress.kubernetes.io/auth-secret: redmine-basic-auth
+    ingress.kubernetes.io/auth-type: basic
+    ingress.kubernetes.io/custom-response-headers: Access-Control-Allow-Origin:*
     ingress.kubernetes.io/ssl-redirect: "true"
-    traefik.ingress.kubernetes.io/redirect-entry-point: "https"
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/redirect-entry-point: https
+  name: redmine-default
 spec:
   rules:
-    - host: "redmine.kube.linktohack.com"
-      http:
-        paths:
-          - path: "/"
-            backend:
-              serviceName: "redmine"
-              servicePort: "clusterip-3000"
+  - host: redmine.kube.linktohack.com
+    http:
+      paths:
+      - backend:
+          serviceName: redmine
+          servicePort: clusterip-3000
+        path: /
+---
+# Source: stack/templates/stack.yml
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations: null
+  name: redmine-seg
+spec:
+  rules:
+  - host: seg.redmine.kube.linktohack.com
+    http:
+      paths:
+      - backend:
+          serviceName: redmine
+          servicePort: clusterip-3001
+        path: /

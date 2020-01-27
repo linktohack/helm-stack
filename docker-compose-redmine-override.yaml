@@ -2,8 +2,15 @@ services:
   redmine:
     ClusterIP: {}
     NodePort: {}
-    LoadBalancer: {}
-    Ingress: {}
+    LoadBalancer:
+      tcp: {}
+      upd: {}
+    Ingress:
+      default: {}
+      seg: {}
+    Auth:
+      default: {}
+      seg: {}
     Deployment:
       spec:
         template:
@@ -20,7 +27,7 @@ volumes:
         persistentVolumeReclaimPolicy: Retain
     PVC:
       spec:
-        resouces:
+        resources:
           requests:
             storage: 10Gi
 configs:
@@ -28,8 +35,3 @@ configs:
     ConfigMap:
       data:
         hello.yaml: there
-secrets:
-  not_tested:
-    Secret:
-      stringData:
-        hello.yaml: there        

@@ -20,9 +20,9 @@ spec:
     name: "config"
   persistentVolumeReclaimPolicy: Delete
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   capacity:
-    storage: 10Gi
+    storage: "1Gi"
   nfs:
     server: "192.168.1.1"
     path: "/root/data/com-linktohack-openvpn3"
@@ -34,11 +34,11 @@ metadata:
   name: "config"
 spec:
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   storageClassName: "manual"
   resources:
     requests:
-      storage: "10Gi"
+      storage: "1Gi"
 ---
 # Source: stack/templates/stack.yml
 apiVersion: v1
@@ -48,30 +48,10 @@ metadata:
 spec:
   type: LoadBalancer
   ports:
-    - name: "loadbalancer-1194-udp"
+    - name: "loadbalancer-1194"
       protocol: "UDP"
       port: 1194
       targetPort: 1194
-  selector:
-    service: "openvpn-as"
----
-# Source: stack/templates/stack.yml
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: "openvpn-as-loadbalancer-tcp"
-spec:
-  type: LoadBalancer
-  ports:
-    - name: "loadbalancer-943-tcp"
-      protocol: "TCP"
-      port: 943
-      targetPort: 943
-    - name: "loadbalancer-9443-tcp"
-      protocol: "TCP"
-      port: 9443
-      targetPort: 9443
   selector:
     service: "openvpn-as"
 ---
@@ -84,6 +64,26 @@ spec:
   type: ClusterIP
   ports:
     - name: "clusterip-9443"
+      protocol: "TCP"
+      port: 9443
+      targetPort: 9443
+  selector:
+    service: "openvpn-as"
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
+kind: Service
+metadata:
+  name: "openvpn-as-loadbalancer-tcp"
+spec:
+  type: LoadBalancer
+  ports:
+    - name: "loadbalancer-943"
+      protocol: "TCP"
+      port: 943
+      targetPort: 943
+    - name: "loadbalancer-9443"
+      protocol: "TCP"
       port: 9443
       targetPort: 9443
   selector:
@@ -91,11 +91,10 @@ spec:
 ---
 # Source: stack/templates/stack.yml
 apiVersion: apps/v1
-kind: Deployment 
+kind: Deployment
 metadata:
   name: "openvpn-as"
 spec:
-  replicas: 1
   selector:
     matchLabels:
       service: "openvpn-as"
@@ -113,7 +112,7 @@ spec:
                   operator: In
                   values:
                   - "true"
-      imagePullSecrets: 
+      imagePullSecrets:
         - name: openvpn-as-basic-auth
       containers:
         - name: "openvpn-as"
@@ -122,10 +121,18 @@ spec:
             capabilities:
               add: 
                 - NET_ADMIN
+          env:
+            - name: "INTERFACE"
+              value: "eth0"
+            - name: "PGID"
+              value: "1000"
+            - name: "PUID"
+              value: "1000"
+            - name: "TZ"
+              value: "Europe/London"
           volumeMounts:
             - mountPath: "/config"
               name: "config"
-      
       volumes:
         - name: "config"
           persistentVolumeClaim:
@@ -168,3 +175,6 @@ spec:
             backend:
               serviceName: "openvpn-as"
               servicePort: "clusterip-9443"
+---
+# Source: stack/templates/stack.yml
+---
