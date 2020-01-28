@@ -5,10 +5,11 @@ All the ingresses
 {{-   $name := .name -}}
 {{-   $service := .service -}}
 {{-   $ingresses := dict -}}
-{{-   $h1 := dict "src" "traefik.frontend.headers.customRequestHeaders" "dst" "ingress.kubernetes.io/custom-request-headers" "val" "" -}}
-{{-   $h2 := dict "src" "traefik.frontend.headers.customResponseHeaders" "dst" "ingress.kubernetes.io/custom-response-headers" "val" "" -}}
-{{-   $h3 := dict "src" "traefik.frontend.headers.SSLRedirect" "dst" "ingress.kubernetes.io/ssl-redirect" "val" "" -}}
-{{-   $h4 := dict "src" "traefik.frontend.redirect.entryPoint" "dst" "traefik.ingress.kubernetes.io/redirect-entry-point" "val" "" -}}
+{{-   $h1 := dict "src" "traefik.frontend.headers.customRequestHeaders" "dst" "ingress.kubernetes.io/custom-request-headers" -}}
+{{-   $h2 := dict "src" "traefik.frontend.headers.customResponseHeaders" "dst" "ingress.kubernetes.io/custom-response-headers" -}}
+{{-   $h3 := dict "src" "traefik.frontend.headers.SSLRedirect" "dst" "ingress.kubernetes.io/ssl-redirect" -}}
+{{-   $h4 := dict "src" "traefik.frontend.redirect.entryPoint" "dst" "traefik.ingress.kubernetes.io/redirect-entry-point" -}}
+{{-   $h4 := dict "src" "traefik.frontend.auth.basic.removeHeader" "dst" "ingress.kubernetes.io/auth-remove-header" -}}
 {{-   $customHeadersDef := list $h1 $h2 $h3 $h4 -}}
 {{-   $labels := $service | pluck "deploy" | first | default dict | pluck "labels" | first | default list -}}
 {{-   $segments := list -}}
