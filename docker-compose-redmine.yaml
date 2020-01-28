@@ -8,14 +8,10 @@ services:
     configs:
       - source: redmine_config
         target: /usr/src/redmine/config/configuration.yml
-        uid: '103'
-        gid: '103'
         mode: 0444
     secrets:
-      - source: not_tested
-        target: /tpm/not_tested
-        uid: '103'
-        gid: '103'
+      - source: tested
+        target: /tpm/tested
         mode: 0444
     environment:
       REDMINE_DB_MYSQL: db
@@ -34,13 +30,13 @@ services:
           - node.labels.xxx == yyy
           - node.labels.zzz
       labels:
-        - 'traefik.frontend.rule=Host:redmine.kube.linktohack.com'
+        - 'traefik.frontend.rule=Host:REDACTED'
         - 'traefik.port=3000'
         - "traefik.frontend.headers.customResponseHeaders=Access-Control-Allow-Origin:*"
-        - "traefik.frontend.auth.basic.users=admin:$apr1$nupaWZ6W$fl2XQNbZ6faN2xpTYZ73//"
+        - "traefik.frontend.auth.basic.users=REDACTED"
         - "traefik.frontend.headers.SSLRedirect=true"
         - "traefik.frontend.redirect.entryPoint=https"
-        - 'traefik.seg.frontend.rule=Host:seg.redmine.kube.linktohack.com'
+        - 'traefik.seg.frontend.rule=Host:REDACTED'
         - 'traefik.seg.port=3001'
 
   db:
@@ -74,7 +70,7 @@ configs:
     file: ./config.yml
 
 secrets:
-  not_tested:
+  tested:
     external: true
     name: with_external_name
-    file: ./not_tested
+    file: ./tested

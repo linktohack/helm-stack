@@ -1,0 +1,65 @@
+services:
+  traefik:
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # - /path/to/traefik/traefik.toml:/traefik.toml
+      - /path/to/traefik/acme.json:/acme.json
+      # - /path/to/traefik/rules.toml:/rules.toml
+    configs:
+      - source: traefik_toml
+        target: /traefik.toml
+      - source: rules_toml
+        target: /rules.toml
+    Deployment:
+      spec:
+        template:
+          spec:
+            serviceAccountName: admin-user
+            terminationGracePeriodSeconds: 60
+
+configs:
+  traefik_toml:
+    file: ./traefik.toml
+    data: |-
+      debug = true
+      logLevel = "DEBUG"
+      insecureSkipVerify = true
+      defaultEntryPoints = ["http", "https"]
+
+      [entryPoints]
+        [entryPoints.http]
+        address = ":80"
+          [entryPoints.http.redirect]
+          entryPoint = "https"
+        [entryPoints.https]
+        address = ":443"
+        [entryPoints.https.tls]
+
+      [web]
+      [web.auth.basic]
+      users = ["REDACTED."]
+
+      [docker]
+        endpoint = "unix:///var/run/docker.sock"
+        domain = "docker.localhost"
+        watch = true
+        exposedByDefault = true
+        swarmMode = true
+        network = "web"
+
+      [kubernetes]
+
+      [file]
+        filename = "rules.toml"
+        watch = true
+
+      [acme]
+        email = "REDACTED"
+        storage = "acme.json"
+        entryPoint = "https"
+        onHostRule = true
+        [acme.httpChallenge]
+          entryPoint = "http"
+  rules_toml:
+    file: ./rules.toml
+    data: ""

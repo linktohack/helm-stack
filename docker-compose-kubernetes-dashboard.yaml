@@ -1,0 +1,47 @@
+version: '3'
+
+services:
+  kubernetes-dashboard:
+    image: kubernetesui/dashboard:v2.0.0-beta8
+    command:
+      - --auto-generate-certificates
+      - --namespace=kubernetes-dashboard
+      - --enable-skip-login
+    volumes:
+      - tmp-volume1:/tmp
+    secrets:
+      - source: kubernetes-dashboard-certs
+        target: /certs
+    deploy:
+      labels:
+        - 'traefik.frontend.rule=Host:REDACTED'
+        - 'traefik.port=8443'
+        - 'traefik.backend=https'
+        - 'traefik.frontend.auth.basic=REDACTED'
+        - 'traefik.frontend.auth.basic.removeHeader=true'
+    imagePullPolicy: Always
+    serviceAccountName: kubernetes-dashboard
+
+  dashboard-metrics-scraper:
+    image: kubernetesui/metrics-scraper:v1.0.1
+    volumes:
+      - tmp-volume2:/tmp
+    clusterIP:
+      ports:
+        - 8000:8000
+    serviceAccountName: kubernetes-dashboard
+
+volumes:
+  tmp-volume1:
+    driver_opts:
+      type: emptyDir
+  tmp-volume2:
+    driver_opts:
+      type: emptyDir
+
+secrets:
+  kubernetes-dashboard-certs:
+  kubernetes-dashboard-csrf:
+  
+configs:
+  kubernetes-dashboard-settings:

@@ -1,0 +1,27 @@
+version: '3'
+
+services:
+  traefik:
+    image: traefik:1.7
+    networks:
+      - web
+    ports:
+      - 80:80
+      - 443:443
+      - 8080:8080
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /home/link/dockers/traefik/traefik.toml:/traefik.toml
+      - /home/link/dockers/traefik/acme.json:/acme.json
+      - /home/link/dockers/traefik/rules.toml:/rules.toml
+    deploy:
+      placement:
+        constraints: [node.role == manager]
+      labels:
+        - "traefik.port=8080"
+        - "traefik.frontend.rule=Host:REDACTED"
+        - "traefik.frontend.auth.basic=REDACTED"
+
+networks:
+  web:
+    external: true
