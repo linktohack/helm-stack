@@ -128,10 +128,6 @@ spec:
             nodeSelectorTerms:
               - matchExpressions: {{ $affinities | toYaml | nindent 16 }}
       {{- end }}
-      {{- if $service.imagePullSecrets }}
-      imagePullSecrets:
-        - name: {{ $service.imagePullSecrets }}
-      {{- end }}
       {{- if $service.dns }}
       dnsPolicy: "None"
       dnsConfig:
@@ -140,9 +136,7 @@ spec:
       containers:
         - name: {{ $service.container_name | default $name | replace "_" "-" | quote }}
           image: {{ $service.image | quote }}
-          {{- if $service.imagePullPolicy }}
-          imagePullPolicy: {{ $service.imagePullPolicy }}
-          {{- end }}
+
           {{- if $service.entrypoint }}
           command: {{ $service.entrypoint | include "stack.helpers.normalizeCommand" | nindent 12 }}
           {{- end }}
@@ -190,6 +184,9 @@ spec:
             {{- end -}}
             {{- end -}}
           {{- end }}
+          {{- if $service.imagePullPolicy }}
+          imagePullPolicy: {{ $service.imagePullPolicy }}
+          {{- end }}
       {{- if and $serviceVolumes }}
       volumes:
         {{- range $volName, $volValue := $serviceVolumes -}}
@@ -220,6 +217,13 @@ spec:
         {{- end -}}
         {{- end -}}
       {{- end -}}
+      {{- if $service.imagePullSecrets }}
+      imagePullSecrets:
+        - name: {{ $service.imagePullSecrets }}
+      {{- end }}
+      {{- if $service.serviceAccountName }}
+      serviceAccountName: {{ $service.serviceAccountName }}
+      {{- end }}
   {{- if $volumeClaimTemplates }}
   volumeClaimTemplates:
     {{- range $volName, $volValue := $volumeClaimTemplates -}}

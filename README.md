@@ -87,14 +87,17 @@ The same technique can be applied via a proper language instead of using a Helm 
   - `services.XXX.kind` (string, overrides automatic kind detection: `Deployment`, `DaemonSet`, `StatefulSet`)
   - `services.XXX.imagePullSecrets` (string)
   - `services.XXX.imagePullPolicy` (string)
+  - `services.XXX.serviceAccountName` (string)
   - `services.XXX.clusterIP.ports` (array)
   - `services.XXX.nodePort.ports` (array, `services.XXX.ports` are for `LoadBalancer`)
 - Volumes
   - `volumes.XXX.storage` (string, default `1Gi`)
   - `volumes.XXX.subPath` (string)
 - Config
-  - `configs.XXX.data` (string)
+  - `config.XXX.file` (string | null, required by `swarm`, can be set to `null` to mount as directory)
+  - `config.XXX.data` (string)
 - Secret
+  - `secrets.XXX.file` (string | null, required by `swarm`, can be set to `null` to mount as directory)
   - `secrets.XXX.data` (string)
   - `secrets.XXX.stringData` (string)
 - Top levels
