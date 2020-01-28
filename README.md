@@ -1,15 +1,17 @@
 # What
 Deploy your `docker-compose` `stack` with Helm.
 
-See `./docker-compose-redmine.yaml` for a completed stack and `./stack1.yaml` for the generated manifest. External keys can be found in `./docker-compose-redmine-override.yaml`s.
+See `./docker-compose-redmine.yaml` for a completed stack and `./stack1.yaml` for the generated manifest. Extra keys can be found in `./docker-compose-redmine-override.yaml`s.
 
 # TL;DR
 ```sh
 helm repo add link https://linktohack.github.io/helm-stack/
 kubectl create namespace your-stack
 # docker stack deploy -c docker-compose.yaml your_stack
-helm -n your-stack upgrade --install your-stack link/stack -f docker-compose.yaml
+helm -n your-stack upgrade --install your-stack link/stack -f docker-compose.yaml --set services.XXX.expose={YYYY:YYYY}
 ```
+
+While the inter-container communication is enable in `swarm` either by `network` or `link`, in `k8s` you will need to expose the ports explicitly by `--set services.XXX.expose={YYYY:YYYY}`
 
 # Features
 The chart is still in its early days, but it is already quite complete and I was able to deploy complex stacks with it including `traefik` and `kubernetes-dashboard`. In all cases, there is a mechanism to override the output manifest with full possibilities of K8S API (see bellow.)
@@ -19,13 +21,18 @@ The chart is still in its early days, but it is already quite complete and I was
   - `node.role`
   - `node.hostname`
   - `node.labels`
-- [X] Service: `LoadBlancer` by default, easy to expose `ClusterIP` and `NodePort` via an extra key
+- [X] Service: `ports` expose `LoadBlancer` by default, extra keys to expose `ClusterIP` (`expose`) and `NodePort` (`nodePorts`)
 - [X] Ingress
-  - Support `traefik` labels as input with annotations. Advance features require `traefik` as Ingress controller
+  - Support `traefik` labels as input with annotations including basic auth
+  - Advance features require `traefik` as Ingress controller
   - Support segment labels for services that expose multiple ports
 - [X] Volume: Handle inline/external/separated volumes
   - Automatic switch to `volumeClaimTemplates` for `StatefulSet`.
   - Dynamic provisioner should work as expected, for static provisioner, `hostPath` and `nfs` are supported.
+  - Map `volumes.XXX.driver_opts.type` to `storageClassName` including
+    - `none`
+    - `nfs`
+    - `emptyDir`
 - [X] Config: Handle external/separated configs (manually, Helm doesn't allow to import external file at the moment)
 - [X] Secret: Handle external/separated secrets (manually, Helm doesn't allow to import external file at the moment)
 
@@ -88,8 +95,9 @@ The same technique can be applied via a proper language instead of using a Helm 
   - `services.XXX.imagePullSecrets` (string)
   - `services.XXX.imagePullPolicy` (string)
   - `services.XXX.serviceAccountName` (string)
-  - `services.XXX.clusterIP.ports` (array)
-  - `services.XXX.nodePort.ports` (array, `services.XXX.ports` are for `LoadBalancer`)
+  - `services.XXX.expose` (array, ports to be exposed for other service via `ClusterIP`)
+  - `services.XXX.ports` (array, ports to be exposed for other service via `LoadBalancer`)
+  - `services.XXX.nodePorts` ( ports to be exposed for other service via `NodePort`)
 - Volumes
   - `volumes.XXX.storage` (string, default `1Gi`)
   - `volumes.XXX.subPath` (string)
@@ -108,7 +116,7 @@ The properies of the manifests can be overridden (merged) with the values from `
 
 You will now to have full control of the output manifests. While this is a deep merge operation, apart from the `containers` properties bellow, you cannot set the value of an invidual item inside a list but have to replace the whole list instead.
 
-The full list of all the `Kind`s can be found in the example bellow, please note that `services.XXX.imagePullPolicy` and `volumes.XXX.storage` have already existed as extra keys
+The full list of all the `Kind`s can be found in the example bellow, please note that `services.XXX.imagePullPolicy`, `volumes.XXX.storage`, `configs.XXX.data` have are recognized as extra keys.
 
 ```yaml
 services:
@@ -129,7 +137,7 @@ services:
         template:
           spec:
             containers:
-              - name: override-namexxx
+              - name: override-name
                 imagePullPolicy: Always
 volumes:
   db:
@@ -156,14 +164,14 @@ configs:
 - [compose-on-kubernetes](https://github.com/docker/compose-on-kubernetes)
 
 # Contribution
-- Additional keys (e.g. `clusterIP.ports`) should always be set via `--set` or external `values.yaml` but we
+- Additional keys (e.g. `expose`) should always be set via `--set` or external `values.yaml` but we
 - Should have the JSON schema of `docker-compose` and additional keys
 
 # More examples
 ## Redmine + MySQL
 ```sh
 helm -n com-linktohack-redmine upgrade --install redmine /Users/qle/Downloads/sup/stack -f docker-compose-redmine.yaml -f docker-compose-redmine-override.yaml \
-    --set services.db.clusterIP.ports={3306:3306} \
+    --set services.db.expose={3306:3306} \
     --set services.db.ports={3306:3306} \
     --set services.db.deploy.placement.constraints={node.role==manager} \
     --set services.redmine.deploy.placement.constraints={node.role==manager} \
@@ -171,7 +179,7 @@ helm -n com-linktohack-redmine upgrade --install redmine /Users/qle/Downloads/su
 ```
 
 - `services.XXX.ports` will be exposed as `LoadBalancer` (if needed)
-- addtional key `services.XXX.clusterIP.ports` will be exposed as `ClusterIP` ports
+- addtional key `services.XXX.expose` will be exposed as `ClusterIP` ports
 
 ## Traefik ingress
 ```sh   
@@ -189,7 +197,7 @@ helm -n kubernetes-dashboard upgrade --install dashboard link/stack -f docker-co
 ## Via template
 ```sh
 helm -n com-linktohack-redmine template redmine /Users/qle/Downloads/sup/stack -f docker-compose-redmine.yaml -f docker-compose-redmine-override.yaml \
-    --set services.db.clusterIP.ports={3306:3306} \
+    --set services.db.expose={3306:3306} \
     --set services.db.ports={3306:3306} \ 
     --set services.db.deploy.placement.constraints={node.role==manager} \
     --set services.redmine.deploy.placement.constraints={node.role==manager} \

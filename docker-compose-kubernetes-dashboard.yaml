@@ -26,9 +26,8 @@ services:
     image: kubernetesui/metrics-scraper:v1.0.1
     volumes:
       - tmp-volume2:/tmp
-    clusterIP:
-      ports:
-        - 8000:8000
+    expose:
+      - 8000:8000
     serviceAccountName: kubernetes-dashboard
 
 volumes:

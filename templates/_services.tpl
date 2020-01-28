@@ -25,10 +25,7 @@ spec:
 {{- define "stack.service.clusterIP" -}}
 {{-   $name := .name -}}
 {{-   $service := .service -}}
-{{-   $ports := list -}}
-{{-   if $service.clusterIP -}}
-{{-     $ports = get (include "stack.helpers.normalizePorts" $service.clusterIP.ports | fromYaml) "all" -}}
-{{-   end -}}
+{{-   $ports := get (include "stack.helpers.normalizePorts" (get $service "expose" | default dict) | fromYaml) "all" -}}
 {{-   $labels := $service | pluck "deploy" | first | default dict | pluck "labels" | first | default list -}}
 {{-   $port := "" -}}
 {{-   range $labelName, $labelValue := include "stack.helpers.normalizeKV" $labels | fromYaml -}}
@@ -68,10 +65,7 @@ spec:
 {{- define "stack.service.nodePort" -}}
 {{-   $name := .name -}}
 {{-   $service := .service -}}
-{{-   $ports := list -}}
-{{-   if $service.nodePort -}}
-{{-     $ports = get (include "stack.helpers.normalizePorts" $service.nodePort.ports | fromYaml) "all" -}}
-{{-   end -}}
+{{-   $ports = get (include "stack.helpers.normalizePorts" (get $service "nodePorts" | default dict) | fromYaml) "all" -}}
 {{- if $ports -}}
 apiVersion: v1
 kind: Service
