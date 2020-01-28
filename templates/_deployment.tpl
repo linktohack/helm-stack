@@ -30,13 +30,13 @@ Kind of the deployment
 {{-     $list := splitList ":" $volValue -}}
 {{-     $volName := first $list -}}
 {{-     if hasPrefix "/" $volName -}}
-{{-       $_ := set $serviceVolumes (printf "%s-%d" $name $volIndex) (dict "volumeKind" "Volume" "hostPath" true "src" $volName "dst" (index $list 1)) -}}
+{{-       $_ := set $serviceVolumes (printf "volume-%d" $volIndex) (dict "volumeKind" "Volume" "type" "hostPath" "src" $volName "dst" (index $list 1)) -}}
 {{-     else if hasPrefix "./" $volName -}}
 {{-       $src := clean (printf "%s/%s" (default "." $Values.chdir) $volName) -}}
 {{-       if not (isAbs $src) -}}
 {{-         fail "volume path or chidir has to be absolute." -}}
 {{-       end -}}
-{{-       $_ := set $serviceVolumes (printf "%s-%d" $name $volIndex) (dict "volumeKind" "Volume" "hostPath" true "src" $src "dst" (index $list 1)) -}}
+{{-       $_ := set $serviceVolumes (printf "volume-%d" $volIndex) (dict "volumeKind" "Volume" "type" "hostPath" "src" $src "dst" (index $list 1)) -}}
 {{-     else -}}
 {{-       $volName = $volName | replace "_" "-" -}}
 {{-       $curr := get $volumes $volName -}}
@@ -193,9 +193,11 @@ spec:
         {{- range $volName, $volValue := $serviceVolumes -}}
         {{- if eq (get $volValue "volumeKind") "Volume" }}
         - name: {{ $volName | quote }}
-          {{- if get $volValue "hostPath" }}
+          {{- if get $volValue "type" | eq "hostPath" }}
           hostPath:
             path: {{ get $volValue "src" | quote }}
+          {{- else if get $volValue "type" | eq "emptyDir" }}
+          emptyDir: {}
           {{- else }}
           persistentVolumeClaim:
             claimName: {{ get $volValue "externalName" | quote }}

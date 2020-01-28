@@ -10,9 +10,12 @@ All the configs
 {{-     $volValue = default dict $volValue -}}
 {{-     $external := get $volValue "external" | default false -}}
 {{-     $externalName := get $volValue "name" | default $originalName | replace "_" "-" -}}
-{{-     $data := get $volValue "data" -}}
 {{-     $file := get $volValue "file" | default $externalName -}}
-{{-     $_ := set $configs $volName (dict "volumeKind" "ConfigMap" "file" $file "data" $data "originalName" $originalName "external" $external "externalName" $externalName) -}}
+{{-     $config := (dict "volumeKind" "ConfigMap" "file" $file "originalName" $originalName "external" $external "externalName" $externalName) -}}
+{{-     if hasKey $volValue "data" -}}
+{{-       $_ := set $config "data" (get $volValue "data") -}}
+{{-     end -}}
+{{-     $_ := set $configs $volName $config -}}
 {{-   end -}}
 {{ $configs | toYaml }}
 {{- end -}}
@@ -23,7 +26,6 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ .volName | quote }}
-{{- if get .volValue "data" }}  
-data: {{ (dict (get .volValue "file" | base) (get .volValue "data")) | toYaml | nindent 2}}
-{{- end -}}
+data:
+  {{ get .volValue "file" | base }}: {{ get .volValue "data" | quote }}
 {{- end -}}

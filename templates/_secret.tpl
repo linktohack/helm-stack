@@ -10,10 +10,15 @@ All the secrets
 {{-     $volValue = default dict $volValue -}}
 {{-     $external := get $volValue "external" | default false -}}
 {{-     $externalName := get $volValue "name" | default $originalName | replace "_" "-" -}}
-{{-     $data := get $volValue "data" -}}
-{{-     $stringData := get $volValue "stringData" -}}
 {{-     $file := get $volValue "file" | default $externalName -}}
-{{-     $_ := set $secrets $volName (dict "volumeKind" "Secret" "file" $file "data" $data "stringData" $stringData "originalName" $originalName "external" $external "externalName" $externalName) -}}
+{{-     $secret := (dict "volumeKind" "Secret" "file" $file "originalName" $originalName "external" $external "externalName" $externalName) -}}
+{{-     if hasKey $volValue "data" -}}
+{{-       $_ := set $secret "data" (get $volValue "data") -}}
+{{-     end -}}
+{{-     if hasKey $volValue "stringData" -}}
+{{-       $_ := set $secret "stringData" (get $volValue "stringData") -}}
+{{-     end -}}
+{{-     $_ := set $secrets $volName $secret -}}
 {{-   end -}}
 {{ $secrets | toYaml }}
 {{- end -}}
@@ -25,10 +30,14 @@ kind: Secret
 type: Opaque
 metadata:
   name: {{ .volName | quote }}
-{{- if get .volValue "data" }}  
-data: {{ (dict (get .volValue "file" | base) (get .volValue "data")) | toYaml | nindent 2}}
-{{- end }}
-{{- if get .volValue "stringData" }}  
-stringData: {{ (dict (get .volValue "file" | base) (get .volValue "stringData")) | toYaml | nindent 2}}
+{{- if hasKey .volValue "data" }}  
+data:
+  {{ get .volValue "file" | base }}: {{ get .volValue "data"| quote }}
+{{- else if hasKey .volValue "stringData" }}  
+stringData:
+  {{ get .volValue "file" | base }}: {{ get .volValue "stringData"| quote }}
+{{- else }}  
+data:
+  {{ get .volValue "file" | base }}: ""
 {{- end -}}
 {{- end -}}
