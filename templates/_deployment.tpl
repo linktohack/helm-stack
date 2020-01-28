@@ -184,7 +184,9 @@ spec:
             {{- if or (eq (get $volValue "volumeKind") "ConfigMap") (eq (get $volValue "volumeKind") "Secret") }}
             - mountPath: {{ get $volValue "target" | quote }}
               name: {{ $volName | quote }}
-              subPath: {{ get $volValue "file" | base | quote }}
+              {{- if get $volValue "file" }}
+              subPath: {{ get $volValue "file" | quote }}
+              {{- end }}
             {{- end -}}
             {{- end -}}
           {{- end }}

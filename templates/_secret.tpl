@@ -10,7 +10,7 @@ All the secrets
 {{-     $volValue = default dict $volValue -}}
 {{-     $external := get $volValue "external" | default false -}}
 {{-     $externalName := get $volValue "name" | default $originalName | replace "_" "-" -}}
-{{-     $file := get $volValue "file" | default $externalName -}}
+{{-     $file := get $volValue "file" -}}
 {{-     $secret := (dict "volumeKind" "Secret" "file" $file "originalName" $originalName "external" $external "externalName" $externalName) -}}
 {{-     if hasKey $volValue "data" -}}
 {{-       $_ := set $secret "data" (get $volValue "data") -}}
@@ -30,6 +30,7 @@ kind: Secret
 type: Opaque
 metadata:
   name: {{ .volName | quote }}
+{{- if get .volValue "file" -}}
 {{- if hasKey .volValue "data" }}  
 data:
   {{ get .volValue "file" | base }}: {{ get .volValue "data"| quote }}
@@ -39,5 +40,6 @@ stringData:
 {{- else }}  
 data:
   {{ get .volValue "file" | base }}: ""
+{{- end -}}
 {{- end -}}
 {{- end -}}
