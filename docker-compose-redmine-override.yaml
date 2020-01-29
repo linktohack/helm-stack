@@ -16,7 +16,7 @@ services:
         template:
           spec:
             containers:
-              - name: override-namexxx
+              - name: override-name
                 imagePullPolicy: Always
 volumes:
   db:
@@ -35,3 +35,7 @@ configs:
     ConfigMap:
       data:
         hello.yaml: there
+secrets:
+  tested:
+    Secret:
+      stringData: ""

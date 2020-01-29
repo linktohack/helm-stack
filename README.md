@@ -1,45 +1,54 @@
 # What
 Deploy your `docker-compose` `stack` with Helm.
 
-See `./docker-compose-redmine.yaml` for a completed stack and `./stack1.yaml` for the generated manifest. Extra keys can be found in `./docker-compose-redmine-override.yaml`s.
+If you ever ask yourself, what do this thousand lines of `k8s` manifest or that monstrous helm chart does behind the scene, this chart may be what you were waiting for so long.
+
+Please see `./docker-compose-redmine.yaml` for a sophisticated stack and compare it with the generated manifest `./stack1.yaml`.
 
 # TL;DR
 ```sh
 helm repo add link https://linktohack.github.io/helm-stack/
 kubectl create namespace your-stack
 # docker stack deploy -c docker-compose.yaml your_stack
-helm -n your-stack upgrade --install your-stack link/stack -f docker-compose.yaml --set services.XXX.expose={YYYY:YYYY}
+helm -n your-stack upgrade --install your-stack link/stack -f docker-compose.yaml --set services.XXX.expose={YYYY:YYYY,ZZZZ:ZZZZ}
 ```
 
-While the inter-container communication is enable in `swarm` either by `network` or `link`, in `k8s` you will need to expose the ports explicitly by `--set services.XXX.expose={YYYY:YYYY}`
+While the inter-container communication is enabled in `swarm` either by `network` or `link`, in `k8s` if you have more than one service and they need to communicate together, you will need to expose the ports explicitly by `--set services.XXX.expose={YYYY:YYYY,ZZZZ:ZZZZ}`
 
-# Features
-The chart is still in its early days, but it is already quite complete and I was able to deploy complex stacks with it including `traefik` and `kubernetes-dashboard`. In all cases, there is a mechanism to override the output manifest with full possibilities of K8S API (see bellow.)
+# Features (complete)
+The chart is quite features complete and I was able to deploy complex stacks with it including `traefik` and `kubernetes-dashboard`. In all cases, there is a mechanism to override the generated manifests with full possibilities of `k8s` API (see below.)
 
-- [X] Deployment: Automatically or manually: `Deployment`, `DaemonSet`, `StatefulSet`
-- [X] Node: Handle placement constraints
+- [X] Deployment: 
+  - Default to `Deployment`
+  - `DaemonSet` if `deploy.mode == global`
+  - `kind` can be set manually (e.g. `StatefulSet`)
+- [X] Node: Support placement constraints (`deploy.placement.constraints`) including:
   - `node.role`
   - `node.hostname`
-  - `node.labels`
-- [X] Service: `ports` expose `LoadBlancer` by default, extra keys to expose `ClusterIP` (`expose`) and `NodePort` (`nodePorts`)
+  - `node.labels` (`==`, `!=`, `has`)
+- [X] Service:
+  - `ports` expose `LoadBlancer` by default
+  - `expose` exposes `ClusterIP` services
+  - `nodePorts` expose `NodePort` services
 - [X] Ingress
-  - Support `traefik` labels as input with annotations including basic auth
-  - Advance features require `traefik` as Ingress controller
-  - Support segment labels for services that expose multiple ports
-- [X] Volume: Handle inline/external/separated volumes
-  - Automatic switch to `volumeClaimTemplates` for `StatefulSet`.
-  - Dynamic provisioner should work as expected, for static provisioner, `hostPath` and `nfs` are supported.
-  - Map `volumes.XXX.driver_opts.type` to `storageClassName` including
-    - `none`
+  - Support `traefik` (1.7) labels (`deploy.labels`) as input with annotations including basic auth
+  - Advanced features require `traefik` as Ingress controller
+  - Support `segment` labels for services that expose multiple ports
+- [X] Volume: Handle inline/separated/external volumes
+  - Automatic switch to `volumeClaimTemplates` for `StatefulSet` (really useful if combine with cloud provider's dynamic provisioner).
+  - Dynamic provisioner should work as expected `volumes.XXX.driver_opts.type` maps directly to `storageClassName` including treatments for
+    - `none` (default storage class)
     - `nfs`
     - `emptyDir`
-- [X] Config: Handle external/separated configs (manually, Helm doesn't allow to import external file at the moment)
-- [X] Secret: Handle external/separated secrets (manually, Helm doesn't allow to import external file at the moment)
-- [X] Healcheck: Both shell and exec form. For advace features /.e.g/ `httpGet`, please use full override bellow
+  - Support `none` (map to `hostPath`) and `nfs` (support `addr`, `device`) static provisioner. 
+- [X] Config: Handle separated/external configs (`data`)
+- [X] Secret: Handle separated/external secrets (`data` and `stringData`)
+- [X] Health check
+  - Support both `shell` and `exec` form. For advace features /.e.g/ `httpGet`, please use full override bellow
 
 # Example
 ## Dockersamples
-Tested in a K3s cluster with `local-path` provisioner
+Tested in a K3s cluster with `local-path` provisioner.
 
 ```sh
 ❯ helm -n com-linktohack-docker-on-compose upgrade --install sample link/stack -f docker-compose-dockersamples.yaml
@@ -83,41 +92,43 @@ replicaset.apps/words-6465f956d   5         5         5       2m4s
 Please see below.
 
 # How
-Golang template + Sprig is quite pleasure to work as a full-feature language.
+Golang template + Sprig are quite a pleasure to work as a full-feature language.
 
 # Why
 Blog post https://linktohack.com/posts/evaluate-options-to-migrate-from-swarm-to-k8s/
 
-The same technique can be applied via a proper language instead of using a Helm template but why not standing on the shoulders of giant(s). By using Helm (the de facto package manager) we're having the ability to `namespace`d the stack, rollback and so on... for free.
+The same technique can be applied via a proper language instead of using a Helm template but why not standing on the shoulders of giant(s). By using Helm (the de facto package manager) we're having the ability rollback and so on... for free.
 
 # Extra keys
+These keys are either not existed in `docker-compose` format or have the meaning changed. They're should be set via `--set` or second `values.yaml`.
+
 - Services
   - `services.XXX.kind` (string, overrides automatic kind detection: `Deployment`, `DaemonSet`, `StatefulSet`)
-  - `services.XXX.imagePullSecrets` (string)
+  - `services.XXX.imagePullSecrets` (string, name of the secret)
   - `services.XXX.imagePullPolicy` (string)
   - `services.XXX.serviceAccountName` (string)
-  - `services.XXX.expose` (array, ports to be exposed for other service via `ClusterIP`)
-  - `services.XXX.ports` (array, ports to be exposed for other service via `LoadBalancer`)
-  - `services.XXX.nodePorts` ( ports to be exposed for other service via `NodePort`)
+  - `services.XXX.expose` (array, ports to be exposed for other services via `ClusterIP`)
+  - `services.XXX.ports` (array, ports to be exposed via `LoadBalancer`)
+  - `services.XXX.nodePorts` ( ports to be exposed as `NodePort`)
 - Volumes
-  - `volumes.XXX.storage` (string, default `1Gi`)
+  - `volumes.XXX.storage` (string, default `1Gi` for dynamic provisioner)
   - `volumes.XXX.subPath` (string)
 - Config
-  - `config.XXX.file` (string | null, required by `swarm`, can be set to `null` to mount as directory)
+  - `config.XXX.file` (string | null, required by `swarm`, can be set to `null` to mount config as a directory)
   - `config.XXX.data` (string)
 - Secret
-  - `secrets.XXX.file` (string | null, required by `swarm`, can be set to `null` to mount as directory)
+  - `secrets.XXX.file` (string | null, required by `swarm`, can be set to `null` to mount secret as a directory)
   - `secrets.XXX.data` (string)
   - `secrets.XXX.stringData` (string)
 - Top levels
-  - `chdir` (string, required in case of relative path in volume)
+  - `chdir` (string, required in case of rusing relative paths in volumes)
 
 # Advance: Full override
-The properies of the manifests can be overridden (merged) with the values from `services.XXX.Kind` and `volumes.XXX.Kind`.
+The properties of the manifests can be overridden (merged) with the values from `services.XXX.Kind` and `volumes.XXX.Kind`...
 
-You will now to have full control of the output manifests. While this is a deep merge operation, apart from the `containers` properties bellow, you cannot set the value of an invidual item inside a list but have to replace the whole list instead.
+You will now have full control of the output manifests. While this is a deep merge operation, apart from the `containers` properties bellow, you cannot set the value of an individual item inside a list but have to replace the whole list instead.
 
-The full list of all the `Kind`s can be found in the example bellow, please note that `services.XXX.imagePullPolicy`, `volumes.XXX.storage`, `configs.XXX.data` have are recognized as extra keys.
+The full list of all the `Kind`s can be found in the listing below, please note that `services.XXX.imagePullPolicy`, `volumes.XXX.storage`, `configs.XXX.data` `secrets.XXX.stringData` are already recognized as extra keys.
 
 ```yaml
 services:
@@ -157,16 +168,19 @@ configs:
     ConfigMap:
       data:
         hello.yaml: there
-
+secrets:
+  tested:
+    Secret:
+      stringData: ""
 ```
 
-# Other works (may related)
+# Other works
 - [kompose](https://github.com/kubernetes/kompose)
 - [compose-on-kubernetes](https://github.com/docker/compose-on-kubernetes)
 
 # Contribution
-- Additional keys (e.g. `expose`) should always be set via `--set` or external `values.yaml` but we
-- Should have the JSON schema of `docker-compose` and additional keys
+- More `traefik` headers
+- JSON schema of `docker-compose` and extra keys
 
 # More examples
 ## Redmine + MySQL
@@ -180,7 +194,7 @@ helm -n com-linktohack-redmine upgrade --install redmine /Users/qle/Downloads/su
 ```
 
 - `services.XXX.ports` will be exposed as `LoadBalancer` (if needed)
-- addtional key `services.XXX.expose` will be exposed as `ClusterIP` ports
+- Additional key `services.XXX.expose` will be exposed as `ClusterIP` ports
 
 ## Traefik ingress
 ```sh   
