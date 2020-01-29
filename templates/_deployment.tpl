@@ -183,6 +183,20 @@ spec:
             {{- end -}}
             {{- end -}}
           {{- end }}
+          {{- if and $service.healthcheck ($service.healthcheck | pluck "test" | first) (not ($service.healthcheck | pluck "disabled" | first)) }}
+          livenessProbe:
+            exec:
+              command: {{ include "stack.helpers.normalizeHealthCheckCommand" $service.healthcheck.test | nindent 16 }}
+            {{- if $service.healthcheck.start_period }}
+            initialDelaySeconds: {{ include "stack.helpers.normalizeDuration" $service.healthcheck.start_period }}
+            {{- end }}
+            {{- if $service.healthcheck.timeout }}
+            periodSeconds: {{ include "stack.helpers.normalizeDuration" $service.healthcheck.timeout }}
+            {{- end }}
+            {{- if $service.healthcheck.retries }}
+            failureThreshold: {{ include "stack.helpers.normalizeDuration" $service.healthcheck.retries }}
+            {{- end }}
+          {{- end }}
           {{- if $service.imagePullPolicy }}
           imagePullPolicy: {{ $service.imagePullPolicy }}
           {{- end }}

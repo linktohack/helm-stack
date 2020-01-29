@@ -88,7 +88,7 @@ Normalize entrypoint
 {{-   if $entrypoint -}}
 {{-     $isList := eq (typeOf $entrypoint) "[]interface {}" -}}
 {{-     if not $isList -}}
-{{-       $list := splitList " " $entryPoint -}}
+{{-       $list := splitList " " $entrypoint -}}
 {{-       if eq (len $list) 1 -}}
 {{-         $entrypoint = $list -}}
 {{-       else -}}
@@ -116,6 +116,43 @@ Normalize command
 
 
 {{/*
+Normalize healthcheck test command
+*/}}
+{{- define "stack.helpers.normalizeHealthCheckCommand" -}}
+{{-   $command := . -}}
+{{-   if $command -}}
+{{-     $isList := eq (typeOf $command) "[]interface {}" -}}
+{{-     if not $isList -}}
+{{-       $command = list "/bin/sh" "-c" $command -}}
+{{-     else if index $command 0 | eq "CMD-SHELL" -}}
+{{-       $command = list "/bin/sh" "-c" (index $command 1) -}}
+{{-     else if index $command 0 | eq "CMD" -}}
+{{-       $command = without $command 0 -}}
+{{-     else -}}
+{{-       $command = list -}}
+{{-     end -}}
+{{-   end -}}
+{{ $command | toYaml }}
+{{- end -}}
+
+
+{{/*
+Normalize duration: 3h4m5s7ms8us
+*/}}
+{{- define "stack.helpers.normalizeDuration" -}}
+{{-   $values := regexFindAll "[0-9]+" . -}}
+{{-   $units := regexFindAll "(h|m|s|ms|us)" . -}}
+{{-   $bases := dict "h" 3600 "m" 60 "s" 1 "ms" 0 "us" 0 -}}
+{{-   $duration = 0 -}}
+{{-   range $index, $val := $values -}}
+{{-     $unit := index $units $index -}}
+{{-     $duration = $val | int64 | mul (get $bases $unit | default 0) | add $duration -}}
+{{-   end -}}
+{{ $duration }}
+{{- end -}}
+
+
+{{/*
 Normalize ports:
 - port:target/UDP
 - port:target
@@ -129,9 +166,6 @@ Normalize ports:
 {{-     $port := first $list -}}
 {{-     $targetPort := last $list -}}
 {{-     $protocol := "TCP" -}}
-{{-     if ne (len $list) 2 -}}
-{{-       $targetPort = $port -}}
-{{-     end -}}
 {{-     $maybeTargetWithProto := splitList "/" $targetPort -}}
 {{-     if eq (len $maybeTargetWithProto) 2 -}}
 {{-       $targetPort = first $maybeTargetWithProto -}}
@@ -144,5 +178,5 @@ Normalize ports:
 {{-       $udp = append $udp (dict "protocol" $protocol "port" $port "targetPort" $targetPort) -}}
 {{-     end -}}
 {{-   end -}}
-{{ dict "tcp" $tcp "udp" $udp "all" (concat $tcp $udp) | toYaml }}
+{{ dict "tcp" $tcp "udp" $udp "all" (concat $tcp $udp | default list) | toYaml }}
 {{- end -}}

@@ -38,6 +38,7 @@ services:
         - "traefik.frontend.redirect.entryPoint=https"
         - 'traefik.seg.frontend.rule=Host:REDACTED'
         - 'traefik.seg.port=3001'
+    healthcheck:
 
   db:
     image: mysql:5.7
