@@ -81,13 +81,35 @@ Normalize k:v or k=v style. Useful for volumes and labels
 
 
 {{/*
-Normalize command and entrypoint
+Normalize entrypoint
+*/}}
+{{- define "stack.helpers.normalizeEntrypoint" -}}
+{{-   $entrypoint := . -}}
+{{-   if $entrypoint -}}
+{{-     $isList := eq (typeOf $entrypoint) "[]interface {}" -}}
+{{-     if not $isList -}}
+{{-       $list := splitList " " $entryPoint -}}
+{{-       if eq (len $list) 1 -}}
+{{-         $entrypoint = $list -}}
+{{-       else -}}
+{{-         $entrypoint = list "/bin/sh" "-c" $entrypoint -}}
+{{-       end -}}
+{{-     end -}}
+{{-   end -}}
+{{ $entrypoint | toYaml }}
+{{- end -}}
+
+
+{{/*
+Normalize command
 */}}
 {{- define "stack.helpers.normalizeCommand" -}}
 {{-   $command := . -}}
-{{-   $isList := eq (typeOf $command) "[]interface {}" -}}
-{{-   if not $isList -}}
-{{-     $command = splitList " " $command -}}
+{{-   if $command -}}
+{{-     $isList := eq (typeOf $command) "[]interface {}" -}}
+{{-     if not $isList -}}
+{{-       $command = list $command -}}
+{{-     end -}}
 {{-   end -}}
 {{ $command | toYaml }}
 {{- end -}}

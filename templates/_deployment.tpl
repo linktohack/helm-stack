@@ -136,9 +136,8 @@ spec:
       containers:
         - name: {{ $service.container_name | default $name | replace "_" "-" | quote }}
           image: {{ $service.image | quote }}
-
           {{- if $service.entrypoint }}
-          command: {{ $service.entrypoint | include "stack.helpers.normalizeCommand" | nindent 12 }}
+          command: {{ $service.entrypoint | include "stack.helpers.normalizeEntrypoint" | nindent 12 }}
           {{- end }}
           {{- if $service.command }}
           args: {{ $service.command | include "stack.helpers.normalizeCommand" | nindent 12 }}
