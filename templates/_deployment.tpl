@@ -199,7 +199,7 @@ spec:
             timeoutSeconds: {{ include "stack.helpers.normalizeDuration" $service.healthcheck.timeout }}
             {{- end }}
             {{- if $service.healthcheck.retries }}
-            failureThreshold: {{ include "stack.helpers.normalizeDuration" $service.healthcheck.retries }}
+            failureThreshold: {{ $service.healthcheck.retries }}
             {{- end }}
           {{- end }}
           {{- end }}
