@@ -124,60 +124,6 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: redmine
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      service: redmine
-  template:
-    metadata:
-      labels:
-        service: redmine
-    spec:
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: node-role.kubernetes.io/master
-                operator: In
-                values:
-                - "true"
-      containers:
-      - env:
-        - name: REDMINE_DB_MYSQL
-          value: db
-        - name: REDMINE_DB_PASSWORD
-          value: example
-        image: redmine
-        imagePullPolicy: Always
-        name: override-namexxx
-        volumeMounts:
-        - mountPath: /usr/src/redmine/config/configuration.yml
-          name: redmine-config
-          subPath: ./config.yml
-        - mountPath: /usr/src/redmine/files
-          name: redmine-files
-        - mountPath: /tpm/tested
-          name: tested
-          subPath: ./tested
-      volumes:
-      - configMap:
-          defaultMode: 292
-          name: redmine-config
-        name: redmine-config
-      - name: redmine-files
-        persistentVolumeClaim:
-          claimName: redmine-files
-      - name: tested
-        secret:
-          secretName: with-external-name
----
-# Source: stack/templates/stack.yml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
   name: db
 spec:
   selector:
@@ -212,6 +158,69 @@ spec:
       - name: db
         persistentVolumeClaim:
           claimName: db
+---
+# Source: stack/templates/stack.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redmine
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      service: redmine
+  template:
+    metadata:
+      labels:
+        service: redmine
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-role.kubernetes.io/master
+                operator: In
+                values:
+                - "true"
+      containers:
+      - env:
+        - name: REDMINE_DB_MYSQL
+          value: db
+        - name: REDMINE_DB_PASSWORD
+          value: example
+        image: redmine
+        imagePullPolicy: Always
+        livenessProbe:
+          exec:
+            command:
+            - curl
+            - -f
+            - localhost:3000
+          initialDelaySeconds: 90
+          periodSeconds: 30
+          timeoutSeconds: 2
+        name: override-namexxx
+        volumeMounts:
+        - mountPath: /usr/src/redmine/config/configuration.yml
+          name: redmine-config
+          subPath: ./config.yml
+        - mountPath: /usr/src/redmine/files
+          name: redmine-files
+        - mountPath: /tpm/tested
+          name: tested
+          subPath: ./tested
+      volumes:
+      - configMap:
+          defaultMode: 292
+          name: redmine-config
+        name: redmine-config
+      - name: redmine-files
+        persistentVolumeClaim:
+          claimName: redmine-files
+      - name: tested
+        secret:
+          secretName: with-external-name
 ---
 # Source: stack/templates/stack.yml
 apiVersion: extensions/v1beta1

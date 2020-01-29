@@ -127,7 +127,7 @@ Normalize healthcheck test command
 {{-     else if index $command 0 | eq "CMD-SHELL" -}}
 {{-       $command = list "/bin/sh" "-c" (index $command 1) -}}
 {{-     else if index $command 0 | eq "CMD" -}}
-{{-       $command = without $command 0 -}}
+{{-       $command = slice $command 1 -}}
 {{-     else -}}
 {{-       $command = list -}}
 {{-     end -}}
@@ -140,10 +140,10 @@ Normalize healthcheck test command
 Normalize duration: 3h4m5s7ms8us
 */}}
 {{- define "stack.helpers.normalizeDuration" -}}
-{{-   $values := regexFindAll "[0-9]+" . -}}
-{{-   $units := regexFindAll "(h|m|s|ms|us)" . -}}
+{{-   $values := regexFindAll "[0-9]+" . -1 -}}
+{{-   $units := regexFindAll "(h|m|s|ms|us)" . -1 -}}
 {{-   $bases := dict "h" 3600 "m" 60 "s" 1 "ms" 0 "us" 0 -}}
-{{-   $duration = 0 -}}
+{{-   $duration := 0 -}}
 {{-   range $index, $val := $values -}}
 {{-     $unit := index $units $index -}}
 {{-     $duration = $val | int64 | mul (get $bases $unit | default 0) | add $duration -}}

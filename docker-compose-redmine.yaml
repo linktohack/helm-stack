@@ -39,7 +39,15 @@ services:
         - 'traefik.seg.frontend.rule=Host:REDACTED'
         - 'traefik.seg.port=3001'
     healthcheck:
-
+      disabled: false
+      test:
+        - CMD
+        - curl
+        - -f
+        - localhost:3000
+      start_period: 1m30s
+      interval: 30s
+      timeout: 2s
   db:
     image: mysql:5.7
     volumes:

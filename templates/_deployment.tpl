@@ -183,19 +183,25 @@ spec:
             {{- end -}}
             {{- end -}}
           {{- end }}
-          {{- if and $service.healthcheck ($service.healthcheck | pluck "test" | first) (not ($service.healthcheck | pluck "disabled" | first)) }}
+          {{- if and $service.healthcheck ($service.healthcheck | pluck "test" | first) (not ($service.healthcheck | pluck "disabled" | first)) -}}
+          {{ $healthCheckCommand := include "stack.helpers.normalizeHealthCheckCommand" $service.healthcheck.test | fromYaml -}}
+          {{- if $healthCheckCommand }}
           livenessProbe:
             exec:
               command: {{ include "stack.helpers.normalizeHealthCheckCommand" $service.healthcheck.test | nindent 16 }}
             {{- if $service.healthcheck.start_period }}
             initialDelaySeconds: {{ include "stack.helpers.normalizeDuration" $service.healthcheck.start_period }}
             {{- end }}
+            {{- if $service.healthcheck.interval }}
+            periodSeconds: {{ include "stack.helpers.normalizeDuration" $service.healthcheck.interval }}
+            {{- end }}
             {{- if $service.healthcheck.timeout }}
-            periodSeconds: {{ include "stack.helpers.normalizeDuration" $service.healthcheck.timeout }}
+            timeoutSeconds: {{ include "stack.helpers.normalizeDuration" $service.healthcheck.timeout }}
             {{- end }}
             {{- if $service.healthcheck.retries }}
             failureThreshold: {{ include "stack.helpers.normalizeDuration" $service.healthcheck.retries }}
             {{- end }}
+          {{- end }}
           {{- end }}
           {{- if $service.imagePullPolicy }}
           imagePullPolicy: {{ $service.imagePullPolicy }}
