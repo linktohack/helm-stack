@@ -35,6 +35,7 @@ The chart is still in its early days, but it is already quite complete and I was
     - `emptyDir`
 - [X] Config: Handle external/separated configs (manually, Helm doesn't allow to import external file at the moment)
 - [X] Secret: Handle external/separated secrets (manually, Helm doesn't allow to import external file at the moment)
+- [X] Healcheck: Both shell and exec form. For advace features /.e.g/ `httpGet`, please use full override bellow
 
 # Example
 ## Dockersamples

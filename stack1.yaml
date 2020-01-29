@@ -75,6 +75,21 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  name: db
+spec:
+  ports:
+  - name: tcp-3306
+    port: 3306
+    protocol: TCP
+    targetPort: 3306
+  selector:
+    service: db
+  type: ClusterIP
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
+kind: Service
+metadata:
   name: redmine
 spec:
   ports:
@@ -94,21 +109,6 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: db
-spec:
-  ports:
-  - name: tcp-3306
-    port: 3306
-    protocol: TCP
-    targetPort: 3306
-  selector:
-    service: db
-  type: ClusterIP
----
-# Source: stack/templates/stack.yml
-apiVersion: v1
-kind: Service
-metadata:
   name: db-loadbalancer-tcp
 spec:
   ports:
@@ -119,45 +119,6 @@ spec:
   selector:
     service: db
   type: LoadBalancer
----
-# Source: stack/templates/stack.yml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: db
-spec:
-  selector:
-    matchLabels:
-      service: db
-  template:
-    metadata:
-      labels:
-        service: db
-    spec:
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: node-role.kubernetes.io/master
-                operator: In
-                values:
-                - "true"
-      containers:
-      - env:
-        - name: MYSQL_DATABASE
-          value: redmine
-        - name: MYSQL_ROOT_PASSWORD
-          value: example
-        image: mysql:5.7
-        name: db
-        volumeMounts:
-        - mountPath: /var/lib/mysql
-          name: db
-      volumes:
-      - name: db
-        persistentVolumeClaim:
-          claimName: db
 ---
 # Source: stack/templates/stack.yml
 apiVersion: apps/v1
@@ -221,6 +182,45 @@ spec:
       - name: tested
         secret:
           secretName: with-external-name
+---
+# Source: stack/templates/stack.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db
+spec:
+  selector:
+    matchLabels:
+      service: db
+  template:
+    metadata:
+      labels:
+        service: db
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-role.kubernetes.io/master
+                operator: In
+                values:
+                - "true"
+      containers:
+      - env:
+        - name: MYSQL_DATABASE
+          value: redmine
+        - name: MYSQL_ROOT_PASSWORD
+          value: example
+        image: mysql:5.7
+        name: db
+        volumeMounts:
+        - mountPath: /var/lib/mysql
+          name: db
+      volumes:
+      - name: db
+        persistentVolumeClaim:
+          claimName: db
 ---
 # Source: stack/templates/stack.yml
 apiVersion: extensions/v1beta1
