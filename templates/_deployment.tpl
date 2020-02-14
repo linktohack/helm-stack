@@ -139,6 +139,9 @@ spec:
           {{- if $service.entrypoint }}
           command: {{ $service.entrypoint | include "stack.helpers.normalizeEntrypoint" | nindent 12 }}
           {{- end }}
+          {{- if $service.hostname }}
+          hostname: {{ $service.hostname | quote }}
+          {{- end }}
           {{- if $service.command }}
           args: {{ $service.command | include "stack.helpers.normalizeCommand" | nindent 12 }}
           {{- end }}
