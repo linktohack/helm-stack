@@ -48,16 +48,26 @@ Kind of the deployment
 {{-     end -}}
 {{-   end -}}
 {{-   range $volValue := $service.configs -}}
+{{-     if (typeOf $volValue) | ne "string" -}}
 {{-       $volName := get $volValue "source" | replace "_" "-" -}}
 {{-       $curr := get $configs $volName | deepCopy -}}
 {{-       $curr = merge $curr $volValue -}}
 {{-       $_ := set $serviceVolumes $volName $curr -}}
+{{-     else -}}
+{{-       $volName := $volValue | replace "_" "-" -}}
+{{-       $_ := set $serviceVolumes $volName (get $configs $volName) -}}
+{{-     end -}}
 {{-   end -}}
 {{-   range $volValue := $service.secrets -}}
+{{-     if (typeOf $volValue) | ne "string" -}}
 {{-       $volName := get $volValue "source" | replace "_" "-" -}}
 {{-       $curr := get $secrets $volName | deepCopy -}}
 {{-       $curr = merge $curr $volValue -}}
 {{-       $_ := set $serviceVolumes $volName $curr -}}
+{{-     else -}}
+{{-       $volName := $volValue | replace "_" "-" -}}
+{{-       $_ := set $serviceVolumes $volName (get $secrets $volName) -}}
+{{-     end -}}
 {{-   end -}}
 {{-   $affinities := list -}}
 {{-   $constraints := . | pluck "service" | first | default dict | pluck "deploy" | first | default dict | pluck "placement" | first | default dict | pluck "constraints" | first | default list -}}
@@ -177,8 +187,15 @@ spec:
               subPath: {{ get $volValue "subPath" | quote }}
               {{- end }}
             {{- end -}}
-            {{- if or (eq (get $volValue "volumeKind") "ConfigMap") (eq (get $volValue "volumeKind") "Secret") }}
-            - mountPath: {{ get $volValue "target" | quote }}
+            {{- if eq (get $volValue "volumeKind") "ConfigMap" }}
+            - mountPath: {{ get $volValue "target" | default (printf "/%s" (get $volValue "originalName")) | quote }}
+              name: {{ $volName | quote }}
+              {{- if get $volValue "file" }}
+              subPath: {{ get $volValue "file" | quote }}
+              {{- end }}
+            {{- end -}}
+            {{- if eq (get $volValue "volumeKind") "Secret" }}
+            - mountPath: {{ get $volValue "target" | default (printf "/run/secrets/%s" (get $volValue "originalName")) | quote }}
               name: {{ $volName | quote }}
               {{- if get $volValue "file" }}
               subPath: {{ get $volValue "file" | quote }}
