@@ -38,6 +38,18 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
+  name: redmine-config
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
   name: db
 spec:
   accessModes:
@@ -46,18 +58,6 @@ spec:
     requests:
       storage: 10Gi
   storageClassName: manual
----
-# Source: stack/templates/stack.yml
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: redmine-config
-spec:
-  accessModes:
-  - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
 ---
 # Source: stack/templates/stack.yml
 apiVersion: v1
@@ -124,45 +124,6 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: db
-spec:
-  selector:
-    matchLabels:
-      service: db
-  template:
-    metadata:
-      labels:
-        service: db
-    spec:
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-            - matchExpressions:
-              - key: node-role.kubernetes.io/master
-                operator: In
-                values:
-                - "true"
-      containers:
-      - env:
-        - name: MYSQL_DATABASE
-          value: redmine
-        - name: MYSQL_ROOT_PASSWORD
-          value: example
-        image: mysql:5.7
-        name: db
-        volumeMounts:
-        - mountPath: /var/lib/mysql
-          name: db
-      volumes:
-      - name: db
-        persistentVolumeClaim:
-          claimName: db
----
-# Source: stack/templates/stack.yml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
   name: redmine
 spec:
   replicas: 2
@@ -207,7 +168,7 @@ spec:
           subPath: ./config.yml
         - mountPath: /usr/src/redmine/files
           name: redmine-files
-        - mountPath: /tpm/tested
+        - mountPath: /run/secrets/tested
           name: tested
           subPath: ./tested
       volumes:
@@ -221,6 +182,61 @@ spec:
       - name: tested
         secret:
           secretName: with-external-name
+---
+# Source: stack/templates/stack.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db
+spec:
+  selector:
+    matchLabels:
+      service: db
+  template:
+    metadata:
+      labels:
+        service: db
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-role.kubernetes.io/master
+                operator: In
+                values:
+                - "true"
+      containers:
+      - env:
+        - name: MYSQL_DATABASE
+          value: redmine
+        - name: MYSQL_ROOT_PASSWORD
+          value: example
+        image: mysql:5.7
+        name: db
+        volumeMounts:
+        - mountPath: /var/lib/mysql
+          name: db
+      volumes:
+      - name: db
+        persistentVolumeClaim:
+          claimName: db
+---
+# Source: stack/templates/stack.yml
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations: null
+  name: redmine-seg
+spec:
+  rules:
+  - host: REDACTED
+    http:
+      paths:
+      - backend:
+          serviceName: redmine
+          servicePort: tcp-3001
+        path: /
 ---
 # Source: stack/templates/stack.yml
 apiVersion: extensions/v1beta1
@@ -242,20 +258,4 @@ spec:
       - backend:
           serviceName: redmine
           servicePort: tcp-3000
-        path: /
----
-# Source: stack/templates/stack.yml
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  annotations: null
-  name: redmine-seg
-spec:
-  rules:
-  - host: REDACTED
-    http:
-      paths:
-      - backend:
-          serviceName: redmine
-          servicePort: tcp-3001
         path: /

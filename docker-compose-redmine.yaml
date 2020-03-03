@@ -10,9 +10,7 @@ services:
         target: /usr/src/redmine/config/configuration.yml
         mode: 0444
     secrets:
-      - source: tested
-        target: /tpm/tested
-        mode: 0444
+      - tested
     environment:
       REDMINE_DB_MYSQL: db
       REDMINE_DB_PASSWORD: example

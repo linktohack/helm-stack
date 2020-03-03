@@ -3,14 +3,12 @@ Deploy your `docker-compose` `stack` with Helm.
 
 If you ever ask yourself, what do this thousand lines of `k8s` manifest or that monstrous helm chart does behind the scene, this chart may be what you were waiting for so long.
 
-Please see `./docker-compose-redmine.yaml` for a sophisticated stack and compare it with the generated manifest `./stack1.yaml`.
-
 # TL;DR
 ```sh
 helm repo add link https://linktohack.github.io/helm-stack/
 kubectl create namespace your-stack
 # docker stack deploy -c docker-compose.yaml your_stack
-helm -n your-stack upgrade --install your-stack link/stack -f docker-compose.yaml --set services.XXX.expose={YYYY:YYYY,ZZZZ:ZZZZ}
+helm -n your-stack upgrade --install your-stack link/stack -f docker-compose.yaml --set services.XXX.expose={YYYY,ZZZZ/udp,TTTT:UUU}
 ```
 
 While the inter-container communication is enabled in `swarm` either by `network` or `link`, in `k8s` if you have more than one service and they need to communicate together, you will need to expose the ports explicitly by `--set services.XXX.expose={YYYY:YYYY,ZZZZ:ZZZZ}`
@@ -190,8 +188,10 @@ secrets:
 
 # More examples
 ## Redmine + MySQL
+This example contains almost all the possible configurations of this stack.
+
 ```sh
-helm -n com-linktohack-redmine upgrade --install redmine /Users/qle/Downloads/sup/stack -f docker-compose-redmine.yaml -f docker-compose-redmine-override.yaml \
+helm -n com-linktohack-redmine upgrade --install redmine link/stack -f docker-compose-redmine.yaml -f docker-compose-redmine-override.yaml \
     --set services.db.expose={3306:3306} \
     --set services.db.ports={3306:3306} \
     --set services.db.deploy.placement.constraints={node.role==manager} \
@@ -217,9 +217,9 @@ helm -n kubernetes-dashboard upgrade --install dashboard link/stack -f docker-co
 
 ## Via template
 ```sh
-helm -n com-linktohack-redmine template redmine /Users/qle/Downloads/sup/stack -f docker-compose-redmine.yaml -f docker-compose-redmine-override.yaml \
+helm -n com-linktohack-redmine template redmine link/stack -f docker-compose-redmine.yaml -f docker-compose-redmine-override.yaml \
     --set services.db.expose={3306:3306} \
-    --set services.db.ports={3306:3306} \ 
+    --set services.db.ports={3306:3306} \
     --set services.db.deploy.placement.constraints={node.role==manager} \
     --set services.redmine.deploy.placement.constraints={node.role==manager} \
     --set chdir=/stack --debug > stack1.yaml
