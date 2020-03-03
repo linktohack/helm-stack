@@ -34,15 +34,21 @@ The chart is quite features complete and I was able to deploy complex stacks wit
   - Support `traefik` (1.7) labels (`deploy.labels`) as input with annotations including basic auth
   - Advanced features require `traefik` as Ingress controller
   - Support `segment` labels for services that expose multiple ports
-- [X] Volume: Handle inline/separated/external volumes
+- [X] Volume: Handle inline/top-level volumes/external volumes
   - Automatic switch to `volumeClaimTemplates` for `StatefulSet` (really useful if combine with cloud provider's dynamic provisioner).
   - Dynamic provisioner should work as expected `volumes.XXX.driver_opts.type` maps directly to `storageClassName` including treatments for
     - `none` (default storage class)
     - `nfs`
     - `emptyDir`
   - Support `none` (map to `hostPath`) and `nfs` (support `addr`, `device`) static provisioner. 
-- [X] Config: Handle separated/external configs (`data`)
-- [X] Secret: Handle separated/external secrets (`data` and `stringData`)
+- [X] Config: Handle top-level configs/external configs
+  - Support both short and long syntax
+  - Data can be integrated directly via `data` external key
+  - Support mouting as directory by setting `file` to null. See [Advance: full override](#advance-full-override) to see how to insert more than one files
+- [X] Secret: Handle top-level secrets/external secrets
+  - Support both short and long syntax
+  - Data can be integrated directly via `data` and `stringData` external keys
+  - Support mouting as directory by setting `file` to null. See [Advance: full override](#advance-full-override) to see how to insert more than one files
 - [X] Health check
   - Support both `shell` and `exec` form. For advace features /.e.g/ `httpGet`, please use full override bellow
 
