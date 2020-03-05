@@ -191,14 +191,14 @@ spec:
             - mountPath: {{ get $volValue "target" | default (printf "/%s" (get $volValue "originalName")) | quote }}
               name: {{ $volName | quote }}
               {{- if get $volValue "file" }}
-              subPath: {{ get $volValue "file" | quote }}
+              subPath: {{ get $volValue "file" | base | quote }}
               {{- end }}
             {{- end -}}
             {{- if eq (get $volValue "volumeKind") "Secret" }}
             - mountPath: {{ get $volValue "target" | default (printf "/run/secrets/%s" (get $volValue "originalName")) | quote }}
               name: {{ $volName | quote }}
               {{- if get $volValue "file" }}
-              subPath: {{ get $volValue "file" | quote }}
+              subPath: {{ get $volValue "file" | base | quote }}
               {{- end }}
             {{- end -}}
             {{- end -}}
