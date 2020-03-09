@@ -91,12 +91,7 @@ Kind of the deployment
 {{-       $first := trim (first $pair) -}}
 {{-       $last := trim (last $pair) -}}
 {{-       if eq $first "node.role" -}}
-{{-         $val := false -}}
-{{-         if eq $op "In" -}}
-{{-            $val = toString (eq $last "manager") -}}
-{{-         else -}}
-{{-           $val = toString (ne $last "manager") -}}
-{{-         end -}}
+{{-         $val := toString (eq $last "manager") -}}
 {{-         $affinities = append $affinities (dict "key" "node-role.kubernetes.io/master" "operator" $op "values" (list $val)) -}}
 {{-       end -}}
 {{-       if eq $first "node.hostname" -}}
