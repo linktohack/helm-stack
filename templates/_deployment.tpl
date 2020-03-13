@@ -42,7 +42,7 @@ Kind of the deployment
 {{-       $curr := get $volumes $volName -}}
 {{-       $curr = merge $curr (dict "dst" (index $list 1)) -}}
 {{-       $_ := set $serviceVolumes $volName $curr -}}
-{{-       if eq $kind "StatefulSet" -}}
+{{-       if and (eq $kind "StatefulSet") (ne (get $curr "type") "emptyDir") -}}
 {{-         $_ := set $volumeClaimTemplates $volName $curr -}}
 {{-       end -}}
 {{-     end -}}

@@ -38,7 +38,7 @@ The chart is quite features complete and I was able to deploy complex stacks wit
     - `none` (default storage class)
     - `nfs`
     - `emptyDir`
-  - Support `none` (map to `hostPath`) and `nfs` (support `addr`, `device`) static provisioner. 
+  - Support `none` (map to `hostPath` if `volumes.XXX.driver_opts.device` presents) and `nfs` (support `addr` in `volumes.XXX.driver_opts.o`, `volumes.XXX.driver_opts.device`) static provisioner. 
 - [X] Config: Handle top-level configs/external configs
   - Support both short and long syntax
   - Data can be integrated directly via `data` external key
