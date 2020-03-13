@@ -4,7 +4,7 @@
 {{- range $volName, $volValue := include "stack.helpers.volumes" (dict "Values" $Values) | fromYaml -}}
 {{/* volumes: pv */}}
 {{-   if and (not (get $volValue "external")) (ne (get $volValue "type") "emptyDir") -}}
-{{-     if not (get $volValue "dynamic") -}}
+{{-     if and (not (get $volValue "dynamic")) (ne (get $volValue "deploymentKind") "StatefulSet") -}}
 {{-       $pv := include "stack.pv" (dict "volName" $volName "volValue" $volValue "Values" $Values "Release" $Release) | fromYaml -}}
 {{-       $override := $Values | pluck "volumes" | first | default dict | pluck (get $volValue "originalName") | first | default dict | pluck "PV" | first | default dict }}
 ---
