@@ -1,12 +1,12 @@
 {{- define "stack.service.loadBalancer" -}}
-{{-   $name := .name -}}
+{{-   $name := .name | replace "_" "-" -}}
 {{-   $protocol := .protocol -}}
 {{-   $ports := .ports -}}
 {{ if $ports }}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ printf "%s-loadbalancer-%s" $name $protocol | replace "_" "-" | quote }}
+  name: {{ printf "%s-loadbalancer-%s" $name $protocol | quote }}
 spec:
   type: LoadBalancer
   ports:
@@ -23,7 +23,7 @@ spec:
 
 
 {{- define "stack.service.clusterIP" -}}
-{{-   $name := .name -}}
+{{-   $name := .name | replace "_" "-" -}}
 {{-   $service := .service -}}
 {{-   $ports := get (include "stack.helpers.normalizePorts" ($service.expose | default dict) | fromYaml) "all" -}}
 {{-   $labels := $service | pluck "deploy" | first | default dict | pluck "labels" | first | default list -}}
@@ -46,7 +46,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ printf "%s" $name | replace "_" "-" | quote }}
+  name: {{ printf "%s" $name | quote }}
 spec:
   type: ClusterIP
   ports:
@@ -57,20 +57,20 @@ spec:
       targetPort: {{ get . "targetPort" }}
     {{- end }}
   selector:
-    service: {{ $name | replace "_" "-" | quote }}
+    service: {{ $name | quote }}
 {{- end -}}
 {{- end -}}
 
 
 {{- define "stack.service.nodePort" -}}
-{{-   $name := .name -}}
+{{-   $name := .name | replace "_" "-" -}}
 {{-   $service := .service -}}
 {{-   $ports := get (include "stack.helpers.normalizePorts" ($service.nodePorts | default dict) | fromYaml) "all" -}}
 {{- if $ports -}}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ printf "%s-nodeport" $name | replace "_" "-" | quote }}
+  name: {{ printf "%s-nodeport" $name | quote }}
 spec:
   type: NodePort
   ports:
@@ -84,6 +84,6 @@ spec:
       {{- end }}
     {{- end }}
   selector:
-    service: {{ $name | replace "_" "-" | quote }}
+    service: {{ $name | quote }}
 {{- end -}}
 {{- end -}}
