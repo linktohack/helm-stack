@@ -33,13 +33,10 @@ metadata:
 {{- if get .volValue "file" -}}
 {{- if hasKey .volValue "data" }}  
 data:
-  {{ get .volValue "file" | base }}: {{ get .volValue "data"| quote }}
-{{- else if hasKey .volValue "stringData" }}  
-stringData:
-  {{ get .volValue "file" | base }}: {{ get .volValue "stringData"| quote }}
+  {{ get .volValue "file" | base }}: {{ get .volValue "data" | quote }}
 {{- else }}  
-data:
-  {{ get .volValue "file" | base }}: ""
+stringData:
+  {{ get .volValue "file" | base }}: {{ get .volValue "stringData" | quote }}
 {{- end -}}
 {{- end -}}
 {{- end -}}
