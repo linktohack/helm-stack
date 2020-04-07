@@ -78,8 +78,8 @@ All the ingresses
 
 
 {{- define "stack.ingress" -}}
-{{-   $name := .name -}}
-{{-   $segment := .segment -}}
+{{-   $name := .name | replace "_" "-" -}}
+{{-   $segment := .segment | replace "_" "-" -}}
 {{-   $ingress := .ingress -}}
 {{-   $hosts := $ingress.hosts -}}
 {{-   $port := $ingress.port -}}
@@ -91,7 +91,7 @@ All the ingresses
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
-  name: {{ printf "%s-%s" $name $segment | replace "_" "-" | quote }}
+  name: {{ printf "%s-%s" $name $segment | quote }}
   annotations:
     {{- if ne $backend "http" }}
     ingress.kubernetes.io/protocol: {{ $backend }}
@@ -99,7 +99,7 @@ metadata:
     {{- if $auth }}
     ingress.kubernetes.io/auth-type: basic
     ingress.kubernetes.io/auth-realm: traefik
-    ingress.kubernetes.io/auth-secret: {{ printf "%s-%s-basic-auth"  $name $segment | replace "_" "-" | quote }}
+    ingress.kubernetes.io/auth-secret: {{ printf "%s-%s-basic-auth" $name $segment | quote }}
     {{- end }}
     {{- if or $pathPrefixStrip (ne $addPrefix "") $customHeaders }}
     kubernetes.io/ingress.class: traefik
@@ -130,13 +130,13 @@ spec:
 
 
 {{- define "stack.ingress.auth" -}}
-{{- $name := .name -}}
-{{- $segment := .segment -}}
+{{- $name := .name | replace "_" "-" -}}
+{{- $segment := .segment | replace "_" "-" -}}
 {{- $auth := .ingress.auth -}}
 apiVersion: v1
 kind: Secret
 metadata:
-  name: {{ printf "%s-%s-basic-auth" $name $segment | replace "_" "-" | quote }}
+  name: {{ printf "%s-%s-basic-auth" $name $segment | quote }}
 type: Opaque
 data:
   auth: {{ $auth | b64enc }}
