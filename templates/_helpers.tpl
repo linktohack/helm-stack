@@ -169,13 +169,27 @@ Normalize ports:
 {{-     $maybeTargetWithProto := splitList "/" $targetPort -}}
 {{-     if eq (len $maybeTargetWithProto) 2 -}}
 {{-       $targetPort = first $maybeTargetWithProto -}}
-{{-       $protocol = upper (last $maybeTargetWithProto) -}}
+{{-       $protocol = last $maybeTargetWithProto | upper -}}
 {{-     end -}}
-{{-     if eq $protocol "TCP" -}}
-{{-       $tcp = append $tcp (dict "protocol" $protocol "port" $port "targetPort" $targetPort) -}}
-{{-     end -}}
-{{-     if eq $protocol "UDP" -}}
-{{-       $udp = append $udp (dict "protocol" $protocol "port" $port "targetPort" $targetPort) -}}
+{{-     $maybePortRange := splitList "-" $port -}}
+{{-     if eq (len $maybePortRange) 2 -}}
+{{-       $portStart := first $maybePortRange | int64 -}}
+{{-       $portEnd := last $maybePortRange | int64 -}}
+{{-       $targetPortStart := splitList "-" $targetPort | first | int64 -}}
+{{-       $diff := sub $targetPortStart $portStart -}}
+{{-       range $index := until (sub (add1 $portEnd) $portStart | int) -}}
+{{-         if eq $protocol "TCP" -}}
+{{-           $tcp = append $tcp (dict "protocol" $protocol "port" (add $portStart $index | toString) "targetPort" (add $portStart $diff $index | toString)) -}}
+{{-         else -}}
+{{-           $udp = append $udp (dict "protocol" $protocol "port" (add $portStart $index | toString) "targetPort" (add $portStart $diff $index | toString)) -}}
+{{-         end -}}
+{{-       end -}}
+{{-     else -}}
+{{-       if eq $protocol "TCP" -}}
+{{-         $tcp = append $tcp (dict "protocol" $protocol "port" $port "targetPort" $targetPort) -}}
+{{-       else -}}
+{{-         $udp = append $udp (dict "protocol" $protocol "port" $port "targetPort" $targetPort) -}}
+{{-       end -}}
 {{-     end -}}
 {{-   end -}}
 {{ dict "tcp" $tcp "udp" $udp "all" (concat $tcp $udp | default list) | toYaml }}
