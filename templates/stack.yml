@@ -99,3 +99,9 @@
 {{ $deployment | merge $override | merge $withContainers | toYaml }}
 {{- end -}}
 {{/* services: end */}}
+{{/* Raw */}}
+{{- range $raw := .Values.Raw }}
+---
+{{ $raw | toYaml -}}
+{{- end -}}
+{{/* Raw: end */}}

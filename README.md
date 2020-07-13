@@ -126,8 +126,11 @@ These keys are either not existed in `docker-compose` format or have the meaning
   - `secrets.XXX.stringData` (string)
 - Top levels
   - `chdir` (string, required in case of rusing relative paths in volumes)
+  - `Raw` (array, manifests that should be deployed as is)
 
 # Advance: Full override
+`Raw` property allows us to deploy arbitrary manifests, but most of time, there is a better way.
+
 The properties of the manifests can be overridden (merged) with the values from `services.XXX.Kind` and `volumes.XXX.Kind`...
 
 You will now have full control of the output manifests. While this is a deep merge operation, apart from the `containers` properties bellow, you cannot set the value of an individual item inside a list but have to replace the whole list instead.
