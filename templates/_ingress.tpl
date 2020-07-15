@@ -31,6 +31,9 @@ All the ingresses
 {{-     $auth := "" -}}
 {{-     $pathPrefixStrip := list -}}
 {{-     $addPrefix := "" -}}
+{{-     $ingressClass := "" -}}
+{{-     $issuer := "" -}}
+{{-     $clusterIssuer := "" -}}
 {{-     $customHeaders := list -}}
 {{-     $segmentPrefix := "traefik" -}}
 {{-     if ($segment) -}}
@@ -52,6 +55,18 @@ All the ingresses
 {{-           end -}}
 {{-         end -}}
 {{-       end -}}
+{{-       if eq $labelName (regexReplaceAllLiteral "^traefik" "traefik.issuer" $segmentPrefix) -}}
+{{-         $issuer = $labelValue -}}
+{{-       end -}}
+{{-       if eq $labelName (regexReplaceAllLiteral "^traefik" "traefik.cluster-issuer" $segmentPrefix) -}}
+{{-         $clusterIssuer = $labelValue -}}
+{{-       end -}}
+{{-       if or $issuer $clusterIssuer -}}
+{{-         $ingressClass = "nginx" -}}
+{{-       end -}}
+{{-       if or $pathPrefixStrip $addPrefix $customHeaders -}}
+{{-         $ingressClass = "traefik" -}}
+{{-       end -}}
 {{-       if eq $labelName (regexReplaceAllLiteral "^traefik" "traefik.port" $segmentPrefix) -}}
 {{-         $port = $labelValue -}}
 {{-       end -}}
@@ -71,7 +86,7 @@ All the ingresses
 {{-         end -}}
 {{-       end -}}
 {{-     end -}}
-{{-     $_ := set $ingresses (default "default" $segment) (dict "hosts" $hosts "port" $port "backend" $backend "auth" $auth "pathPrefixStrip" $pathPrefixStrip "addPrefix" $addPrefix "customHeaders" $customHeaders) -}}
+{{-     $_ := set $ingresses (default "default" $segment) (dict "hosts" $hosts "port" $port "backend" $backend "auth" $auth "pathPrefixStrip" $pathPrefixStrip "addPrefix" $addPrefix "ingressClass" $ingressClass "issuer" $issuer "clusterIssuer" $clusterIssuer "customHeaders" $customHeaders) -}}
 {{-   end  }}
 {{ $ingresses | toYaml }}
 {{- end -}}
@@ -87,6 +102,9 @@ All the ingresses
 {{-   $auth := $ingress.auth -}}
 {{-   $pathPrefixStrip := $ingress.pathPrefixStrip -}}
 {{-   $addPrefix := $ingress.addPrefix -}}
+{{-   $ingressClass := $ingress.ingressClass -}}
+{{-   $issuer := $ingress.issuer -}}
+{{-   $clusterIssuer := $ingress.clusterIssuer -}}
 {{-   $customHeaders := $ingress.customHeaders -}}
 apiVersion: extensions/v1beta1
 kind: Ingress
@@ -101,8 +119,14 @@ metadata:
     ingress.kubernetes.io/auth-realm: traefik
     ingress.kubernetes.io/auth-secret: {{ printf "%s-%s-basic-auth" $name $segment | quote }}
     {{- end }}
-    {{- if or $pathPrefixStrip (ne $addPrefix "") $customHeaders }}
-    kubernetes.io/ingress.class: traefik
+    {{- if $ingressClass }}
+    kubernetes.io/ingress.class: {{ $ingressClass }}
+    {{- end }}
+    {{- if $issuer }}
+    cert-manager.io/issuer: {{ $issuer }}
+    {{- end }}
+    {{- if $clusterIssuer }}
+    cert-manager.io/cluster-issuer: {{ $clusterIssuer }}
     {{- end }}
     {{- if $pathPrefixStrip }}
     traefik.ingress.kubernetes.io/rule-type: PathPrefixStrip
@@ -126,6 +150,11 @@ spec:
               servicePort: {{ printf "tcp-%s" $port | quote }}
           {{- end -}}
     {{- end -}}
+  {{- if or $issuer $clusterIssuer }}
+  tls:
+    - hosts: {{ $hosts | toYaml | nindent 8 }}
+      secretName: {{ printf "%s-%s-cert" $name $segment | quote }}
+  {{- end -}}
 {{- end -}}
 
 

@@ -30,8 +30,10 @@ The chart is quite features complete and I was able to deploy complex stacks wit
   - `nodePorts` expose `NodePort` services
 - [X] Ingress
   - Support `traefik` (1.7) labels (`deploy.labels`) as input with annotations including basic auth
-  - Advanced features require `traefik` as Ingress controller
-  - Support `segment` labels for services that expose multiple ports
+  - Support CertManager `Issuer` and `ClusterIssuer` via extra labels `traefik.issuer` and `traefik.cluster-issuer`
+    - Ingress class will be set to `nginx` but it can be overrided.
+  - Support `segment` labels for services that expose multiple ports `traefik.port`, `traefik.first.port`, `traefik.second.port`...
+  - Advanced features (`PathPrefixStrip`, custom headers...) will set the Ingress class to `traefik`, but again it can be overriden.
 - [X] Volume: Handle inline/top-level volumes/external volumes
   - Automatic switch to `volumeClaimTemplates` for `StatefulSet` (really useful if combine with cloud provider's dynamic provisioner).
   - Dynamic provisioner should work as expected `volumes.XXX.driver_opts.type` maps directly to `storageClassName` including treatments for
