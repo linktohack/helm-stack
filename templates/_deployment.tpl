@@ -25,25 +25,30 @@ Kind of the deployment
 {{-   $configs := include "stack.helpers.configs" (dict "Values" $Values) | fromYaml -}}
 {{-   $secrets := include "stack.helpers.secrets" (dict "Values" $Values) | fromYaml -}}
 {{-   $serviceVolumes := dict -}}
+{{-   $volumeMounts := dict -}}
 {{-   $volumeClaimTemplates := dict -}}
 {{-   range $volIndex, $volValue := $service.volumes -}}
 {{-     $list := splitList ":" $volValue -}}
 {{-     $volName := first $list -}}
 {{-     if hasPrefix "/" $volName -}}
 {{-       $_ := set $serviceVolumes (printf "volume-%d" $volIndex) (dict "volumeKind" "Volume" "type" "hostPath" "src" $volName "dst" (index $list 1)) -}}
+{{-       $_ := set $volumeMounts (printf "volume-%d" $volIndex) (dict "volumeKind" "Volume" "type" "hostPath" "src" $volName "dst" (index $list 1)) -}}
 {{-     else if hasPrefix "./" $volName -}}
 {{-       $src := clean (printf "%s/%s" (default "." $Values.chdir) $volName) -}}
 {{-       if not (isAbs $src) -}}
 {{-         fail "volume path or chidir has to be absolute." -}}
 {{-       end -}}
 {{-       $_ := set $serviceVolumes (printf "volume-%d" $volIndex) (dict "volumeKind" "Volume" "type" "hostPath" "src" $src "dst" (index $list 1)) -}}
+{{-       $_ := set $volumeMounts (printf "volume-%d" $volIndex) (dict "volumeKind" "Volume" "type" "hostPath" "src" $src "dst" (index $list 1)) -}}
 {{-     else -}}
 {{-       $volName = $volName | replace "_" "-" -}}
 {{-       $curr := get $volumes $volName -}}
 {{-       $curr = merge $curr (dict "dst" (index $list 1)) -}}
-{{-       $_ := set $serviceVolumes $volName $curr -}}
-{{-       if and (eq $kind "StatefulSet") (ne (get $curr "type") "emptyDir") -}}
+{{-       $_ := set $volumeMounts $volName $curr -}}
+{{-       if and (eq $kind "StatefulSet") (ne (get $curr "type") "emptyDir") (get $curr "dynamic") -}}
 {{-         $_ := set $volumeClaimTemplates $volName $curr -}}
+{{-       else -}}
+{{-         $_ := set $serviceVolumes $volName $curr -}}
 {{-       end -}}
 {{-     end -}}
 {{-   end -}}
@@ -53,9 +58,11 @@ Kind of the deployment
 {{-       $curr := get $configs $volName | deepCopy -}}
 {{-       $curr = merge $curr $volValue -}}
 {{-       $_ := set $serviceVolumes $volName $curr -}}
+{{-       $_ := set $volumeMounts $volName $curr -}}
 {{-     else -}}
 {{-       $volName := $volValue | replace "_" "-" -}}
 {{-       $_ := set $serviceVolumes $volName (get $configs $volName) -}}
+{{-       $_ := set $volumeMounts $volName (get $configs $volName) -}}
 {{-     end -}}
 {{-   end -}}
 {{-   range $volValue := $service.secrets -}}
@@ -64,9 +71,11 @@ Kind of the deployment
 {{-       $curr := get $secrets $volName | deepCopy -}}
 {{-       $curr = merge $curr $volValue -}}
 {{-       $_ := set $serviceVolumes $volName $curr -}}
+{{-       $_ := set $volumeMounts $volName $curr -}}
 {{-     else -}}
 {{-       $volName := $volValue | replace "_" "-" -}}
 {{-       $_ := set $serviceVolumes $volName (get $secrets $volName) -}}
+{{-       $_ := set $volumeMounts $volName (get $secrets $volName) -}}
 {{-     end -}}
 {{-   end -}}
 {{-   $affinities := list -}}
@@ -172,9 +181,9 @@ spec:
               value: {{ $envValue | quote }}
             {{- end -}}
           {{- end -}}
-          {{- if $serviceVolumes }}
+          {{- if $volumeMounts }}
           volumeMounts:
-            {{- range $volName, $volValue := $serviceVolumes -}}
+            {{- range $volName, $volValue := $volumeMounts -}}
             {{- if eq (get $volValue "volumeKind") "Volume" }}
             - mountPath: {{ get $volValue "dst" | quote }}
               name: {{ $volName | quote }}
