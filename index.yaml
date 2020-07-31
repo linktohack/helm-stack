@@ -3,7 +3,17 @@ entries:
   stack:
   - apiVersion: v2
     appVersion: 1.16.0
-    created: "2020-07-23T20:15:53.530798+02:00"
+    created: "2020-07-31T16:00:10.956524+02:00"
+    description: Deploy your docker-compose stack with Helm
+    digest: 8b007e213b47151458fb33173e4597bfe0e4655ed360a990c4ec5152e886932b
+    name: stack
+    type: application
+    urls:
+    - stack-1.7.0.tgz
+    version: 1.7.0
+  - apiVersion: v2
+    appVersion: 1.16.0
+    created: "2020-07-31T16:00:10.955577+02:00"
     description: Deploy your docker-compose stack with Helm
     digest: 925aed3b42480fd8d8277b99624298e8e9c3db4677f6e64d2adde3ba6ea8d305
     name: stack
@@ -13,7 +23,7 @@ entries:
     version: 1.6.0
   - apiVersion: v2
     appVersion: 1.16.0
-    created: "2020-07-23T20:15:53.52997+02:00"
+    created: "2020-07-31T16:00:10.954291+02:00"
     description: Deploy your docker-compose stack with Helm
     digest: 0a9777fec69649aa0767f59bbf5d4273c5789773f73d6204591aa236c2317e65
     name: stack
@@ -23,7 +33,7 @@ entries:
     version: 1.5.0
   - apiVersion: v2
     appVersion: 1.16.0
-    created: "2020-07-23T20:15:53.527766+02:00"
+    created: "2020-07-31T16:00:10.953023+02:00"
     description: Deploy your docker-compose stack with Helm
     digest: 8f5f784ebc0a8a73996d9c8eb99e9dbf1241908541d686e18809d81055dc1b62
     name: stack
@@ -33,7 +43,7 @@ entries:
     version: 1.4.0
   - apiVersion: v2
     appVersion: 1.16.0
-    created: "2020-07-23T20:15:53.526178+02:00"
+    created: "2020-07-31T16:00:10.95157+02:00"
     description: Deploy your docker-compose stack with Helm
     digest: 2729a58b031e20813a03b4e47e0a03206fe4f6c54033254df9a809ba10c1be56
     name: stack
@@ -41,104 +51,4 @@ entries:
     urls:
     - stack-1.3.7.tgz
     version: 1.3.7
-  - apiVersion: v2
-    appVersion: 1.16.0
-    created: "2020-07-23T20:15:53.523739+02:00"
-    description: Deploy your docker-compose stack with Helm
-    digest: 6171054c6ccec6313b6c31491bde61eaa77f6aca0d0f25c9ee9d3312aa8b54cc
-    name: stack
-    type: application
-    urls:
-    - stack-1.3.6.tgz
-    version: 1.3.6
-  - apiVersion: v2
-    appVersion: 1.16.0
-    created: "2020-07-23T20:15:53.521917+02:00"
-    description: Deploy your docker-compose stack with Helm
-    digest: fb1c2a4f4b6b77e6c60bbe2ec71a9086c1911c5f7ea27627c45db6ddaa24e496
-    name: stack
-    type: application
-    urls:
-    - stack-1.3.5.tgz
-    version: 1.3.5
-  - apiVersion: v2
-    appVersion: 1.16.0
-    created: "2020-07-23T20:15:53.520143+02:00"
-    description: Deploy your docker-compose stack with Helm
-    digest: e40c8c146db44d0228efcff17960fdbf0208dbeacd47f7ab7144356b9e13ed4e
-    name: stack
-    type: application
-    urls:
-    - stack-1.3.4.tgz
-    version: 1.3.4
-  - apiVersion: v2
-    appVersion: 1.16.0
-    created: "2020-07-23T20:15:53.518549+02:00"
-    description: Deploy your docker-compose stack with Helm
-    digest: 1d965989c6e2c430f6558bebec8b000fd9620b3ff92bd0f742e683b630a1222a
-    name: stack
-    type: application
-    urls:
-    - stack-1.3.3.tgz
-    version: 1.3.3
-  - apiVersion: v2
-    appVersion: 1.16.0
-    created: "2020-07-23T20:15:53.516701+02:00"
-    description: Deploy your docker-compose stack with Helm
-    digest: 6563cb11b02144edf2a7f900c75556d3f107b165a1ed8390459b97a220907a6e
-    name: stack
-    type: application
-    urls:
-    - stack-1.3.2.tgz
-    version: 1.3.2
-  - apiVersion: v2
-    appVersion: 1.16.0
-    created: "2020-07-23T20:15:53.514948+02:00"
-    description: Deploy your docker-compose stack with Helm
-    digest: 1ba3eaa337133f25f0c37b884b37bf4fbeccc6ccb8c98038a79fa55fad4b9a07
-    name: stack
-    type: application
-    urls:
-    - stack-1.3.1.tgz
-    version: 1.3.1
-  - apiVersion: v2
-    appVersion: 1.16.0
-    created: "2020-07-23T20:15:53.513182+02:00"
-    description: Deploy your docker-compose stack with Helm
-    digest: 3011850449ca36c4cb73d8578da5eaf8be039bbccf005534afab10b9b059ee0c
-    name: stack
-    type: application
-    urls:
-    - stack-1.3.0.tgz
-    version: 1.3.0
-  - apiVersion: v2
-    appVersion: 1.16.0
-    created: "2020-07-23T20:15:53.510674+02:00"
-    description: Deploy your docker-compose stack with Helm
-    digest: 0990766173849a1e1b0997ed253cc35b4306d68c0c5ab01864c276600ce53891
-    name: stack
-    type: application
-    urls:
-    - stack-1.2.2.tgz
-    version: 1.2.2
-  - apiVersion: v2
-    appVersion: 1.16.0
-    created: "2020-07-23T20:15:53.507553+02:00"
-    description: Deploy your docker-compose stack with Helm
-    digest: 3f3fe803cde10b2e920e71faad4da8ee1f1bf6c9f1b89cfe95e0013822b3a582
-    name: stack
-    type: application
-    urls:
-    - stack-1.2.1.tgz
-    version: 1.2.1
-  - apiVersion: v2
-    appVersion: 1.16.0
-    created: "2020-07-23T20:15:53.506059+02:00"
-    description: Deploy your docker-compose stack with Helm
-    digest: 5ca8e76fdeac6549980caf1f5a3c3b04bc9d8c00dc94b7b853b215cbdc3fe55c
-    name: stack
-    type: application
-    urls:
-    - stack-1.2.0.tgz
-    version: 1.2.0
-generated: "2020-07-23T20:15:53.504416+02:00"
+generated: "2020-07-31T16:00:10.94861+02:00"

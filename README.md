@@ -19,7 +19,7 @@ The chart is quite features complete and I was able to deploy complex stacks wit
 - [X] Deployment: 
   - Default to `Deployment`
   - `DaemonSet` if `deploy.mode == global`
-  - `kind` can be set manually (e.g. `StatefulSet`)
+  - `kind` can be set manually (e.g. `StatefulSet`, `Job`, `CronJob`)
 - [X] Node: Support placement constraints (`deploy.placement.constraints`) including:
   - `node.role`
   - `node.hostname`
@@ -51,6 +51,9 @@ The chart is quite features complete and I was able to deploy complex stacks wit
   - Support mouting as directory by setting `file` to null. See [Advance: full override](#advance-full-override) to see how to insert more than one files
 - [X] Health check
   - Support both `shell` and `exec` form. For advace features /.e.g/ `httpGet`, please use full override bellow
+- [X] Job
+- [X] CronJob
+  - A default `schedule` is set as `*/1 * * * *` but it can be easily overwritten with `CronJob.spec.schedule`.
 
 # Example
 ## Dockersamples
@@ -96,14 +99,6 @@ replicaset.apps/words-6465f956d   5         5         5       2m4s
 
 ## More complex examples
 Please see below.
-
-# How
-Golang template + Sprig are quite a pleasure to work as a full-feature language.
-
-# Why
-Blog post https://linktohack.com/posts/evaluate-options-to-migrate-from-swarm-to-k8s/
-
-The same technique can be applied via a proper language instead of using a Helm template but why not standing on the shoulders of giant(s). By using Helm (the de facto package manager) we're having the ability rollback and so on... for free.
 
 # Extra keys
 These keys are either not existed in `docker-compose` format or have the meaning changed. They're should be set via `--set` or second `values.yaml`.
@@ -160,6 +155,15 @@ services:
             containers:
               - name: override-name
                 imagePullPolicy: Always
+    DaemonSet:
+      spec:
+    StatefulSe:
+      spec:
+    Job:
+      spec:
+    CronJob:
+      spec:
+        schedule: '*/1 * * * *'
 volumes:
   db:
     PV:
@@ -182,6 +186,14 @@ secrets:
     Secret:
       stringData: ""
 ```
+
+# How
+Golang template + Sprig are quite a pleasure to work as a full-feature language.
+
+# Why
+Blog post https://linktohack.com/posts/evaluate-options-to-migrate-from-swarm-to-k8s/
+
+The same technique can be applied via a proper language instead of using a Helm template but why not standing on the shoulders of giant(s). By using Helm (the de facto package manager) we're having the ability rollback and so on... for free.
 
 # Other works
 - [kompose](https://github.com/kubernetes/kompose)
@@ -231,5 +243,11 @@ helm -n com-linktohack-redmine template redmine link/stack -f docker-compose-red
 kubectl -n com-linktohack-redmine apply -f stack1.yaml
 ```
 
+# Changelog
+* v1.7.0 Support Job & CronJob
+* v1.6.0 Allow to mount static path to StatefulSet.
+* v1.5.0 Support CertManager
+* v1.4.0 with Raw property
+* v1.3.7 Support port range xxxx-yyyy:zzzz-tttt/udp
 # License
 MIT
