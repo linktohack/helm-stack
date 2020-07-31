@@ -21,6 +21,8 @@ Kind of the deployment
 {{-   $serviceVolumes := .serviceVolumes -}}
 {{-   $volumeMounts := .volumeMounts -}}
 {{-   $constraints := .constraints -}}
+{{-   $restartPolicy := .restartPolicy -}}
+{{-   $restartPolicyConditions := dict "" "" "none" "Never" "on-failure" "OnFailure" "any" "Always" -}}
 {{-   $affinities := list -}}
 {{-   range $constraint := $constraints -}}
 {{-     $op := "" -}}
@@ -191,6 +193,9 @@ spec:
   {{- if $service.serviceAccountName }}
   serviceAccountName: {{ $service.serviceAccountName }}
   {{- end }}
+  {{- if get $restartPolicyConditions (get $restartPolicy "condition") }}
+  restartPolicy: {{ get $restartPolicyConditions (get $restartPolicy "condition") }}
+  {{- end }}
 {{- end -}}
 
 
@@ -208,6 +213,7 @@ spec:
 {{-   $volumeMounts := dict -}}
 {{-   $volumeClaimTemplates := dict -}}
 {{-   $constraints := . | pluck "service" | first | default dict | pluck "deploy" | first | default dict | pluck "placement" | first | default dict | pluck "constraints" | first | default list -}}
+{{-   $restartPolicy := . | pluck "service" | first | default dict | pluck "deploy" | first | default dict | pluck "restart_policy" | first | default dict -}}
 {{-   range $volIndex, $volValue := $service.volumes -}}
 {{-     $list := splitList ":" $volValue -}}
 {{-     $volName := first $list -}}
@@ -259,7 +265,7 @@ spec:
 {{-       $_ := set $volumeMounts $volName (get $secrets $volName) -}}
 {{-     end -}}
 {{-   end -}}
-{{- $podSpec := include "stack.helpers.podSpec" (dict "name" $name "service" $service "environments" $environments "serviceVolumes" $serviceVolumes "volumeMounts" $volumeMounts "constraints" $constraints) | fromYaml -}}
+{{- $podSpec := include "stack.helpers.podSpec" (dict "name" $name "service" $service "environments" $environments "serviceVolumes" $serviceVolumes "volumeMounts" $volumeMounts "constraints" $constraints "restartPolicy" $restartPolicy) | fromYaml -}}
 {{- if eq $kind "Job" -}}
 apiVersion: batch/v1
 kind: {{ $kind }}
@@ -267,7 +273,7 @@ metadata:
   name: {{ $name | quote }}
 spec:
   template:
-    {{ $podSpec | merge (dict "spec" (dict "restartPolicy" "Never")) | toYaml | nindent 4 }}
+    {{ merge $podSpec (dict "spec" (dict "restartPolicy" "Never")) | toYaml | nindent 4 }}
 {{- else if eq $kind "CronJob" -}}
 apiVersion: batch/v1beta1
 kind: {{ $kind }}
@@ -278,7 +284,7 @@ spec:
   jobTemplate:
     spec:
       template:
-        {{ $podSpec | merge (dict "spec" (dict "restartPolicy" "Never")) | toYaml | nindent 8 }}
+        {{ merge $podSpec (dict "spec" (dict "restartPolicy" "Never")) | toYaml | nindent 8 }}
 {{- else -}}
 apiVersion: apps/v1
 kind: {{ $kind }}
