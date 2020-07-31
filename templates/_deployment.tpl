@@ -20,7 +20,44 @@ Kind of the deployment
 {{-   $environments := .environments -}}
 {{-   $serviceVolumes := .serviceVolumes -}}
 {{-   $volumeMounts := .volumeMounts -}}
-{{-   $affinities := .affinities -}}
+{{-   $constraints := .constraints -}}
+{{-   $affinities := list -}}
+{{-   range $constraint := $constraints -}}
+{{-     $op := "" -}}
+{{-     $pair := list -}}
+{{-     $curr := splitList "==" $constraint -}}
+{{-     if eq (len $curr) 2 -}}
+{{-       $op = "In" -}}
+{{-       $pair = $curr -}}
+{{-     end -}}
+{{-     $curr := splitList "!=" $constraint -}}
+{{-     if eq (len $curr) 2 -}}
+{{-       $op = "NotIn" -}}
+{{-       $pair = $curr -}}
+{{-     end -}}
+{{-     if and (not (contains "==" $constraint)) (not (contains "!=" $constraint)) (hasPrefix "node.labels" $constraint) -}}
+{{-       $op = "Exists" -}}
+{{-     end -}}
+{{-     if or (eq $op "In") (eq $op "NotIn") -}}
+{{-       $first := trim (first $pair) -}}
+{{-       $last := trim (last $pair) -}}
+{{-       if eq $first "node.role" -}}
+{{-         $val := toString (eq $last "manager") -}}
+{{-         $affinities = append $affinities (dict "key" "node-role.kubernetes.io/master" "operator" $op "values" (list $val)) -}}
+{{-       end -}}
+{{-       if eq $first "node.hostname" -}}
+{{-         $affinities = append $affinities (dict "key" "kubernetes.io/hostname" "operator" $op "values" (list $last)) -}}
+{{-       end -}}
+{{-       if hasPrefix "node.labels" $first -}}
+{{-         $affinities = append $affinities (dict "key" (replace "node.labels." ""  $first) "operator" $op "values" (list $last)) -}}
+{{-       end -}}
+{{-     end -}}
+{{-     if (eq $op "Exists") -}}
+{{-       if hasPrefix "node.labels" $constraint -}}
+{{-         $affinities = append $affinities (dict "key" (replace "node.labels." "" $constraint) "operator" $op) -}}
+{{-       end -}}
+{{-     end -}}
+{{-   end -}}
 spec:
   {{- if $affinities }}
   affinity:
@@ -170,7 +207,6 @@ spec:
 {{-   $serviceVolumes := dict -}}
 {{-   $volumeMounts := dict -}}
 {{-   $volumeClaimTemplates := dict -}}
-{{-   $affinities := list -}}
 {{-   $constraints := . | pluck "service" | first | default dict | pluck "deploy" | first | default dict | pluck "placement" | first | default dict | pluck "constraints" | first | default list -}}
 {{-   range $volIndex, $volValue := $service.volumes -}}
 {{-     $list := splitList ":" $volValue -}}
@@ -223,42 +259,7 @@ spec:
 {{-       $_ := set $volumeMounts $volName (get $secrets $volName) -}}
 {{-     end -}}
 {{-   end -}}
-{{-   range $constraint := $constraints -}}
-{{-     $op := "" -}}
-{{-     $pair := list -}}
-{{-     $curr := splitList "==" $constraint -}}
-{{-     if eq (len $curr) 2 -}}
-{{-       $op = "In" -}}
-{{-       $pair = $curr -}}
-{{-     end -}}
-{{-     $curr := splitList "!=" $constraint -}}
-{{-     if eq (len $curr) 2 -}}
-{{-       $op = "NotIn" -}}
-{{-       $pair = $curr -}}
-{{-     end -}}
-{{-     if and (not (contains "==" $constraint)) (not (contains "!=" $constraint)) (hasPrefix "node.labels" $constraint) -}}
-{{-       $op = "Exists" -}}
-{{-     end -}}
-{{-     if or (eq $op "In") (eq $op "NotIn") -}}
-{{-       $first := trim (first $pair) -}}
-{{-       $last := trim (last $pair) -}}
-{{-       if eq $first "node.role" -}}
-{{-         $val := toString (eq $last "manager") -}}
-{{-         $affinities = append $affinities (dict "key" "node-role.kubernetes.io/master" "operator" $op "values" (list $val)) -}}
-{{-       end -}}
-{{-       if eq $first "node.hostname" -}}
-{{-         $affinities = append $affinities (dict "key" "kubernetes.io/hostname" "operator" $op "values" (list $last)) -}}
-{{-       end -}}
-{{-       if hasPrefix "node.labels" $first -}}
-{{-         $affinities = append $affinities (dict "key" (replace "node.labels." ""  $first) "operator" $op "values" (list $last)) -}}
-{{-       end -}}
-{{-     end -}}
-{{-     if (eq $op "Exists") -}}
-{{-       if hasPrefix "node.labels" $constraint -}}
-{{-         $affinities = append $affinities (dict "key" (replace "node.labels." "" $constraint) "operator" $op) -}}
-{{-       end -}}
-{{-     end -}}
-{{-   end -}}
+{{- $podSpec := include "stack.helpers.podSpec" (dict "name" $name "service" $service "environments" $environments "serviceVolumes" $serviceVolumes "volumeMounts" $volumeMounts "constraints" $constraints) | fromYaml -}}
 {{- if eq $kind "Job" -}}
 apiVersion: batch/v1
 kind: {{ $kind }}
@@ -266,7 +267,7 @@ metadata:
   name: {{ $name | quote }}
 spec:
   template:
-    {{ include "stack.helpers.podSpec" (dict "name" $name "service" $service "environments" $environments "serviceVolumes" $serviceVolumes "volumeMounts" $volumeMounts "affinities" $affinities) | nindent 4 }}
+    {{ $podSpec | merge (dict "spec" (dict "restartPolicy" "Never")) | toYaml | nindent 4 }}
 {{- else if eq $kind "CronJob" -}}
 apiVersion: batch/v1beta1
 kind: {{ $kind }}
@@ -277,7 +278,7 @@ spec:
   jobTemplate:
     spec:
       template:
-        {{ include "stack.helpers.podSpec" (dict "name" $name "service" $service "environments" $environments "serviceVolumes" $serviceVolumes "volumeMounts" $volumeMounts "affinities" $affinities) | nindent 8 }}
+        {{ $podSpec | merge (dict "spec" (dict "restartPolicy" "Never")) | toYaml | nindent 8 }}
 {{- else -}}
 apiVersion: apps/v1
 kind: {{ $kind }}
@@ -297,7 +298,7 @@ spec:
     metadata:
       labels:
         service: {{ $name | quote }}
-    {{ include "stack.helpers.podSpec" (dict "name" $name "service" $service "environments" $environments "serviceVolumes" $serviceVolumes "volumeMounts" $volumeMounts "affinities" $affinities) | nindent 4 }}
+    {{ $podSpec | toYaml | nindent 4 }}
   {{- if $volumeClaimTemplates }}
   volumeClaimTemplates:
     {{- range $volName, $volValue := $volumeClaimTemplates -}}
