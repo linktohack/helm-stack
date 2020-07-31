@@ -14,6 +14,149 @@ Kind of the deployment
 {{- end -}}
 
 
+{{- define "stack.helpers.podSpec" -}}
+{{-   $name := .name | replace "_" "-" -}}
+{{-   $service := .service -}}
+{{-   $environments := .environments -}}
+{{-   $serviceVolumes := .serviceVolumes -}}
+{{-   $volumeMounts := .volumeMounts -}}
+{{-   $affinities := .affinities -}}
+spec:
+  {{- if $affinities }}
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions: {{ $affinities | toYaml | nindent 16 }}
+  {{- end }}
+  {{- if $service.dns }}
+  dnsPolicy: "None"
+  dnsConfig:
+    nameservers: {{ $service.dns | toYaml | nindent 10 }}
+  {{- end }}
+  containers:
+    - name: {{ $service.container_name | default $name | replace "_" "-" | quote }}
+      image: {{ $service.image | quote }}
+      {{- if $service.entrypoint }}
+      command: {{ $service.entrypoint | include "stack.helpers.normalizeEntrypoint" | nindent 12 }}
+      {{- end }}
+      {{- if $service.hostname }}
+      hostname: {{ $service.hostname | quote }}
+      {{- end }}
+      {{- if $service.command }}
+      args: {{ $service.command | include "stack.helpers.normalizeCommand" | nindent 12 }}
+      {{- end }}
+      {{- if or $service.privileged $service.cap_add $service.cap_drop }}
+      securityContext:
+        {{- if $service.privileged }}
+        privileged: {{ $service.privileged }}
+        {{- end }}
+        {{- if or $service.cap_add $service.cap_drop }}
+        capabilities:
+          {{- if $service.cap_add }}
+          add: {{ $service.cap_add | toYaml | nindent 16 }}
+          {{- end }}
+          {{- if $service.cap_drop }}
+          drop: {{ $service.cap_drop | toYaml | nindent 16 }}
+          {{- end }}
+        {{- end }}
+      {{- end -}}
+      {{- if $environments }}
+      env:
+        {{- range $envName, $envValue := $environments }}
+        - name: {{ $envName | quote }}
+          value: {{ $envValue | quote }}
+        {{- end -}}
+      {{- end -}}
+      {{- if $volumeMounts }}
+      volumeMounts:
+        {{- range $volName, $volValue := $volumeMounts -}}
+        {{- if eq (get $volValue "volumeKind") "Volume" }}
+        - mountPath: {{ get $volValue "dst" | quote }}
+          name: {{ $volName | quote }}
+          {{- if get $volValue "subPath" }}
+          subPath: {{ get $volValue "subPath" | quote }}
+          {{- end }}
+        {{- end -}}
+        {{- if eq (get $volValue "volumeKind") "ConfigMap" }}
+        - mountPath: {{ get $volValue "target" | default (printf "/%s" (get $volValue "originalName")) | quote }}
+          name: {{ $volName | quote }}
+          {{- if get $volValue "file" }}
+          subPath: {{ get $volValue "file" | base | quote }}
+          {{- end }}
+        {{- end -}}
+        {{- if eq (get $volValue "volumeKind") "Secret" }}
+        - mountPath: {{ get $volValue "target" | default (printf "/run/secrets/%s" (get $volValue "originalName")) | quote }}
+          name: {{ $volName | quote }}
+          {{- if get $volValue "file" }}
+          subPath: {{ get $volValue "file" | base | quote }}
+          {{- end }}
+        {{- end -}}
+        {{- end -}}
+      {{- end }}
+      {{- if and $service.healthcheck ($service.healthcheck | pluck "test" | first) (not ($service.healthcheck | pluck "disabled" | first)) -}}
+      {{ $healthCheckCommand := include "stack.helpers.normalizeHealthCheckCommand" $service.healthcheck.test | fromYaml -}}
+      {{- if $healthCheckCommand }}
+      livenessProbe:
+        exec:
+          command: {{ include "stack.helpers.normalizeHealthCheckCommand" $service.healthcheck.test | nindent 16 }}
+        {{- if $service.healthcheck.start_period }}
+        initialDelaySeconds: {{ include "stack.helpers.normalizeDuration" $service.healthcheck.start_period }}
+        {{- end }}
+        {{- if $service.healthcheck.interval }}
+        periodSeconds: {{ include "stack.helpers.normalizeDuration" $service.healthcheck.interval }}
+        {{- end }}
+        {{- if $service.healthcheck.timeout }}
+        timeoutSeconds: {{ include "stack.helpers.normalizeDuration" $service.healthcheck.timeout }}
+        {{- end }}
+        {{- if $service.healthcheck.retries }}
+        failureThreshold: {{ $service.healthcheck.retries }}
+        {{- end }}
+      {{- end }}
+      {{- end }}
+      {{- if $service.imagePullPolicy }}
+      imagePullPolicy: {{ $service.imagePullPolicy }}
+      {{- end }}
+  {{- if and $serviceVolumes }}
+  volumes:
+    {{- range $volName, $volValue := $serviceVolumes -}}
+    {{- if eq (get $volValue "volumeKind") "Volume" }}
+    - name: {{ $volName | quote }}
+      {{- if get $volValue "type" | eq "hostPath" }}
+      hostPath:
+        path: {{ get $volValue "src" | quote }}
+      {{- else if get $volValue "type" | eq "emptyDir" }}
+      emptyDir: {}
+      {{- else }}
+      persistentVolumeClaim:
+        claimName: {{ get $volValue "externalName" | quote }}
+      {{- end -}}
+    {{- end -}}
+    {{- if eq (get $volValue "volumeKind") "ConfigMap" }}
+    - name: {{ $volName | quote }}
+      configMap:
+        name: {{ get $volValue "externalName" | quote }}
+        {{- if get $volValue "mode" }}
+        defaultMode: {{ get $volValue "mode" }}
+        {{- end }}
+    {{- end -}}
+    {{- if eq (get $volValue "volumeKind") "Secret" }}
+    - name: {{ $volName | quote }}
+      secret:
+        secretName: {{ get $volValue "externalName" | quote }}
+    {{- end -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if $service.imagePullSecrets }}
+  imagePullSecrets:
+    - name: {{ $service.imagePullSecrets }}
+  {{- end }}
+  {{- if $service.serviceAccountName }}
+  serviceAccountName: {{ $service.serviceAccountName }}
+  {{- end }}
+{{- end -}}
+
+
 {{- define "stack.deployment" -}}
 {{-   $name := .name | replace "_" "-" -}}
 {{-   $service := .service -}}
@@ -27,6 +170,8 @@ Kind of the deployment
 {{-   $serviceVolumes := dict -}}
 {{-   $volumeMounts := dict -}}
 {{-   $volumeClaimTemplates := dict -}}
+{{-   $affinities := list -}}
+{{-   $constraints := . | pluck "service" | first | default dict | pluck "deploy" | first | default dict | pluck "placement" | first | default dict | pluck "constraints" | first | default list -}}
 {{-   range $volIndex, $volValue := $service.volumes -}}
 {{-     $list := splitList ":" $volValue -}}
 {{-     $volName := first $list -}}
@@ -78,8 +223,6 @@ Kind of the deployment
 {{-       $_ := set $volumeMounts $volName (get $secrets $volName) -}}
 {{-     end -}}
 {{-   end -}}
-{{-   $affinities := list -}}
-{{-   $constraints := . | pluck "service" | first | default dict | pluck "deploy" | first | default dict | pluck "placement" | first | default dict | pluck "constraints" | first | default list -}}
 {{-   range $constraint := $constraints -}}
 {{-     $op := "" -}}
 {{-     $pair := list -}}
@@ -134,139 +277,7 @@ spec:
     metadata:
       labels:
         service: {{ $name | quote }}
-    spec:
-      {{- if $affinities }}
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-              - matchExpressions: {{ $affinities | toYaml | nindent 16 }}
-      {{- end }}
-      {{- if $service.dns }}
-      dnsPolicy: "None"
-      dnsConfig:
-        nameservers: {{ $service.dns | toYaml | nindent 10 }}
-      {{- end }}
-      containers:
-        - name: {{ $service.container_name | default $name | replace "_" "-" | quote }}
-          image: {{ $service.image | quote }}
-          {{- if $service.entrypoint }}
-          command: {{ $service.entrypoint | include "stack.helpers.normalizeEntrypoint" | nindent 12 }}
-          {{- end }}
-          {{- if $service.hostname }}
-          hostname: {{ $service.hostname | quote }}
-          {{- end }}
-          {{- if $service.command }}
-          args: {{ $service.command | include "stack.helpers.normalizeCommand" | nindent 12 }}
-          {{- end }}
-          {{- if or $service.privileged $service.cap_add $service.cap_drop }}
-          securityContext:
-            {{- if $service.privileged }}
-            privileged: {{ $service.privileged }}
-            {{- end }}
-            {{- if or $service.cap_add $service.cap_drop }}
-            capabilities:
-              {{- if $service.cap_add }}
-              add: {{ $service.cap_add | toYaml | nindent 16 }}
-              {{- end }}
-              {{- if $service.cap_drop }}
-              drop: {{ $service.cap_drop | toYaml | nindent 16 }}
-              {{- end }}
-            {{- end }}
-          {{- end -}}
-          {{- if $environments }}
-          env:
-            {{- range $envName, $envValue := $environments }}
-            - name: {{ $envName | quote }}
-              value: {{ $envValue | quote }}
-            {{- end -}}
-          {{- end -}}
-          {{- if $volumeMounts }}
-          volumeMounts:
-            {{- range $volName, $volValue := $volumeMounts -}}
-            {{- if eq (get $volValue "volumeKind") "Volume" }}
-            - mountPath: {{ get $volValue "dst" | quote }}
-              name: {{ $volName | quote }}
-              {{- if get $volValue "subPath" }}
-              subPath: {{ get $volValue "subPath" | quote }}
-              {{- end }}
-            {{- end -}}
-            {{- if eq (get $volValue "volumeKind") "ConfigMap" }}
-            - mountPath: {{ get $volValue "target" | default (printf "/%s" (get $volValue "originalName")) | quote }}
-              name: {{ $volName | quote }}
-              {{- if get $volValue "file" }}
-              subPath: {{ get $volValue "file" | base | quote }}
-              {{- end }}
-            {{- end -}}
-            {{- if eq (get $volValue "volumeKind") "Secret" }}
-            - mountPath: {{ get $volValue "target" | default (printf "/run/secrets/%s" (get $volValue "originalName")) | quote }}
-              name: {{ $volName | quote }}
-              {{- if get $volValue "file" }}
-              subPath: {{ get $volValue "file" | base | quote }}
-              {{- end }}
-            {{- end -}}
-            {{- end -}}
-          {{- end }}
-          {{- if and $service.healthcheck ($service.healthcheck | pluck "test" | first) (not ($service.healthcheck | pluck "disabled" | first)) -}}
-          {{ $healthCheckCommand := include "stack.helpers.normalizeHealthCheckCommand" $service.healthcheck.test | fromYaml -}}
-          {{- if $healthCheckCommand }}
-          livenessProbe:
-            exec:
-              command: {{ include "stack.helpers.normalizeHealthCheckCommand" $service.healthcheck.test | nindent 16 }}
-            {{- if $service.healthcheck.start_period }}
-            initialDelaySeconds: {{ include "stack.helpers.normalizeDuration" $service.healthcheck.start_period }}
-            {{- end }}
-            {{- if $service.healthcheck.interval }}
-            periodSeconds: {{ include "stack.helpers.normalizeDuration" $service.healthcheck.interval }}
-            {{- end }}
-            {{- if $service.healthcheck.timeout }}
-            timeoutSeconds: {{ include "stack.helpers.normalizeDuration" $service.healthcheck.timeout }}
-            {{- end }}
-            {{- if $service.healthcheck.retries }}
-            failureThreshold: {{ $service.healthcheck.retries }}
-            {{- end }}
-          {{- end }}
-          {{- end }}
-          {{- if $service.imagePullPolicy }}
-          imagePullPolicy: {{ $service.imagePullPolicy }}
-          {{- end }}
-      {{- if and $serviceVolumes }}
-      volumes:
-        {{- range $volName, $volValue := $serviceVolumes -}}
-        {{- if eq (get $volValue "volumeKind") "Volume" }}
-        - name: {{ $volName | quote }}
-          {{- if get $volValue "type" | eq "hostPath" }}
-          hostPath:
-            path: {{ get $volValue "src" | quote }}
-          {{- else if get $volValue "type" | eq "emptyDir" }}
-          emptyDir: {}
-          {{- else }}
-          persistentVolumeClaim:
-            claimName: {{ get $volValue "externalName" | quote }}
-          {{- end -}}
-        {{- end -}}
-        {{- if eq (get $volValue "volumeKind") "ConfigMap" }}
-        - name: {{ $volName | quote }}
-          configMap:
-            name: {{ get $volValue "externalName" | quote }}
-            {{- if get $volValue "mode" }}
-            defaultMode: {{ get $volValue "mode" }}
-            {{- end }}
-        {{- end -}}
-        {{- if eq (get $volValue "volumeKind") "Secret" }}
-        - name: {{ $volName | quote }}
-          secret:
-            secretName: {{ get $volValue "externalName" | quote }}
-        {{- end -}}
-        {{- end -}}
-      {{- end -}}
-      {{- if $service.imagePullSecrets }}
-      imagePullSecrets:
-        - name: {{ $service.imagePullSecrets }}
-      {{- end }}
-      {{- if $service.serviceAccountName }}
-      serviceAccountName: {{ $service.serviceAccountName }}
-      {{- end }}
+    {{ include "stack.helpers.podSpec" (dict "name" $name "service" $service "environments" $environments "serviceVolumes" $serviceVolumes "volumeMounts" $volumeMounts "affinities" $affinities) | nindent 4 }}
   {{- if $volumeClaimTemplates }}
   volumeClaimTemplates:
     {{- range $volName, $volValue := $volumeClaimTemplates -}}
