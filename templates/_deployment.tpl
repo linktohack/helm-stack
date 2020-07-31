@@ -259,6 +259,26 @@ spec:
 {{-       end -}}
 {{-     end -}}
 {{-   end -}}
+{{- if eq $kind "Job" -}}
+apiVersion: batch/v1
+kind: {{ $kind }}
+metadata:
+  name: {{ $name | quote }}
+spec:
+  template:
+    {{ include "stack.helpers.podSpec" (dict "name" $name "service" $service "environments" $environments "serviceVolumes" $serviceVolumes "volumeMounts" $volumeMounts "affinities" $affinities) | nindent 4 }}
+{{- else if eq $kind "CronJob" -}}
+apiVersion: batch/v1beta1
+kind: {{ $kind }}
+metadata:
+  name: {{ $name | quote }}
+spec:
+  schedule: "*/1 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        {{ include "stack.helpers.podSpec" (dict "name" $name "service" $service "environments" $environments "serviceVolumes" $serviceVolumes "volumeMounts" $volumeMounts "affinities" $affinities) | nindent 8 }}
+{{- else -}}
 apiVersion: apps/v1
 kind: {{ $kind }}
 metadata:
@@ -286,5 +306,6 @@ spec:
       spec: {{ get $pvc "spec" | toYaml | nindent 8  }}
     {{- end -}}
   {{- end -}}
+{{- end -}}
 {{- end -}}
 
