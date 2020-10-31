@@ -247,7 +247,7 @@ spec:
 {{-       else -}}
 {{-         $volName = $volName | replace "_" "-" -}}
 {{-         $curr := get $volumes $volName -}}
-{{-         $curr = merge $curr (dict "dst" (index $list 1)) -}}
+{{-         $curr = mergeOverwrite $curr (dict "dst" (index $list 1)) -}}
 {{-         $_ := set $volumeMount $volName $curr -}}
 {{-         if and (eq $kind "StatefulSet") (ne (get $curr "type") "emptyDir") (get $curr "dynamic") -}}
 {{-           $_ := set $volumeClaimTemplates $volName $curr -}}
@@ -260,7 +260,7 @@ spec:
 {{-       if (typeOf $volValue) | ne "string" -}}
 {{-         $volName := get $volValue "source" | replace "_" "-" -}}
 {{-         $curr := get $configs $volName | deepCopy -}}
-{{-         $curr = merge $curr $volValue -}}
+{{-         $curr = mergeOverwrite $curr $volValue -}}
 {{-         $_ := set $serviceVolumes $volName $curr -}}
 {{-         $_ := set $volumeMount $volName $curr -}}
 {{-       else -}}
@@ -273,7 +273,7 @@ spec:
 {{-       if (typeOf $volValue) | ne "string" -}}
 {{-         $volName := get $volValue "source" | replace "_" "-" -}}
 {{-         $curr := get $secrets $volName | deepCopy -}}
-{{-         $curr = merge $curr $volValue -}}
+{{-         $curr = mergeOverwrite $curr $volValue -}}
 {{-         $_ := set $serviceVolumes $volName $curr -}}
 {{-         $_ := set $volumeMount $volName $curr -}}
 {{-       else -}}
@@ -292,7 +292,7 @@ metadata:
   name: {{ $name | quote }}
 spec:
   template:
-    {{ merge $podSpec (dict "spec" (dict "restartPolicy" "Never")) | toYaml | nindent 4 }}
+    {{ mergeOverwrite (dict "spec" (dict "restartPolicy" "Never") $podSpec) | toYaml | nindent 4 }}
 {{- else if eq $kind "CronJob" -}}
 apiVersion: batch/v1beta1
 kind: {{ $kind }}
@@ -303,7 +303,7 @@ spec:
   jobTemplate:
     spec:
       template:
-        {{ merge $podSpec (dict "spec" (dict "restartPolicy" "Never")) | toYaml | nindent 8 }}
+        {{ mergeOverwrite (dict "spec" (dict "restartPolicy" "Never") $podSpec) | toYaml | nindent 8 }}
 {{- else -}}
 apiVersion: apps/v1
 kind: {{ $kind }}
