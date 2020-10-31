@@ -130,7 +130,7 @@ These keys are either not existed in `docker-compose` format or have the meaning
 
 The properties of the manifests can be overridden (merged) with the values from `services.XXX.Kind` and `volumes.XXX.Kind`...
 
-You will now have full control of the output manifests. While this is a deep merge operation, apart from the `containers` properties bellow, you cannot set the value of an individual item inside a list but have to replace the whole list instead.
+You will now have full control of the output manifests. While this is a deep merge operation, the item in the list will be also merged if existed, new items will be also inserted.
 
 The full list of all the `Kind`s can be found in the listing below, please note that `services.XXX.imagePullPolicy`, `volumes.XXX.storage`, `configs.XXX.data` `secrets.XXX.stringData` are already recognized as extra keys.
 
@@ -247,6 +247,7 @@ kubectl -n com-linktohack-redmine apply -f stack1.yaml
 ```
 
 # Changelog
+* v1.8.0 Support extra `Containers` key, with mergeDeepOvewrite
 * v1.7.0 Support Job & CronJob
 * v1.6.0 Allow to mount static path to StatefulSet.
 * v1.5.0 Support CertManager
