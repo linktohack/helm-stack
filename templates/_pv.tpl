@@ -39,12 +39,15 @@ All the volumes
 {{-   end -}}
 {{-   range $name, $service := .Values.services -}}
 {{-     $deploymentKind := include "stack.helpers.deploymentKind" $service -}}
-{{-     range $volIndex, $volValue := $service.volumes -}}
-{{-       $list := splitList ":" $volValue -}}
-{{-       $volName := first $list | replace "_" "-" -}}
-{{-       if and (not (hasPrefix "/" $volName)) (not (hasPrefix "./" $volName)) -}}
-{{-         $volume := get $volumes $volName -}}
-{{-         $_ := set $volume "deploymentKind" $deploymentKind -}}
+{{-     $containers := omit $service "Containers" | prepend ($service.Containers | default list) -}}
+{{-     range $containerIndex, $container := $containers -}}
+{{-       range $volValue := $container.volumes -}}
+{{-         $list := splitList ":" $volValue -}}
+{{-         $volName := first $list | replace "_" "-" -}}
+{{-         if and (not (hasPrefix "/" $volName)) (not (hasPrefix "./" $volName)) -}}
+{{-           $volume := get $volumes $volName -}}
+{{-           $_ := set $volume "deploymentKind" $deploymentKind -}}
+{{-         end -}}
 {{-       end -}}
 {{-     end -}}
 {{-   end }}

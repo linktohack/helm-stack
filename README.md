@@ -164,6 +164,9 @@ services:
     CronJob:
       spec:
         schedule: '*/1 * * * *'
+    Containers:
+      - image: anotherimage
+        imagePullPolicy: Always  
 volumes:
   db:
     PV:

@@ -194,3 +194,61 @@ Normalize ports:
 {{-   end -}}
 {{ dict "tcp" $tcp "udp" $udp "all" (concat $tcp $udp | default list) | toYaml }}
 {{- end -}}
+
+
+{{/*
+Merge Dict and List
+*/}}
+{{- define "stack.helpers.mergeDictAndList" -}}
+{{-   $dst := first . -}}
+{{-   $src := last . -}}
+
+{{-   $newDst := "" -}}
+{{-   if not $dst -}}
+{{-     $newDst = $src -}}
+{{-   else if not $src -}}
+{{-     $newDst = $dst -}}
+{{-   else -}}
+{{-     $isList := eq (typeOf $dst) "[]interface {}"  -}}
+{{-     $isDict := eq (typeOf $dst) "map[string]interface {}"  -}}
+{{-     if $isList -}}
+{{-       $newDst = list -}}
+{{-       range $index := max (len $src) (len $dst) | int | until -}}
+{{-         if and (len $src | lt (add1 $index)) (len $dst | lt (add1 $index)) -}}
+{{-           $srcValue := index $src $index -}}
+{{-           $dstValue := index $dst $index -}}
+{{-           $newDst = append $newDst (include "stack.helpers.mergeDictAndList" (list $dstValue $srcValue) | fromYaml) -}}
+{{-         else if (len $src | lt (add1 $index)) -}}
+{{-           $srcValue := index $src $index -}}
+{{-           $newDst = append $newDst $srcValue -}}
+{{-         else if (len $dst | lt (add1 $index)) -}}
+{{-           $dstValue := index $dst $index -}}
+{{-           $newDst = append $newDst $dstValue -}}
+{{-         end -}}
+{{-       end -}}
+{{-     else if $isDict -}}
+{{-       $newDst = dict -}}
+{{-       range $key := concat (keys $src) (keys $dst) | uniq -}}
+{{-         if and (hasKey $src $key) (hasKey $dst $key) -}}
+{{-           $srcValue := get $src $key -}}
+{{-           $dstValue := get $dst $key -}}
+{{-           $_ := set $newDst $key (include "stack.helpers.mergeDictAndList" (list $dstValue $srcValue) | fromYaml) -}}
+{{-         else if (hasKey $src $key) -}}
+{{-           $srcValue := get $src $key -}}
+{{-           $_ := set $newDst $key $srcValue -}}
+{{-         else if (hasKey $dst $key) -}}
+{{-           $dstValue := get $dst $key -}}
+{{-           $_ := set $newDst $key $dstValue -}}
+{{-         end -}}
+{{-       end -}}
+{{-     else -}}
+{{-       $newDst = $src | default $dst -}}
+{{-     end -}}
+{{-   end -}}
+{{- if kindIs "string" $src -}}
+{{/*-   if eq $src "Deployment" -*/}}
+{{- $newDst | toJson | fail -}}
+{{/*-    end -*/}}
+{{- end -}}
+{{ $newDst | toYaml }}
+{{- end -}}

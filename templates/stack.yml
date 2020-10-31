@@ -91,20 +91,9 @@
 {{-   $deployment := include "stack.deployment" (dict "name" $name "service" $service "Values" $Values "Release" $Release) | fromYaml -}}
 {{-   $kind := get $deployment "kind" -}}
 {{-   $override := $Values | pluck "services" | first | default dict | pluck $name | first | default dict | pluck $kind | first | default dict -}}
-{{-   $withContainers := list -}}
-{{-   if eq $kind "CronJob" -}}
-{{-     $src := $override | pluck "spec" | first | default dict | pluck "jobTemplate" | first | default dict | pluck "spec" | first | default dict | pluck "template" | first | default dict | pluck "spec" | first | default dict | pluck "containers" | first | default list | first | default dict -}}
-{{-     $dst := $deployment | pluck "spec" | first | pluck "jobTemplate" | first | pluck "spec" | first | pluck "template" | first | pluck "spec" | first | pluck "containers" | first | first -}}
-{{-     $dst = merge $src $dst }}
-{{-     $withContainers = (dict "spec" (dict "jobTemplate" (dict "spec" (dict "template" (dict "spec" (dict "containers" (list $dst))))))) }}
-{{-   else -}}
-{{-     $src := $override | pluck "spec" | first | default dict | pluck "template" | first | default dict | pluck "spec" | first | default dict | pluck "containers" | first | default list | first | default dict -}}
-{{-     $dst := $deployment | pluck "spec" | first | pluck "template" | first | pluck "spec" | first | pluck "containers" | first | first -}}
-{{-     $dst = merge $src $dst }}
-{{-     $withContainers = (dict "spec" (dict "template" (dict "spec" (dict "containers" (list $dst))))) }}
-{{-   end -}}
 ---
-{{ $deployment | merge $override | merge $withContainers | toYaml }}
+{{/* $override | toYaml | fail */}}
+{{ include "stack.helpers.mergeDictAndList" (list $deployment $override) }}
 {{- end -}}
 {{/* services: end */}}
 {{/* Raw */}}
