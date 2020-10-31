@@ -93,7 +93,7 @@
 {{-   $override := $Values | pluck "services" | first | default dict | pluck $name | first | default dict | pluck $kind | first | default dict -}}
 ---
 {{/* $override | toYaml | fail */}}
-{{ include "stack.helpers.mergeDictAndList" (list $deployment $override) }}
+{{ include "stack.helpers.mergeDeepOverwrite" (list $deployment $override) | fromYaml | pluck "data" | first | toYaml }}
 {{- end -}}
 {{/* services: end */}}
 {{/* Raw */}}

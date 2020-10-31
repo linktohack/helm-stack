@@ -17,7 +17,6 @@ Kind of the deployment
 {{- define "stack.helpers.podSpec" -}}
 {{-   $name := .name | replace "_" "-" -}}
 {{-   $service := .service -}}
-{{/*-   $environments := .environments -*/}}
 {{-   $containers := .containers -}}
 {{-   $serviceVolumes := .serviceVolumes -}}
 {{-   $volumeMounts := .volumeMounts -}}
@@ -217,7 +216,6 @@ spec:
 {{-   $Values := .Values -}}
 {{-   $kind := include "stack.helpers.deploymentKind" $service -}}
 {{-   $replicas := $service | pluck "deploy"| first | default dict | pluck "replicas" | first | default 1 | int64 -}}
-{{/*-   $environments := include "stack.helpers.normalizeKV" $service.environment | fromYaml -*/}}
 {{-   $volumes := include "stack.helpers.volumes" (dict "Values" $Values) | fromYaml -}}
 {{-   $configs := include "stack.helpers.configs" (dict "Values" $Values) | fromYaml -}}
 {{-   $secrets := include "stack.helpers.secrets" (dict "Values" $Values) | fromYaml -}}

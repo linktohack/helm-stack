@@ -197,31 +197,29 @@ Normalize ports:
 
 
 {{/*
-Merge Dict and List
+Merge Deep Overwrite with nil, dict, list & primitive support
+Result is always a dict {"data" : data }
 */}}
-{{- define "stack.helpers.mergeDictAndList" -}}
-{{-   $dst := first . -}}
-{{-   $src := last . -}}
-
+{{- define "stack.helpers.mergeDeepOverwrite" -}}
+{{-   $dst := index . 0 -}}
+{{-   $src := index . 1 -}}
 {{-   $newDst := "" -}}
-{{-   if not $dst -}}
-{{-     $newDst = $src -}}
-{{-   else if not $src -}}
-{{-     $newDst = $dst -}}
+{{-   if or (kindIs "invalid" $src) (kindIs "invalid" $dst) -}}
+{{-     $newDst = mergeOverwrite (dict "data" $dst) (dict "data" $src) | pluck "data" | first -}}
 {{-   else -}}
 {{-     $isList := eq (typeOf $dst) "[]interface {}"  -}}
 {{-     $isDict := eq (typeOf $dst) "map[string]interface {}"  -}}
 {{-     if $isList -}}
 {{-       $newDst = list -}}
 {{-       range $index := max (len $src) (len $dst) | int | until -}}
-{{-         if and (len $src | lt (add1 $index)) (len $dst | lt (add1 $index)) -}}
+{{-         if and (len $src | lt $index) (len $dst | lt $index) -}}
 {{-           $srcValue := index $src $index -}}
 {{-           $dstValue := index $dst $index -}}
-{{-           $newDst = append $newDst (include "stack.helpers.mergeDictAndList" (list $dstValue $srcValue) | fromYaml) -}}
-{{-         else if (len $src | lt (add1 $index)) -}}
+{{-           $newDst = append $newDst (include "stack.helpers.mergeDeepOverwrite" (list $dstValue $srcValue) | fromYaml | pluck "data" | first) -}}
+{{-         else if (len $src | lt $index) -}}
 {{-           $srcValue := index $src $index -}}
 {{-           $newDst = append $newDst $srcValue -}}
-{{-         else if (len $dst | lt (add1 $index)) -}}
+{{-         else if (len $dst | lt $index) -}}
 {{-           $dstValue := index $dst $index -}}
 {{-           $newDst = append $newDst $dstValue -}}
 {{-         end -}}
@@ -232,7 +230,7 @@ Merge Dict and List
 {{-         if and (hasKey $src $key) (hasKey $dst $key) -}}
 {{-           $srcValue := get $src $key -}}
 {{-           $dstValue := get $dst $key -}}
-{{-           $_ := set $newDst $key (include "stack.helpers.mergeDictAndList" (list $dstValue $srcValue) | fromYaml) -}}
+{{-           $_ := set $newDst $key (include "stack.helpers.mergeDeepOverwrite" (list $dstValue $srcValue) | fromYaml | pluck "data" | first) -}}
 {{-         else if (hasKey $src $key) -}}
 {{-           $srcValue := get $src $key -}}
 {{-           $_ := set $newDst $key $srcValue -}}
@@ -242,13 +240,8 @@ Merge Dict and List
 {{-         end -}}
 {{-       end -}}
 {{-     else -}}
-{{-       $newDst = $src | default $dst -}}
+{{-       $newDst = mergeOverwrite (dict "data" $dst) (dict "data" $src) | pluck "data" | first -}}
 {{-     end -}}
 {{-   end -}}
-{{- if kindIs "string" $src -}}
-{{/*-   if eq $src "Deployment" -*/}}
-{{- $newDst | toJson | fail -}}
-{{/*-    end -*/}}
-{{- end -}}
-{{ $newDst | toYaml }}
+{{ dict "data" $newDst | toYaml }}
 {{- end -}}
