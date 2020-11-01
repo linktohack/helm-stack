@@ -220,7 +220,7 @@ spec:
 {{-   $service := .service -}}
 {{-   $Values := .Values -}}
 {{-   $kind := include "stack.helpers.deploymentKind" $service -}}
-{{-   $replicas := $service | pluck "deploy"| first | default dict | pluck "replicas" | first | default 1 | int64 -}}
+{{-   $replicas := $service | pluck "deploy"| first | default dict | pluck "replicas" | first -}}
 {{-   $volumes := include "stack.helpers.volumes" (dict "Values" $Values) | fromYaml -}}
 {{-   $configs := include "stack.helpers.configs" (dict "Values" $Values) | fromYaml -}}
 {{-   $secrets := include "stack.helpers.secrets" (dict "Values" $Values) | fromYaml -}}
@@ -316,7 +316,7 @@ kind: {{ $kind }}
 metadata:
   name: {{ $name | quote }}
 spec:
-  {{- if (and (ne $kind "DaemonSet") (ne $replicas 1)) }}
+  {{- if and (ne $kind "DaemonSet") $replicas }}
   replicas: {{ $replicas }}
   {{- end }}
   selector:
