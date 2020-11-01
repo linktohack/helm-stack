@@ -110,7 +110,8 @@ These keys are either not existed in `docker-compose` format or have the meaning
   - `services.XXX.serviceAccountName` (string)
   - `services.XXX.expose` (array, ports to be exposed for other services via `ClusterIP`)
   - `services.XXX.ports` (array, ports to be exposed via `LoadBalancer`)
-  - `services.XXX.nodePorts` ( ports to be exposed as `NodePort`)
+  - `services.XXX.nodePorts` (ports to be exposed as `NodePort`)
+  - `services.XXX.containers` (array, same spec as `services.XXX`, additional containers to run in the same `Pod`)
 - Volumes
   - `volumes.XXX.storage` (string, default `1Gi` for dynamic provisioner)
   - `volumes.XXX.subPath` (string)
@@ -164,9 +165,6 @@ services:
     CronJob:
       spec:
         schedule: '*/1 * * * *'
-    Containers:
-      - image: anotherimage
-        imagePullPolicy: Always  
 volumes:
   db:
     PV:
@@ -247,11 +245,11 @@ kubectl -n com-linktohack-redmine apply -f stack1.yaml
 ```
 
 # Changelog
-* v1.8.1 Support extra `Containers` key, with mergeDeepOvewrite
-* v1.7.0 Support Job & CronJob
-* v1.6.0 Allow to mount static path to StatefulSet.
-* v1.5.0 Support CertManager
-* v1.4.0 with Raw property
-* v1.3.7 Support port range xxxx-yyyy:zzzz-tttt/udp
+* v1.8.1 Support extra `containers` key, with `mergeDeepOvewrite`
+* v1.7.0 Support `Job` & `CronJob`
+* v1.6.0 Allow to mount static path to `StatefulSet`.
+* v1.5.0 Support `CertManager`
+* v1.4.0 with `Raw` property
+* v1.3.7 Support port range `xxxx-yyyy:zzzz-tttt/udp`
 # License
 MIT

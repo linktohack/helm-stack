@@ -39,7 +39,7 @@ All the volumes
 {{-   end -}}
 {{-   range $name, $service := .Values.services -}}
 {{-     $deploymentKind := include "stack.helpers.deploymentKind" $service -}}
-{{-     $containers := omit $service "Containers" | prepend ($service.Containers | default list) -}}
+{{-     $containers := omit $service "containers" | prepend ($service.containers | default list) -}}
 {{-     range $containerIndex, $container := $containers -}}
 {{-       range $volValue := $container.volumes -}}
 {{-         $list := splitList ":" $volValue -}}

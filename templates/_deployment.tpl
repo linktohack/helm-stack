@@ -224,7 +224,7 @@ spec:
 {{-   $volumeClaimTemplates := dict -}}
 {{-   $constraints := . | pluck "service" | first | default dict | pluck "deploy" | first | default dict | pluck "placement" | first | default dict | pluck "constraints" | first | default list -}}
 {{-   $restartPolicy := . | pluck "service" | first | default dict | pluck "deploy" | first | default dict | pluck "restart_policy" | first | default dict -}}
-{{-   $containers := omit $service "Containers" | prepend ($service.Containers | default list) -}}
+{{-   $containers := omit $service "containers" | prepend ($service.containers | default list) -}}
 {{-   range $containerIndex, $container := $containers -}}
 {{-     $volumeMount := dict -}}
 {{-     $maybeWithContainerIndex := "" -}}
