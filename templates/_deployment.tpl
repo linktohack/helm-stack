@@ -246,7 +246,7 @@ spec:
 {{-         $_ := set $volumeMount (printf "volume%s-%d" $maybeWithContainerIndex $volIndex) (dict "volumeKind" "Volume" "type" "hostPath" "src" $src "dst" (index $list 1)) -}}
 {{-       else -}}
 {{-         $volName = $volName | replace "_" "-" -}}
-{{-         $curr := get $volumes $volName -}}
+{{-         $curr := get $volumes $volName | deepCopy -}}
 {{-         $curr = mergeOverwrite $curr (dict "dst" (index $list 1)) -}}
 {{-         $_ := set $volumeMount $volName $curr -}}
 {{-         if and (eq $kind "StatefulSet") (ne (get $curr "type") "emptyDir") (get $curr "dynamic") -}}
