@@ -13,18 +13,13 @@ Kind of the deployment
 {{ $kind }}
 {{- end -}}
 
-
-{{- define "stack.helpers.podSpec" -}}
-{{-   $name := .name | replace "_" "-" -}}
-{{-   $service := .service -}}
-{{-   $containers := .containers -}}
-{{-   $serviceVolumes := .serviceVolumes -}}
-{{-   $volumeMounts := .volumeMounts -}}
-{{-   $constraints := .constraints -}}
-{{-   $restartPolicy := .restartPolicy -}}
-{{-   $restartPolicyConditions := dict "" "" "none" "Never" "on-failure" "OnFailure" "any" "Always" -}}
+{{/*
+Affinities from constraints
+Result is a dict { "data": $affinities }
+*/}}
+{{- define "stack.helpers.affinitiesFromConstraints" -}}
 {{-   $affinities := list -}}
-{{-   range $constraint := $constraints -}}
+{{-   range $constraint := . -}}
 {{-     $op := "" -}}
 {{-     $pair := list -}}
 {{-     $curr := splitList "==" $constraint -}}
@@ -60,6 +55,19 @@ Kind of the deployment
 {{-       end -}}
 {{-     end -}}
 {{-   end -}}
+{{ dict "data" $affinities | toYaml }}
+{{- end -}}
+
+
+{{- define "stack.helpers.podSpec" -}}
+{{-   $name := .name | replace "_" "-" -}}
+{{-   $service := .service -}}
+{{-   $containers := .containers -}}
+{{-   $serviceVolumes := .serviceVolumes -}}
+{{-   $volumeMounts := .volumeMounts -}}
+{{-   $affinities := .affinities -}}
+{{-   $restartPolicy := .restartPolicy -}}
+{{-   $restartPolicyMap := dict "" "" "none" "Never" "on-failure" "OnFailure" "any" "Always" -}}
 spec:
   {{- if $affinities }}
   affinity:
@@ -75,15 +83,12 @@ spec:
   {{- end }}
   containers:
   {{- range $containerIndex, $container := $containers -}}
-  {{ if eq $containerIndex 999 }}
-  {{ $container | toYaml | nindent 2 | fail }}
-  {{ end }}
-  {{ $environments := include "stack.helpers.normalizeKV" $container.environment | fromYaml -}}
-  {{ $volumeMount := index $volumeMounts $containerIndex -}}
-  {{-     $maybeWithContainerIndex := "" -}}
-  {{-     if gt $containerIndex -1 -}}
-  {{-       $maybeWithContainerIndex = printf "-%d" $containerIndex -}}
-  {{-     end }}
+  {{-   $environments := include "stack.helpers.normalizeKV" $container.environment | fromYaml -}}
+  {{-   $volumeMount := index $volumeMounts $containerIndex -}}
+  {{-   $maybeWithContainerIndex := "" -}}
+  {{-   if gt $containerIndex 0 -}}
+  {{-     $maybeWithContainerIndex = printf "-%d" $containerIndex -}}
+  {{-   end }}
     - name: {{ $container.container_name | default (printf "%s%s" $name $maybeWithContainerIndex) | replace "_" "-" | quote }}
       image: {{ $container.image | quote }}
       {{- if $container.entrypoint }}
@@ -203,10 +208,10 @@ spec:
   {{- end }}
   {{- if $service.serviceAccountName }}
   serviceAccountName: {{ $service.serviceAccountName }}
-  {{- end }}
-  {{- if get $restartPolicyConditions (get $restartPolicy "condition") }}
-  restartPolicy: {{ get $restartPolicyConditions (get $restartPolicy "condition") }}
-  {{- end }}
+  {{- end -}}
+  {{- if get $restartPolicyMap (get $restartPolicy "condition") }}
+  restartPolicy: {{ get $restartPolicyMap (get $restartPolicy "condition") }}
+  {{- end -}}
 {{- end -}}
 
 
@@ -223,6 +228,7 @@ spec:
 {{-   $volumeMounts := list -}}
 {{-   $volumeClaimTemplates := dict -}}
 {{-   $constraints := . | pluck "service" | first | default dict | pluck "deploy" | first | default dict | pluck "placement" | first | default dict | pluck "constraints" | first | default list -}}
+{{-   $affinities := include "stack.helpers.affinitiesFromConstraints" $constraints | fromYaml | pluck "data" | first -}}
 {{-   $restartPolicy := . | pluck "service" | first | default dict | pluck "deploy" | first | default dict | pluck "restart_policy" | first | default dict -}}
 {{-   $containers := omit $service "containers" | prepend ($service.containers | default list) -}}
 {{-   range $containerIndex, $container := $containers -}}
@@ -284,7 +290,7 @@ spec:
 {{-     end -}}
 {{-     $volumeMounts = append $volumeMounts $volumeMount -}}
 {{-   end -}}
-{{- $podSpec := include "stack.helpers.podSpec" (dict "name" $name "service" $service "containers" $containers "serviceVolumes" $serviceVolumes "volumeMounts" $volumeMounts "constraints" $constraints "restartPolicy" $restartPolicy) | fromYaml -}}
+{{- $podSpec := include "stack.helpers.podSpec" (dict "name" $name "service" $service "containers" $containers "serviceVolumes" $serviceVolumes "volumeMounts" $volumeMounts "affinities" $affinities "restartPolicy" $restartPolicy) | fromYaml -}}
 {{- if eq $kind "Job" -}}
 apiVersion: batch/v1
 kind: {{ $kind }}
