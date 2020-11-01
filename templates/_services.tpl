@@ -2,7 +2,7 @@
 {{-   $name := .name | replace "_" "-" -}}
 {{-   $protocol := .protocol -}}
 {{-   $ports := .ports -}}
-{{ if $ports }}
+{{- if $ports -}}
 apiVersion: v1
 kind: Service
 metadata:
@@ -81,7 +81,7 @@ spec:
       targetPort: {{ get . "targetPort" }}
       {{- if get . "port" }}
       nodePort: {{ get . "port" }}
-      {{- end }}
+      {{- end -}}
     {{- end }}
   selector:
     service: {{ $name | quote }}

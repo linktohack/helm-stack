@@ -75,7 +75,7 @@ spec:
       requiredDuringSchedulingIgnoredDuringExecution:
         nodeSelectorTerms:
           - matchExpressions: {{ $affinities | toYaml | nindent 16 }}
-  {{- end }}
+  {{- end -}}
   {{- if $service.dns }}
   dnsPolicy: "None"
   dnsConfig:
@@ -93,27 +93,27 @@ spec:
       image: {{ $container.image | quote }}
       {{- if $container.entrypoint }}
       command: {{ $container.entrypoint | include "stack.helpers.normalizeEntrypoint" | nindent 12 }}
-      {{- end }}
+      {{- end -}}
       {{- if $container.hostname }}
       hostname: {{ $container.hostname | quote }}
-      {{- end }}
+      {{- end -}}
       {{- if $container.command }}
       args: {{ $container.command | include "stack.helpers.normalizeCommand" | nindent 12 }}
-      {{- end }}
+      {{- end -}}
       {{- if or $container.privileged $container.cap_add $container.cap_drop }}
       securityContext:
         {{- if $container.privileged }}
         privileged: {{ $container.privileged }}
-        {{- end }}
+        {{- end -}}
         {{- if or $container.cap_add $container.cap_drop }}
         capabilities:
           {{- if $container.cap_add }}
           add: {{ $container.cap_add | toYaml | nindent 16 }}
-          {{- end }}
+          {{- end -}}
           {{- if $container.cap_drop }}
           drop: {{ $container.cap_drop | toYaml | nindent 16 }}
-          {{- end }}
-        {{- end }}
+          {{- end -}}
+        {{- end -}}
       {{- end -}}
       {{- if $environments }}
       env:
@@ -137,17 +137,17 @@ spec:
           name: {{ $volName | quote }}
           {{- if get $volValue "file" }}
           subPath: {{ get $volValue "file" | base | quote }}
-          {{- end }}
+          {{- end -}}
         {{- end -}}
         {{- if eq (get $volValue "volumeKind") "Secret" }}
         - mountPath: {{ get $volValue "target" | default (printf "/run/secrets/%s" (get $volValue "originalName")) | quote }}
           name: {{ $volName | quote }}
           {{- if get $volValue "file" }}
           subPath: {{ get $volValue "file" | base | quote }}
-          {{- end }}
+          {{- end -}}
         {{- end -}}
         {{- end -}}
-      {{- end }}
+      {{- end -}}
       {{- if and $container.healthcheck ($container.healthcheck | pluck "test" | first) (not ($container.healthcheck | pluck "disabled" | first)) -}}
       {{ $healthCheckCommand := include "stack.helpers.normalizeHealthCheckCommand" $container.healthcheck.test | fromYaml -}}
       {{- if $healthCheckCommand }}
@@ -156,23 +156,23 @@ spec:
           command: {{ include "stack.helpers.normalizeHealthCheckCommand" $container.healthcheck.test | nindent 16 }}
         {{- if $container.healthcheck.start_period }}
         initialDelaySeconds: {{ include "stack.helpers.normalizeDuration" $container.healthcheck.start_period }}
-        {{- end }}
+        {{- end -}}
         {{- if $container.healthcheck.interval }}
         periodSeconds: {{ include "stack.helpers.normalizeDuration" $container.healthcheck.interval }}
-        {{- end }}
+        {{- end -}}
         {{- if $container.healthcheck.timeout }}
         timeoutSeconds: {{ include "stack.helpers.normalizeDuration" $container.healthcheck.timeout }}
-        {{- end }}
+        {{- end -}}
         {{- if $container.healthcheck.retries }}
         failureThreshold: {{ $container.healthcheck.retries }}
-        {{- end }}
-      {{- end }}
-      {{- end }}
+        {{- end -}}
+      {{- end -}}
+      {{- end -}}
       {{- if $container.imagePullPolicy }}
       imagePullPolicy: {{ $container.imagePullPolicy }}
-      {{- end }}
-  {{- end }}  
-  {{- if and $serviceVolumes }}
+      {{- end -}}
+  {{- end -}}
+  {{- if $serviceVolumes }}
   volumes:
     {{- range $volName, $volValue := $serviceVolumes -}}
     {{- if eq (get $volValue "volumeKind") "Volume" }}
@@ -193,7 +193,7 @@ spec:
         name: {{ get $volValue "externalName" | quote }}
         {{- if get $volValue "mode" }}
         defaultMode: {{ get $volValue "mode" }}
-        {{- end }}
+        {{- end -}}
     {{- end -}}
     {{- if eq (get $volValue "volumeKind") "Secret" }}
     - name: {{ $volName | quote }}
@@ -205,7 +205,7 @@ spec:
   {{- if $service.imagePullSecrets }}
   imagePullSecrets:
     - name: {{ $service.imagePullSecrets }}
-  {{- end }}
+  {{- end -}}
   {{- if $service.serviceAccountName }}
   serviceAccountName: {{ $service.serviceAccountName }}
   {{- end -}}
@@ -335,7 +335,7 @@ spec:
     {{- range $volName, $volValue := $volumeClaimTemplates -}}
     {{- $pvc := include "stack.pvc" (dict "volName" $volName "volValue" $volValue) | fromYaml }}
     - metadata: {{ get $pvc "metadata" | toYaml | nindent 8 }}
-      spec: {{ get $pvc "spec" | toYaml | nindent 8  }}
+      spec: {{ get $pvc "spec" | toYaml | nindent 8 }}
     {{- end -}}
   {{- end -}}
 {{- end -}}

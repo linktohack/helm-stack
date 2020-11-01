@@ -198,7 +198,7 @@ Normalize ports:
 
 {{/*
 Merge Deep Overwrite with nil, dict, list & primitive support
-Result is always a dict {"data" : data }
+Result is a dict { "data": $mergedData }
 */}}
 {{- define "stack.helpers.mergeDeepOverwrite" -}}
 {{-   $dst := index . 0 -}}

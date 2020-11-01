@@ -8,14 +8,14 @@
 {{-       $pv := include "stack.pv" (dict "volName" $volName "volValue" $volValue "Values" $Values "Release" $Release) | fromYaml -}}
 {{-       $override := $Values | pluck "volumes" | first | default dict | pluck (get $volValue "originalName") | first | default dict | pluck "PV" | first | default dict }}
 ---
-{{ include "stack.helpers.mergeDeepOverwrite" (list $pv $override) | fromYaml | pluck "data" | first | toYaml }}
+{{ include "stack.helpers.mergeDeepOverwrite" (list $pv $override) | fromYaml | pluck "data" | first | toYaml -}}
 {{-     end -}}
 {{/* volumes: pvc */}}
 {{-     if or (ne (get $volValue "deploymentKind") "StatefulSet") (not (get $volValue "dynamic")) -}}
 {{-       $pvc := include "stack.pvc" (dict "volName" $volName "volValue" $volValue) | fromYaml -}}
 {{-       $override := $Values | pluck "volumes" | first | default dict | pluck (get $volValue "originalName") | first | default dict | pluck "PVC" | first | default dict }}
 ---
-{{ include "stack.helpers.mergeDeepOverwrite" (list $pvc $override) | fromYaml | pluck "data" | first | toYaml }}
+{{ include "stack.helpers.mergeDeepOverwrite" (list $pvc $override) | fromYaml | pluck "data" | first | toYaml -}}
 {{-     end -}}
 {{-   end -}}
 {{- end -}}
@@ -27,7 +27,7 @@
 {{-     $override := $Values | pluck "configs" | first | default dict | pluck (get $volValue "originalName") | first | default dict | pluck "ConfigMap" | first | default dict }}
 {{-     if $config }}
 ---
-{{ include "stack.helpers.mergeDeepOverwrite" (list $config $override) | fromYaml | pluck "data" | first | toYaml }}
+{{ include "stack.helpers.mergeDeepOverwrite" (list $config $override) | fromYaml | pluck "data" | first | toYaml -}}
 {{-     end -}}
 {{-   end -}}
 {{- end -}}
@@ -39,7 +39,7 @@
 {{-     $override := $Values | pluck "secrets" | first | default dict | pluck (get $volValue "originalName") | first | default dict | pluck "Secret" | first | default dict }}
 {{-     if $secret }}
 ---
-{{ include "stack.helpers.mergeDeepOverwrite" (list $secret $override) | fromYaml | pluck "data" | first | toYaml }}
+{{ include "stack.helpers.mergeDeepOverwrite" (list $secret $override) | fromYaml | pluck "data" | first | toYaml -}}
 {{-     end -}}
 {{-   end -}}
 {{- end -}}
@@ -51,14 +51,14 @@
 {{-   $override := $Values | pluck "services" | first | default dict | pluck $name | first | default dict | pluck "ClusterIP" | first | default dict -}}
 {{-   if $clusterIP }}
 ---
-{{ include "stack.helpers.mergeDeepOverwrite" (list $clusterIP $override) | fromYaml | pluck "data" | first | toYaml }}
+{{ include "stack.helpers.mergeDeepOverwrite" (list $clusterIP $override) | fromYaml | pluck "data" | first | toYaml -}}
 {{-   end }}
 {{/* services: nodePort */}}
 {{-   $nodePort := include "stack.service.nodePort" (dict "name" $name "service" $service "Values" $Values "Release" $Release) | fromYaml -}}
 {{-   $override := $Values | pluck "services" | first | default dict | pluck $name | first | default dict | pluck "NodePort" | first | default dict -}}
 {{-   if $nodePort }}
 ---
-{{  include "stack.helpers.mergeDeepOverwrite" (list $nodePort $override) | fromYaml | pluck "data" | first | toYaml }}
+{{ include "stack.helpers.mergeDeepOverwrite" (list $nodePort $override) | fromYaml | pluck "data" | first | toYaml -}}
 {{-   end }}
 {{/* services: loadBalancer */}}
 {{-   $ports := include "stack.helpers.normalizePorts" $service.ports | fromYaml -}}
@@ -68,7 +68,7 @@
 {{-       $override := $Values | pluck "services" | first | default dict | pluck $name | first | default dict | pluck "LoadBalancer" | first | default dict | pluck $protocol | first | default dict -}}
 {{-       if $loadBalancer }}
 ---
-{{ include "stack.helpers.mergeDeepOverwrite" (list $loadBalancer $override) | fromYaml | pluck "data" | first | toYaml }}
+{{ include "stack.helpers.mergeDeepOverwrite" (list $loadBalancer $override) | fromYaml | pluck "data" | first | toYaml -}}
 {{-       end -}}
 {{-     end -}}
 {{-   end -}}
@@ -78,13 +78,13 @@
 {{-       $ingress := include "stack.ingress" (dict "name" $name "segment" $segment "ingress" $ingressValue) | fromYaml -}}
 {{-       $override := $Values | pluck "services" | first | default dict | pluck $name | first | default dict | pluck "Ingress" | first | default dict | pluck $segment | first | default dict }}
 ---
-{{ include "stack.helpers.mergeDeepOverwrite" (list $ingress $override) | fromYaml | pluck "data" | first | toYaml }}
+{{ include "stack.helpers.mergeDeepOverwrite" (list $ingress $override) | fromYaml | pluck "data" | first | toYaml -}}
 {{-     end -}}
 {{-     if get $ingressValue "auth" -}}
 {{-       $auth := include "stack.ingress.auth"  (dict "name" $name "segment" $segment "ingress" $ingressValue) | fromYaml -}}
-{{-       $override := $Values | pluck "services" | first | default dict | pluck $name | first | default dict | pluck "Auth" | first | default dict | pluck $segment | first | default dict}}
+{{-       $override := $Values | pluck "services" | first | default dict | pluck $name | first | default dict | pluck "Auth" | first | default dict | pluck $segment | first | default dict }}
 ---
-{{ include "stack.helpers.mergeDeepOverwrite" (list $auth $override) | fromYaml | pluck "data" | first | toYaml }}
+{{ include "stack.helpers.mergeDeepOverwrite" (list $auth $override) | fromYaml | pluck "data" | first | toYaml -}}
 {{-     end -}}
 {{-   end }}
 {{/* services: deployment */}}
@@ -93,7 +93,7 @@
 {{-   $override := $Values | pluck "services" | first | default dict | pluck $name | first | default dict | pluck $kind | first | default dict -}}
 ---
 {{/* $override | toYaml | fail */}}
-{{ include "stack.helpers.mergeDeepOverwrite" (list $deployment $override) | fromYaml | pluck "data" | first | toYaml }}
+{{ include "stack.helpers.mergeDeepOverwrite" (list $deployment $override) | fromYaml | pluck "data" | first | toYaml -}}
 {{- end -}}
 {{/* services: end */}}
 {{/* Raw */}}

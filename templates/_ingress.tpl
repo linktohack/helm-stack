@@ -87,7 +87,7 @@ All the ingresses
 {{-       end -}}
 {{-     end -}}
 {{-     $_ := set $ingresses (default "default" $segment) (dict "hosts" $hosts "port" $port "backend" $backend "auth" $auth "pathPrefixStrip" $pathPrefixStrip "addPrefix" $addPrefix "ingressClass" $ingressClass "issuer" $issuer "clusterIssuer" $clusterIssuer "customHeaders" $customHeaders) -}}
-{{-   end  }}
+{{-   end -}}
 {{ $ingresses | toYaml }}
 {{- end -}}
 
@@ -113,24 +113,24 @@ metadata:
   annotations:
     {{- if ne $backend "http" }}
     ingress.kubernetes.io/protocol: {{ $backend }}
-    {{- end }}
+    {{- end -}}
     {{- if $auth }}
     ingress.kubernetes.io/auth-type: basic
     ingress.kubernetes.io/auth-realm: traefik
     ingress.kubernetes.io/auth-secret: {{ printf "%s-%s-basic-auth" $name $segment | quote }}
-    {{- end }}
+    {{- end -}}
     {{- if $ingressClass }}
     kubernetes.io/ingress.class: {{ $ingressClass }}
-    {{- end }}
+    {{- end -}}
     {{- if $issuer }}
     cert-manager.io/issuer: {{ $issuer }}
-    {{- end }}
+    {{- end -}}
     {{- if $clusterIssuer }}
     cert-manager.io/cluster-issuer: {{ $clusterIssuer }}
-    {{- end }}
+    {{- end -}}
     {{- if $pathPrefixStrip }}
     traefik.ingress.kubernetes.io/rule-type: PathPrefixStrip
-    {{- end }}
+    {{- end -}}
     {{- if $addPrefix }}
     traefik.ingress.kubernetes.io/request-modifier: {{ printf "AddPrefix:%s" $addPrefix }}
     {{- end -}}

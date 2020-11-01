@@ -78,7 +78,7 @@ spec:
   {{- if and (ne (get .volValue "type") "nfs") (get .volValue "src") }}
   hostPath:
     path: {{ get .volValue "src" | quote }}
-  {{- end }}
+  {{- end -}}
   {{- if eq (get .volValue "type") "nfs" }}
   nfs:
     server: {{ get .volValue "server" | quote }}
