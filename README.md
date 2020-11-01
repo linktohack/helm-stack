@@ -19,7 +19,9 @@ The chart is quite features complete and I was able to deploy complex stacks wit
 - [X] Deployment: 
   - Default to `Deployment`
   - `DaemonSet` if `deploy.mode == global`
-  - `kind` can be set manually (e.g. `StatefulSet`, `Job`, `CronJob`)
+  - `kind` can be set manually (e.g. `StatefulSet`, `Job`, `CronJob`) via an [extra key](#extra-keys)
+- [X] Multiple conainters per service:
+  - [Extra key](#extra-keys) `containers` to add more than one containers to the service
 - [X] Node: Support placement constraints (`deploy.placement.constraints`) including:
   - `node.role`
   - `node.hostname`
@@ -245,7 +247,7 @@ kubectl -n com-linktohack-redmine apply -f stack1.yaml
 ```
 
 # Changelog
-* v1.8.2 Support extra `containers` key, with `mergeDeepOvewrite`
+* v1.8.3 Support extra `containers` key, with `mergeDeepOvewrite`
 * v1.7.0 Support `Job` & `CronJob`
 * v1.6.0 Allow to mount static path to `StatefulSet`.
 * v1.5.0 Support `CertManager`
