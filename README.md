@@ -43,6 +43,7 @@ The chart is quite features complete and I was able to deploy complex stacks wit
     - `nfs`
     - `emptyDir`
   - Support `none` (map to `hostPath` if `volumes.XXX.driver_opts.device` presents) and `nfs` (support `addr` in `volumes.XXX.driver_opts.o`, `volumes.XXX.driver_opts.device`) static provisioner. 
+  - Support `readOnly` attribute (`volume:/path:ro`)
 - [X] Config: Handle top-level configs/external configs
   - Support both short and long syntax
   - Data can be integrated directly via `data` external key
@@ -247,7 +248,7 @@ kubectl -n com-linktohack-redmine apply -f stack1.yaml
 ```
 
 # Changelog
-* v1.8.4 Support extra `containers` key, with `mergeDeepOvewrite`
+* v1.8.5 Support extra `containers` key, with `mergeDeepOvewrite`
 * v1.7.0 Support `Job` & `CronJob`
 * v1.6.0 Allow to mount static path to `StatefulSet`.
 * v1.5.0 Support `CertManager`

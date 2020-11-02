@@ -90,8 +90,7 @@
 {{/* services: deployment */}}
 {{-   $deployment := include "stack.deployment" (dict "name" $name "service" $service "Values" $Values "Release" $Release) | fromYaml -}}
 {{-   $kind := get $deployment "kind" -}}
-{{-   $override := $Values | pluck "services" | first | default dict | pluck $name | first | default dict | pluck $kind | first | default dict -}}
----
+{{-   $override := $Values | pluck "services" | first | default dict | pluck $name | first | default dict | pluck $kind | first | default dict -}}---
 {{/* $override | toYaml | fail */}}
 {{ include "stack.helpers.mergeDeepOverwrite" (list $deployment $override) | fromYaml | pluck "data" | first | toYaml -}}
 {{- end -}}
