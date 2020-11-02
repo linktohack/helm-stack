@@ -298,7 +298,7 @@ metadata:
   name: {{ $name | quote }}
 spec:
   template:
-    {{ mergeOverwrite (dict "spec" (dict "restartPolicy" "Never") $podSpec) | toYaml | nindent 4 }}
+    {{ mergeOverwrite (dict "spec" (dict "restartPolicy" "Never")) $podSpec | toYaml | nindent 4 }}
 {{- else if eq $kind "CronJob" -}}
 apiVersion: batch/v1beta1
 kind: {{ $kind }}
@@ -309,7 +309,7 @@ spec:
   jobTemplate:
     spec:
       template:
-        {{ mergeOverwrite (dict "spec" (dict "restartPolicy" "Never") $podSpec) | toYaml | nindent 8 }}
+        {{ mergeOverwrite (dict "spec" (dict "restartPolicy" "Never")) $podSpec | toYaml | nindent 8 }}
 {{- else -}}
 apiVersion: apps/v1
 kind: {{ $kind }}
