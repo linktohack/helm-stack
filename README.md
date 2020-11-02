@@ -247,7 +247,7 @@ kubectl -n com-linktohack-redmine apply -f stack1.yaml
 ```
 
 # Changelog
-* v1.8.3 Support extra `containers` key, with `mergeDeepOvewrite`
+* v1.8.4 Support extra `containers` key, with `mergeDeepOvewrite`
 * v1.7.0 Support `Job` & `CronJob`
 * v1.6.0 Allow to mount static path to `StatefulSet`.
 * v1.5.0 Support `CertManager`
