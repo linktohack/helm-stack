@@ -130,6 +130,9 @@ spec:
           name: {{ $volName | quote }}
           {{- if get $volValue "subPath" }}
           subPath: {{ get $volValue "subPath" | quote }}
+          {{- end -}}
+          {{- if get $volValue "readOnly" }}
+          readOnly: {{ get $volValue "readOnly" }}
           {{- end }}
         {{- end -}}
         {{- if eq (get $volValue "volumeKind") "ConfigMap" }}
@@ -240,20 +243,26 @@ spec:
 {{-     range $volIndex, $volValue := $container.volumes -}}
 {{-       $list := splitList ":" $volValue -}}
 {{-       $volName := first $list -}}
+{{-       $readOnly := false -}}
+{{-       if and (len $list | lt 2) -}}
+{{-         if index $list 2 | eq "ro" -}}
+{{-           $readOnly = true -}}
+{{-         end -}}
+{{-       end -}}
 {{-       if hasPrefix "/" $volName -}}
-{{-         $_ := set $serviceVolumes (printf "volume%s-%d" $maybeWithContainerIndex $volIndex) (dict "volumeKind" "Volume" "type" "hostPath" "src" $volName "dst" (index $list 1)) -}}
-{{-         $_ := set $volumeMount (printf "volume%s-%d" $maybeWithContainerIndex $volIndex) (dict "volumeKind" "Volume" "type" "hostPath" "src" $volName "dst" (index $list 1)) -}}
+{{-         $_ := set $serviceVolumes (printf "volume%s-%d" $maybeWithContainerIndex $volIndex) (dict "volumeKind" "Volume" "type" "hostPath" "src" $volName "dst" (index $list 1) "readOnly" $readOnly) -}}
+{{-         $_ := set $volumeMount (printf "volume%s-%d" $maybeWithContainerIndex $volIndex) (dict "volumeKind" "Volume" "type" "hostPath" "src" $volName "dst" (index $list 1) "readOnly" $readOnly) -}}
 {{-       else if hasPrefix "./" $volName -}}
 {{-         $src := clean (printf "%s/%s" (default "." $Values.chdir) $volName) -}}
 {{-         if not (isAbs $src) -}}
 {{-           fail "volume path or chidir has to be absolute." -}}
 {{-         end -}}
-{{-         $_ := set $serviceVolumes (printf "volume%s-%d" $maybeWithContainerIndex $volIndex) (dict "volumeKind" "Volume" "type" "hostPath" "src" $src "dst" (index $list 1)) -}}
-{{-         $_ := set $volumeMount (printf "volume%s-%d" $maybeWithContainerIndex $volIndex) (dict "volumeKind" "Volume" "type" "hostPath" "src" $src "dst" (index $list 1)) -}}
+{{-         $_ := set $serviceVolumes (printf "volume%s-%d" $maybeWithContainerIndex $volIndex) (dict "volumeKind" "Volume" "type" "hostPath" "src" $src "dst" (index $list 1) "readOnly" $readOnly) -}}
+{{-         $_ := set $volumeMount (printf "volume%s-%d" $maybeWithContainerIndex $volIndex) (dict "volumeKind" "Volume" "type" "hostPath" "src" $src "dst" (index $list 1) "readOnly" $readOnly) -}}
 {{-       else -}}
 {{-         $volName = $volName | replace "_" "-" -}}
 {{-         $curr := get $volumes $volName | deepCopy -}}
-{{-         $curr = mergeOverwrite $curr (dict "dst" (index $list 1)) -}}
+{{-         $curr = mergeOverwrite $curr (dict "dst" (index $list 1) "readOnly" $readOnly) -}}
 {{-         $_ := set $volumeMount $volName $curr -}}
 {{-         if and (eq $kind "StatefulSet") (ne (get $curr "type") "emptyDir") (get $curr "dynamic") -}}
 {{-           $_ := set $volumeClaimTemplates $volName $curr -}}
