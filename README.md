@@ -32,8 +32,8 @@ The chart is quite features complete and I was able to deploy complex stacks wit
   - `nodePorts` expose `NodePort` services
 - [X] Ingress
   - Support `traefik` (1.7) labels (`deploy.labels`) as input with annotations including basic auth
-  - Support CertManager `Issuer` and `ClusterIssuer` via extra labels `traefik.issuer` and `traefik.cluster-issuer`
-    - Ingress class will be set to `nginx` but it can be overrided.
+  - Support `CertManager` `Issuer` and `ClusterIssuer` via extra labels `traefik.issuer` and `traefik.cluster-issuer`
+  - Support `Ingress` class via extra label `traefik.ingress-class`
   - Support `segment` labels for services that expose multiple ports `traefik.port`, `traefik.first.port`, `traefik.second.port`...
   - Advanced features (`PathPrefixStrip`, custom headers...) will set the Ingress class to `traefik`, but again it can be overriden.
 - [X] Volume: Handle inline/top-level volumes/external volumes
@@ -248,7 +248,7 @@ kubectl -n com-linktohack-redmine apply -f stack1.yaml
 ```
 
 # Changelog
-* v1.8.5 Support extra `containers` key, with `mergeDeepOvewrite`
+* v1.8.6 Support extra `containers` key, with `mergeDeepOvewrite`
 * v1.7.0 Support `Job` & `CronJob`
 * v1.6.0 Allow to mount static path to `StatefulSet`.
 * v1.5.0 Support `CertManager`
