@@ -8,9 +8,9 @@ All the ingresses
 {{-   $h1 := dict "src" "traefik.frontend.headers.customRequestHeaders" "dst" "ingress.kubernetes.io/custom-request-headers" -}}
 {{-   $h2 := dict "src" "traefik.frontend.headers.customResponseHeaders" "dst" "ingress.kubernetes.io/custom-response-headers" -}}
 {{-   $h3 := dict "src" "traefik.frontend.headers.SSLRedirect" "dst" "ingress.kubernetes.io/ssl-redirect" -}}
-{{-   $h4 := dict "src" "traefik.frontend.redirect.entryPoint" "dst" "traefik.ingress.kubernetes.io/redirect-entry-point" -}}
-{{-   $h5 := dict "src" "traefik.frontend.auth.basic.removeHeader" "dst" "ingress.kubernetes.io/auth-remove-header" -}}
-{{-   $customHeadersDef := list $h1 $h2 $h3 $h4 $h5 -}}
+{{-   $h4 := dict "src" "traefik.frontend.auth.basic.removeHeader" "dst" "ingress.kubernetes.io/auth-remove-header" -}}
+{{-   $h5 := dict "src" "traefik.frontend.redirect.entryPoint" "dst" "traefik.ingress.kubernetes.io/redirect-entry-point" -}}
+{{-   $customHeadersMap := list $h1 $h2 $h3 $h4 $h5 -}}
 {{-   $labels := $service | pluck "deploy" | first | default dict | pluck "labels" | first | default list -}}
 {{-   $segments := list -}}
 {{-   range $labelName, $labelValue := include "stack.helpers.normalizeKV" $labels | fromYaml -}}
@@ -40,6 +40,9 @@ All the ingresses
 {{-       $segmentPrefix = printf "traefik.%s" $segment -}}
 {{-     end -}}
 {{-     range $labelName, $labelValue := include "stack.helpers.normalizeKV" $labels | fromYaml -}}
+{{-       if eq $labelName (regexReplaceAllLiteral "^traefik" "traefik.ingress-class" $segmentPrefix) -}}
+{{-         $ingressClass = $labelValue -}}
+{{-       end -}}
 {{-       if eq $labelName (regexReplaceAllLiteral "^traefik" "traefik.frontend.rule" $segmentPrefix) -}}
 {{-         $rules := splitList ";" $labelValue -}}
 {{-         range $rule := $rules -}}
@@ -55,18 +58,6 @@ All the ingresses
 {{-           end -}}
 {{-         end -}}
 {{-       end -}}
-{{-       if eq $labelName (regexReplaceAllLiteral "^traefik" "traefik.issuer" $segmentPrefix) -}}
-{{-         $issuer = $labelValue -}}
-{{-       end -}}
-{{-       if eq $labelName (regexReplaceAllLiteral "^traefik" "traefik.cluster-issuer" $segmentPrefix) -}}
-{{-         $clusterIssuer = $labelValue -}}
-{{-       end -}}
-{{-       if or $issuer $clusterIssuer -}}
-{{-         $ingressClass = "nginx" -}}
-{{-       end -}}
-{{-       if or $pathPrefixStrip $addPrefix $customHeaders -}}
-{{-         $ingressClass = "traefik" -}}
-{{-       end -}}
 {{-       if eq $labelName (regexReplaceAllLiteral "^traefik" "traefik.port" $segmentPrefix) -}}
 {{-         $port = $labelValue -}}
 {{-       end -}}
@@ -79,7 +70,13 @@ All the ingresses
 {{-       if eq $labelName (regexReplaceAllLiteral "^traefik" "traefik.frontend.auth.basic.users" $segmentPrefix) -}}
 {{-         $auth = $labelValue | replace "$$" "$" -}}
 {{-       end -}}
-{{-       range $header := $customHeadersDef -}}
+{{-       if eq $labelName (regexReplaceAllLiteral "^traefik" "traefik.issuer" $segmentPrefix) -}}
+{{-         $issuer = $labelValue -}}
+{{-       end -}}
+{{-       if eq $labelName (regexReplaceAllLiteral "^traefik" "traefik.cluster-issuer" $segmentPrefix) -}}
+{{-         $clusterIssuer = $labelValue -}}
+{{-       end -}}
+{{-       range $header := $customHeadersMap -}}
 {{-         if eq $labelName (regexReplaceAllLiteral "^traefik" (get $header "src") $segmentPrefix) -}}
 {{-           $header := $header | deepCopy | merge (dict "val" $labelValue) -}}
 {{-           $customHeaders = append $customHeaders $header -}}
@@ -136,6 +133,9 @@ metadata:
     {{- end -}}
     {{- range $header := $customHeaders }}
     {{ get $header "dst" }}: {{ get $header "val" | quote }}
+    {{- end -}}
+    {{- if and (regexFind "nginx" $ingressClass) $pathPrefixStrip }}
+    nginx.ingress.kubernetes.io/rewrite-target: {{ first $pathPrefixStrip }}/$1
     {{- end }}
 spec:
   rules:
@@ -143,7 +143,10 @@ spec:
     - host: {{ $host | quote }}
       http:
         paths:
-          {{- range $path := default (list "/") $pathPrefixStrip }}
+          {{- range $path := default (list "/") $pathPrefixStrip -}}
+          {{- if and (regexFind "nginx" $ingressClass) (ne $path "/") -}}
+          {{-   $path = printf "%s/(.*)" $path -}}
+          {{- end }}
           - path: {{ $path | quote }}
             backend:
               serviceName: {{ printf "%s" $name | quote }}
