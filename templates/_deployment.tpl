@@ -58,15 +58,15 @@ Result is a dict { "data": $affinities }
 {{ dict "data" $affinities | toYaml }}
 {{- end -}}
 
-
-{{- define "stack.helpers.podSpec" -}}
-{{-   $name := .name | replace "_" "-" -}}
-{{-   $service := .service -}}
-{{-   $containers := .containers -}}
-{{-   $serviceVolumes := .serviceVolumes -}}
-{{-   $volumeMounts := .volumeMounts -}}
-{{-   $affinities := .affinities -}}
-{{-   $restartPolicy := .restartPolicy -}}
+{{- define "stack.helpers.podSpec" }}
+{{-   $name := .name | replace "_" "-" }}
+{{-   $service := .service }}
+{{-   $containers := .containers }}
+{{-   $initContainers := .initContainers }}
+{{-   $serviceVolumes := .serviceVolumes }}
+{{-   $volumeMounts := .volumeMounts }}
+{{-   $affinities := .affinities }}
+{{-   $restartPolicy := .restartPolicy }}
 {{-   $restartPolicyMap := dict "" "" "none" "Never" "on-failure" "OnFailure" "any" "Always" -}}
 spec:
   {{- if $affinities }}
@@ -81,22 +81,44 @@ spec:
   dnsConfig:
     nameservers: {{ $service.dns | toYaml | nindent 10 }}
   {{- end }}
+
   containers:
-  {{- range $containerIndex, $container := $containers }}
+  {{- range $index, $container := $containers }}
   {{- /** Set container.environments */}}
   {{-   $environment := include "stack.helpers.normalizeKV" $container.environment | fromYaml }}
   {{-   $_ := set $container "environment" $environment }}
   {{- /** Set container.volumeMounts */}}
-  {{-   $volumeMount := index $volumeMounts $containerIndex }}
+  {{-   $volumeMount := index $volumeMounts $index }}
   {{-   $_ := set $container "volumeMounts" $volumeMount }}
   {{- /** Set container.name */}}
   {{-   $maybeWithContainerIndex := "" }}
-  {{-   if gt $containerIndex 0 }}
-  {{-     $maybeWithContainerIndex = printf "-%d" $containerIndex }}
+  {{-   if gt $index 0 }}
+  {{-     $maybeWithContainerIndex = printf "-%d" $index }}
   {{-   end }}
   {{-   $name := $container.container_name | default (printf "%s%s" $name $maybeWithContainerIndex) | replace "_" "-" }}
   {{-   $_ := set $container "name" $name }}
   - {{ include "stack.helpers.containerSpec" $container | nindent 4 | trim }}
+  {{- end -}}
+
+  {{- if $initContainers }}
+  initContainers:
+  {{- range $index, $container := $initContainers }}
+  {{- /** Set container.environments */}}
+  {{-   $environment := include "stack.helpers.normalizeKV" $container.environment | fromYaml }}
+  {{-   $_ := set $container "environment" $environment }}
+  {{- /** Set container.volumeMounts. NOT WORKED YET. TODO /}}
+  {{-   $volumeMount := index $volumeMounts $index }}
+  {{-   $_ := set $container "volumeMounts" $volumeMount */}}
+  {{-   $_ := set $container "volumeMounts" nil }}
+  {{- /** Set container.name */}}
+  {{-   $maybeWithContainerIndex := "" }}
+  {{-   if gt $index 0 }}
+  {{-     $maybeWithContainerIndex = printf "-%d" $index }}
+  {{-   end }}
+  {{-   $name := $container.container_name | default (printf "%s-init%s" $name $maybeWithContainerIndex) | replace "_" "-" }}
+  {{-   $_ := set $container "name" $name }}
+  - {{ include "stack.helpers.containerSpec" $container | nindent 4 | trim }}
+  {{- end -}}
   {{- end -}}
 
   {{- if $serviceVolumes }}
@@ -158,6 +180,8 @@ spec:
 {{-   $affinities := include "stack.helpers.affinitiesFromConstraints" $constraints | fromYaml | pluck "data" | first -}}
 {{-   $restartPolicy := . | pluck "service" | first | default dict | pluck "deploy" | first | default dict | pluck "restart_policy" | first | default dict -}}
 {{-   $containers := omit $service "containers" | prepend ($service.containers | default list) -}}
+{{-   $initContainers := $service.initContainers | default list -}}
+
 {{-   range $containerIndex, $container := $containers -}}
 {{-     $volumeMount := dict -}}
 {{-     $maybeWithContainerIndex := "" -}}
@@ -223,7 +247,7 @@ spec:
 {{-     end -}}
 {{-     $volumeMounts = append $volumeMounts $volumeMount -}}
 {{-   end -}}
-{{- $podSpec := include "stack.helpers.podSpec" (dict "name" $name "service" $service "containers" $containers "serviceVolumes" $serviceVolumes "volumeMounts" $volumeMounts "affinities" $affinities "restartPolicy" $restartPolicy) | fromYaml -}}
+{{- $podSpec := include "stack.helpers.podSpec" (dict "name" $name "service" $service "containers" $containers "initContainers" $initContainers "serviceVolumes" $serviceVolumes "volumeMounts" $volumeMounts "affinities" $affinities "restartPolicy" $restartPolicy) | fromYaml -}}
 {{- if eq $kind "Job" -}}
 apiVersion: batch/v1
 kind: {{ $kind }}
