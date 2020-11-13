@@ -245,3 +245,22 @@ Result is a dict { "data": $mergedData }
 {{-   end -}}
 {{ dict "data" $newDst | toYaml }}
 {{- end -}}
+
+{{/** Get path (a.b.c.d) */}}
+{{- define "getPath" -}}
+{{-   $object := index . 0 -}}
+{{-   $paths := splitList "." (index . 1) -}}
+{{-   range $paths -}}
+{{-     $object = $object | pluck . | first -}}
+{{-   end -}}
+{{ $object | toYaml }}
+{{- end -}}
+
+{{/** Rename cpus -> cpu */}}
+{{- define "schema.normalizeCPU" -}}
+{{-   if and . (.cpus) -}}
+{{-     $_ := set . "cpu" .cpus -}}
+{{-     $_ := unset . "cpus" -}}
+{{-   end -}}
+{{- . | toYaml -}}
+{{- end -}}
