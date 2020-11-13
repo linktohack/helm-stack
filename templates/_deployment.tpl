@@ -85,6 +85,7 @@ spec:
   {{- range $containerIndex, $container := $containers -}}
   {{-   $environments := include "stack.helpers.normalizeKV" $container.environment | fromYaml -}}
   {{-   $volumeMount := index $volumeMounts $containerIndex -}}
+  {{-   $resources := include "getPath" (list $container "deploy.resources") | fromYaml -}}
   {{-   $maybeWithContainerIndex := "" -}}
   {{-   if gt $containerIndex 0 -}}
   {{-     $maybeWithContainerIndex = printf "-%d" $containerIndex -}}
@@ -97,6 +98,13 @@ spec:
       {{- if $container.hostname }}
       hostname: {{ $container.hostname | quote }}
       {{- end -}}
+      
+      {{- if $resources }}
+      resources:
+        requests: {{ $resources.reservations | default $resources.requests | include "schema.normalizeCPU" | nindent 10 }}
+        limits: {{ $resources.limits | include "schema.normalizeCPU" | nindent 10 }}
+      {{- end -}}
+
       {{- if $container.command }}
       args: {{ $container.command | include "stack.helpers.normalizeCommand" | nindent 12 }}
       {{- end -}}
