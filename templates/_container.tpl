@@ -88,7 +88,7 @@
 {{- /* Set container.volumeMounts */ -}}
 {{-     $_ := set $container "volumeMounts" $volumeMounts }}
 {{- /* Set container.name */ -}}
-{{-     $name := $container.container_name | default (printf "%s%s" $name $maybeWithContainerIndex) | replace "_" "-" }}
+{{-     $name := $container.container_name | default $container.name | default (printf "%s%s" $name $maybeWithContainerIndex) | replace "_" "-" }}
 {{-     $_ := set $container "name" $name }}
   - {{ include "stack.helpers.containerSpec" $container | nindent 4 | trim }}
 {{-   end -}}
