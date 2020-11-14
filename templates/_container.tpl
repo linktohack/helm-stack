@@ -166,8 +166,9 @@ volumeMounts:
   {{- if eq (get $volValue "volumeKind") "Secret" }}
   - mountPath: {{ get $volValue "target" | default (printf "/run/secrets/%s" (get $volValue "originalName")) | quote }}
     name: {{ $volName | quote }}
-    {{- if get $volValue "file" }}
-    subPath: {{ get $volValue "file" | base | quote }}
+    {{- $subPath := $volValue.file | default $volValue.subPath -}}
+    {{- if $subPath }}
+    subPath: {{ $subPath | base | quote }}
     {{- end -}}
   {{- end -}}
   {{- end -}}
