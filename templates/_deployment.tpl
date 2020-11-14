@@ -97,7 +97,7 @@ spec:
   {{ include "stack.helpers.containerList" (merge dict $context $params) }}
   {{- end }}
 
-  {{- if eq "host" ($containers | first | pluck "network_mode" | first) }}
+  {{- if eq "host" ($containers | first | pluck "network_mode" | first | default "default") }}
   hostNetwork: true
   {{- end }}
 
