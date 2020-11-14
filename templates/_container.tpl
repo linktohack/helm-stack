@@ -49,7 +49,7 @@
 {{-         $name := $volName | replace "_" "-" -}}
 {{-         $volume := merge (dict "name" $name "dst" $mountPath "readOnly" $readOnly) (get $volumes $name) -}}
 {{-         $volumeMounts = append $volumeMounts $volume -}}
-{{-         if and (eq $owner_kind "StatefulSet") (ne (get $volume "type") "emptyDir") (get $volume "dynamic") -}}
+{{-         if and (eq $owner_kind "StatefulSet") (ne $volume.type "emptyDir") (not $volume.external) (get $volume "dynamic") -}}
 {{-         else -}}
 {{-           $_ := set $podVolumes $name $volume -}}
 {{-         end -}}
