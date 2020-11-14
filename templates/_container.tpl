@@ -16,7 +16,7 @@
 {{-     if gt $index 0 -}}
 {{-       $maybeWithContainerIndex = printf "-%d" $index -}}
 {{-     end -}}
-{{-     $volumeMounts := dict -}}
+{{-     $volumeMounts := list -}}
 {{- /* VOLUMES */ -}}
 {{-     range $volIndex, $volValue := $container.volumes -}}
 {{-       $list := splitList ":" $volValue -}}
@@ -31,55 +31,56 @@
 {{-       end -}}
 {{- /* Hostpath scenarios */ -}}
 {{-       if hasPrefix "/" $volName -}}
-{{-         $volume := dict "volumeKind" "Volume" "type" "hostPath" "src" $volName "dst" $mountPath "readOnly" $readOnly -}}
-{{-         $_ := set $podVolumes (printf "volume%s-%d" $maybeWithContainerIndex $volIndex) $volume -}}
-{{-         $_ := set $volumeMounts (printf "volume%s-%d" $maybeWithContainerIndex $volIndex) $volume -}}
+{{-         $name := printf "volume%s-%d" $maybeWithContainerIndex $volIndex -}}
+{{-         $volume := dict "volumeKind" "Volume" "name" $name "type" "hostPath" "src" $volName "dst" $mountPath "readOnly" $readOnly -}}
+{{-         $volumeMounts = append $volumeMounts $volume -}}
+{{-         $_ := set $podVolumes $name $volume -}}
 {{-       else if hasPrefix "./" $volName -}}
 {{-         $src := clean (printf "%s/%s" (default "." $Values.chdir) $volName) -}}
 {{-         if not (isAbs $src) -}}
 {{-           fail "volume path or chidir has to be absolute." -}}
 {{-         end -}}
-{{-         $volume = (dict "volumeKind" "Volume" "type" "hostPath" "src" $src "dst" $mountPath "readOnly" $readOnly) -}}
-{{-         $_ := set $podVolumes (printf "volume%s-%d" $maybeWithContainerIndex $volIndex) $volume -}}
-{{-         $_ := set $volumeMounts (printf "volume%s-%d" $maybeWithContainerIndex $volIndex) $volume -}}
+{{-         $name := printf "volume%s-%d" $maybeWithContainerIndex $volIndex -}}
+{{-         $volume := dict "volumeKind" "Volume" "name" $name "type" "hostPath" "src" $src "dst" $mountPath "readOnly" $readOnly -}}
+{{-         $volumeMounts = append $volumeMounts $volume -}}
+{{-         $_ := set $podVolumes $name $volume -}}
 {{- /* Else */ -}}
 {{-       else -}}
-{{-         $volName = $volName | replace "_" "-" -}}
-{{-         $curr := get $volumes $volName | deepCopy -}}
-{{-         $curr = mergeOverwrite $curr (dict "dst" $mountPath "readOnly" $readOnly) -}}
-{{-         $_ := set $volumeMounts $volName $curr -}}
-{{-         if and (eq $owner_kind "StatefulSet") (ne (get $curr "type") "emptyDir") (get $curr "dynamic") -}}
+{{-         $name := $volName | replace "_" "-" -}}
+{{-         $volume := merge (dict "name" $name "dst" $mountPath "readOnly" $readOnly) (get $volumes $name) -}}
+{{-         $volumeMounts = append $volumeMounts $volume -}}
+{{-         if and (eq $owner_kind "StatefulSet") (ne (get $volume "type") "emptyDir") (get $volume "dynamic") -}}
 {{-         else -}}
-{{-           $_ := set $podVolumes $volName $curr -}}
+{{-           $_ := set $podVolumes $name $volume -}}
 {{-         end -}}
 {{-       end -}}
 {{-     end -}}
 {{- /* CONFIG */ -}}
 {{-     range $volValue := $container.configs -}}
-{{-       if (typeOf $volValue) | ne "string" -}}
-{{-         $volName := get $volValue "source" | replace "_" "-" -}}
-{{-         $curr := get $configs $volName | deepCopy -}}
-{{-         $curr = mergeOverwrite $curr $volValue -}}
-{{-         $_ := set $podVolumes $volName $curr -}}
-{{-         $_ := set $volumeMounts $volName $curr -}}
+{{-       if ne (typeOf $volValue) "string" -}}
+{{-         $name := get $volValue "source" | replace "_" "-" -}}
+{{-         $volume := merge (dict "name" $name) (get $configs $name) $volValue -}}
+{{-         $volumeMounts = append $volumeMounts $volume -}}
+{{-         $_ := set $podVolumes $name $volume -}}
 {{-       else -}}
-{{-         $volName := $volValue | replace "_" "-" -}}
-{{-         $_ := set $podVolumes $volName (get $configs $volName) -}}
-{{-         $_ := set $volumeMounts $volName (get $configs $volName) -}}
+{{-         $name := $volValue | replace "_" "-" -}}
+{{-         $volume := merge (dict "name" $name) (get $configs $name) -}}
+{{-         $volumeMounts = append $volumeMounts $volume -}}
+{{-         $_ := set $podVolumes $name $volume -}}
 {{-       end -}}
 {{-     end -}}
 {{- /* SECRET: copy of CONFIG */ -}}
 {{-     range $volValue := $container.secrets -}}
-{{-       if (typeOf $volValue) | ne "string" -}}
-{{-         $volName := get $volValue "source" | replace "_" "-" -}}
-{{-         $curr := get $secrets $volName | deepCopy -}}
-{{-         $curr = mergeOverwrite $curr $volValue -}}
-{{-         $_ := set $podVolumes $volName $curr -}}
-{{-         $_ := set $volumeMounts $volName $curr -}}
+{{-       if ne (typeOf $volValue) "string" -}}
+{{-         $name := get $volValue "source" | replace "_" "-" -}}
+{{-         $volume := merge (dict "name" $name) (get $secrets $name) $volValue -}}
+{{-         $volumeMounts = append $volumeMounts $volume -}}
+{{-         $_ := set $podVolumes $name $volume -}}
 {{-       else -}}
-{{-         $volName := $volValue | replace "_" "-" -}}
-{{-         $_ := set $podVolumes $volName (get $secrets $volName) -}}
-{{-         $_ := set $volumeMounts $volName (get $secrets $volName) -}}
+{{-         $name := $volValue | replace "_" "-" -}}
+{{-         $volume := merge (dict "name" $name) (get $secrets $name) -}}
+{{-         $volumeMounts = append $volumeMounts $volume -}}
+{{-         $_ := set $podVolumes $name $volume -}}
 {{-       end -}}
 {{-     end -}}
 {{- /* Set container.environments */ -}}
@@ -145,7 +146,8 @@ env:
 
 {{- if $container.volumeMounts }}
 volumeMounts:
-  {{- range $volName, $volValue := $container.volumeMounts -}}
+  {{- range $volValue := $container.volumeMounts -}}
+  {{- $volName := $volValue.name -}}
   {{- if eq (get $volValue "volumeKind") "Volume" }}
   - mountPath: {{ get $volValue "dst" | quote }}
     name: {{ $volName | quote }}

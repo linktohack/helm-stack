@@ -103,7 +103,8 @@ spec:
 
   {{- if $podVolumes }}
   volumes:
-    {{- range $volName, $volValue := $podVolumes -}}
+    {{- range $volValue := $podVolumes -}}
+    {{- $volName := $volValue.name -}}
     {{- if eq (get $volValue "volumeKind") "Volume" }}
     - name: {{ $volName | quote }}
       {{- if get $volValue "type" | eq "hostPath" }}
