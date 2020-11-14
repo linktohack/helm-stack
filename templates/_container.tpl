@@ -1,4 +1,20 @@
 
+{{- define "stack.helpers.volumeMountOptions" }}
+{{-   if eq (typeOf .) "string" }}
+{{-     $tokens := splitList ":" . }}
+source: {{ index $tokens 0 }}
+target: {{ index $tokens 1 }}
+{{-     if ge (len $tokens) 3 }}
+readOnly: {{ index $tokens 2 | eq "ro" }}
+{{-     end }}
+{{-   else }}
+{{      if .source   -}} source:   {{ .source   }} {{- end }}
+{{      if .target   -}} target:   {{ .target   }} {{- end }}
+{{      if .readOnly -}} readOnly: {{ .readOnly }} {{- end }}
+{{      if .subPath  -}} subPath:  {{ .subPath  }} {{- end }}
+{{- end }}
+{{- end }}
+
 {{- define "stack.helpers.containerList" -}}
 {{-   $Values := .Values -}}
 {{-   $volumes := .volumes -}}
@@ -19,20 +35,13 @@
 {{-     $volumeMounts := list -}}
 {{- /* VOLUMES */ -}}
 {{-     range $volIndex, $volValue := $container.volumes -}}
-{{-       $list := splitList ":" $volValue -}}
-{{-       $volName := first $list -}}
-{{-       $mountPath := index $list 1 -}}
-{{- /* Readonly mount support */ -}}
-{{-       $readOnly := false -}}
-{{-       if and (len $list | lt 2) -}}
-{{-         if index $list 2 | eq "ro" -}}
-{{-           $readOnly = true -}}
-{{-         end -}}
-{{-       end -}}
+{{-       $mountOptions := include "stack.helpers.volumeMountOptions" $volValue | fromYaml -}}
+{{-       $volName := $mountOptions.source -}}
 {{- /* Hostpath scenarios */ -}}
 {{-       if hasPrefix "/" $volName -}}
 {{-         $name := printf "volume%s-%d" $maybeWithContainerIndex $volIndex -}}
-{{-         $volume := dict "volumeKind" "Volume" "name" $name "type" "hostPath" "src" $volName "dst" $mountPath "readOnly" $readOnly -}}
+{{-         $meta := dict "volumeKind" "Volume" "name" $name "type" "hostPath" -}}
+{{-         $volume := merge $meta $mountOptions -}}
 {{-         $volumeMounts = append $volumeMounts $volume -}}
 {{-         $_ := set $podVolumes $name $volume -}}
 {{-       else if hasPrefix "./" $volName -}}
@@ -41,13 +50,14 @@
 {{-           fail "volume path or chidir has to be absolute." -}}
 {{-         end -}}
 {{-         $name := printf "volume%s-%d" $maybeWithContainerIndex $volIndex -}}
-{{-         $volume := dict "volumeKind" "Volume" "name" $name "type" "hostPath" "src" $src "dst" $mountPath "readOnly" $readOnly -}}
+{{-         $meta := dict "volumeKind" "Volume" "name" $name "type" "hostPath" "source" $src -}}
+{{-         $volume := merge $meta $mountOptions -}}
 {{-         $volumeMounts = append $volumeMounts $volume -}}
 {{-         $_ := set $podVolumes $name $volume -}}
 {{- /* Else */ -}}
 {{-       else -}}
 {{-         $name := $volName | replace "_" "-" -}}
-{{-         $volume := merge (dict "name" $name "dst" $mountPath "readOnly" $readOnly) (get $volumes $name) -}}
+{{-         $volume := merge (dict "name" $name) $mountOptions (get $volumes $name) -}}
 {{-         $volumeMounts = append $volumeMounts $volume -}}
 {{-         if and (eq $owner_kind "StatefulSet") (ne $volume.type "emptyDir") (not $volume.external) (get $volume "dynamic") -}}
 {{-         else -}}
@@ -146,16 +156,16 @@ env:
 
 {{- if $container.volumeMounts }}
 volumeMounts:
-  {{- range $volValue := $container.volumeMounts -}}
-  {{- $volName := $volValue.name -}}
-  {{- if eq (get $volValue "volumeKind") "Volume" }}
-  - mountPath: {{ get $volValue "dst" | quote }}
-    name: {{ $volName | quote }}
-    {{- if get $volValue "subPath" }}
-    subPath: {{ get $volValue "subPath" | quote }}
+  {{- range $mount := $container.volumeMounts -}}
+  {{- $volName := $mount.name -}}
+  {{- if eq $mount.volumeKind "Volume" }}
+  - mountPath: {{ $mount.target | quote }}
+    name: {{ $mount.name | quote }}
+    {{- if $mount.subPath }}
+    subPath: {{ $mount.subPath | quote }}
     {{- end -}}
-    {{- if get $volValue "readOnly" }}
-    readOnly: {{ get $volValue "readOnly" }}
+    {{- if $mount.readOnly }}
+    readOnly: {{ $mount.readOnly }}
     {{- end }}
   {{- end -}}
   {{- if eq (get $volValue "volumeKind") "ConfigMap" }}

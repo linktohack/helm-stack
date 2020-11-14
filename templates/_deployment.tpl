@@ -103,21 +103,20 @@ spec:
 
   {{- if $podVolumes }}
   volumes:
-    {{- range $volValue := $podVolumes -}}
-    {{- $volName := $volValue.name -}}
-    {{- if eq (get $volValue "volumeKind") "Volume" }}
+  {{- range $volValue := $podVolumes }}
+  {{-   $volName := $volValue.name }}
+    {{- if eq $volValue.volumeKind "Volume" }}
     - name: {{ $volName | quote }}
-      {{- if get $volValue "type" | eq "hostPath" }}
+      {{- if eq $volValue.type "hostPath" }}
       hostPath:
-        path: {{ get $volValue "src" | quote }}
-      {{- else if get $volValue "type" | eq "emptyDir" }}
+        path: {{ $volValue.src | default $volValue.source | quote }}
+      {{- else if eq $volValue.type "emptyDir" }}
       emptyDir: {}
       {{- else }}
       persistentVolumeClaim:
-        claimName: {{ get $volValue "externalName" | quote }}
-      {{- end -}}
-    {{- end -}}
-    {{- if eq (get $volValue "volumeKind") "ConfigMap" }}
+        claimName: {{ $volValue.externalName | quote }}
+      {{- end }}
+    {{- end }}
     - name: {{ $volName | quote }}
       configMap:
         name: {{ get $volValue "externalName" | quote }}
@@ -162,10 +161,9 @@ spec:
 
 {{-   range $container := (concat $containers $initContainers) -}}
 {{-     range $mount := $container.volumes -}}
-{{-       $list := splitList ":" $mount -}}
-{{-       $volName := first $list -}}
+{{-       $mountOptions := include "stack.helpers.volumeMountOptions" $mount | fromYaml -}}
+{{-       $volName := $mountOptions.source | replace "_" "-" -}}
 {{-       if not (or (hasPrefix "/" $volName) (hasPrefix "./" $volName)) -}}
-{{-         $volName = $volName | replace "_" "-" -}}
 {{- /* TODO: Check `volumes.XXX` existences and validity */ -}}
 {{-         $curr := get $volumes $volName | deepCopy -}}
 {{-         if and (eq $kind "StatefulSet") (ne $curr.type "emptyDir") (not $curr.external) (get $curr "dynamic") -}}
