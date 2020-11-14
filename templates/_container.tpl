@@ -1,4 +1,28 @@
 
+{{- define "stack.helpers.configMountOptions" }}
+{{-   if eq (typeOf .) "string" }}
+source: {{ . }}
+target: {{ printf "/%s" . }}
+{{-   else }}
+source: {{ .source }}
+target: {{ .target | default (printf "/%s" .source) }}
+{{      if .mode    -}} mode:    {{ .mode    }} {{- end }}
+{{      if .subPath -}} subPath: {{ .subPath }} {{- end }}
+{{-   end -}}
+{{- end -}}
+
+{{- define "stack.helpers.secretMountOptions" }}
+{{-   if eq (typeOf .) "string" }}
+source: {{ . }}
+target: {{ printf "/run/secrets/%s" . }}
+{{-   else }}
+source: {{ .source }}
+target: {{ .target | default (printf "/run/secrets/%s" .source) }}
+{{      if .mode    -}} mode:    {{ .mode    }} {{- end }}
+{{      if .subPath -}} subPath: {{ .subPath }} {{- end }}
+{{-   end -}}
+{{- end -}}
+
 {{- define "stack.helpers.volumeMountOptions" }}
 {{-   if eq (typeOf .) "string" }}
 {{-     $tokens := splitList ":" . }}
@@ -67,39 +91,25 @@ readOnly: {{ index $tokens 2 | eq "ro" }}
 {{-     end -}}
 {{- /* CONFIG */ -}}
 {{-     range $volValue := $container.configs -}}
-{{-       if ne (typeOf $volValue) "string" -}}
-{{-         $name := get $volValue "source" | replace "_" "-" -}}
-{{-         $volume := merge (dict "name" $name) (get $configs $name) $volValue -}}
-{{-         $volumeMounts = append $volumeMounts $volume -}}
-{{-         $_ := set $podVolumes $name $volume -}}
-{{-       else -}}
-{{-         $name := $volValue | replace "_" "-" -}}
-{{-         $volume := merge (dict "name" $name) (get $configs $name) -}}
-{{-         $volumeMounts = append $volumeMounts $volume -}}
-{{-         $_ := set $podVolumes $name $volume -}}
-{{-       end -}}
+{{-       $mountOptions := include "stack.helpers.configMountOptions" $volValue | fromYaml -}}
+{{-       $name := $mountOptions.source | replace "_" "-" -}}
+{{-       $volume := merge (dict "name" $name) $mountOptions (get $configs $name) -}}
+{{-       $volumeMounts = append $volumeMounts $volume -}}
+{{-       $_ := set $podVolumes $name $volume -}}
 {{-     end -}}
 {{- /* SECRET: copy of CONFIG */ -}}
 {{-     range $volValue := $container.secrets -}}
-{{-       if ne (typeOf $volValue) "string" -}}
-{{-         $name := get $volValue "source" | replace "_" "-" -}}
-{{-         $volume := merge (dict "name" $name) (get $secrets $name) $volValue -}}
-{{-         $volumeMounts = append $volumeMounts $volume -}}
-{{-         $_ := set $podVolumes $name $volume -}}
-{{-       else -}}
-{{-         $name := $volValue | replace "_" "-" -}}
-{{-         $volume := merge (dict "name" $name) (get $secrets $name) -}}
-{{-         $volumeMounts = append $volumeMounts $volume -}}
-{{-         $_ := set $podVolumes $name $volume -}}
-{{-       end -}}
+{{-       $mountOptions := include "stack.helpers.secretMountOptions" $volValue | fromYaml -}}
+{{-       $name := $mountOptions.source | replace "_" "-" -}}
+{{-       $volume := merge (dict "name" $name) $mountOptions (get $secrets $name) -}}
+{{-       $volumeMounts = append $volumeMounts $volume -}}
+{{-       $_ := set $podVolumes $name $volume -}}
 {{-     end -}}
-{{- /* Set container.environments */ -}}
+
+{{-     $name := $container.container_name | default $container.name | default (printf "%s%s" $name $maybeWithContainerIndex) | replace "_" "-" }}
 {{-     $environment := include "stack.helpers.normalizeKV" $container.environment | fromYaml }}
 {{-     $_ := set $container "environment" $environment }}
-{{- /* Set container.volumeMounts */ -}}
 {{-     $_ := set $container "volumeMounts" $volumeMounts }}
-{{- /* Set container.name */ -}}
-{{-     $name := $container.container_name | default $container.name | default (printf "%s%s" $name $maybeWithContainerIndex) | replace "_" "-" }}
 {{-     $_ := set $container "name" $name }}
   - {{ include "stack.helpers.containerSpec" $container | nindent 4 | trim }}
 {{-   end -}}
@@ -168,17 +178,10 @@ volumeMounts:
     readOnly: {{ $mount.readOnly }}
     {{- end }}
   {{- end -}}
-  {{- if eq (get $volValue "volumeKind") "ConfigMap" }}
-  - mountPath: {{ get $volValue "target" | default (printf "/%s" (get $volValue "originalName")) | quote }}
-    name: {{ $volName | quote }}
-    {{- if get $volValue "file" }}
-    subPath: {{ get $volValue "file" | base | quote }}
-    {{- end -}}
-  {{- end -}}
-  {{- if eq (get $volValue "volumeKind") "Secret" }}
-  - mountPath: {{ get $volValue "target" | default (printf "/run/secrets/%s" (get $volValue "originalName")) | quote }}
-    name: {{ $volName | quote }}
-    {{- $subPath := $volValue.file | default $volValue.subPath -}}
+  {{- if or (eq $mount.volumeKind "ConfigMap") (eq $mount.volumeKind "Secret") }}
+  - mountPath: {{ $mount.target | quote }}
+    name: {{ $mount.name | quote }}
+    {{- $subPath := $mount.subPath | default $mount.file -}}
     {{- if $subPath }}
     subPath: {{ $subPath | base | quote }}
     {{- end -}}

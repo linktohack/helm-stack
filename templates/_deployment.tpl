@@ -105,8 +105,8 @@ spec:
   volumes:
   {{- range $volValue := $podVolumes }}
   {{-   $volName := $volValue.name }}
-    {{- if eq $volValue.volumeKind "Volume" }}
     - name: {{ $volName | quote }}
+    {{- if eq $volValue.volumeKind "Volume" }}
       {{- if eq $volValue.type "hostPath" }}
       hostPath:
         path: {{ $volValue.src | default $volValue.source | quote }}
@@ -117,20 +117,23 @@ spec:
         claimName: {{ $volValue.externalName | quote }}
       {{- end }}
     {{- end }}
-    - name: {{ $volName | quote }}
+    {{- if eq $volValue.volumeKind "ConfigMap" }}
       configMap:
-        name: {{ get $volValue "externalName" | quote }}
-        {{- if get $volValue "mode" }}
-        defaultMode: {{ get $volValue "mode" }}
-        {{- end -}}
-    {{- end -}}
-    {{- if eq (get $volValue "volumeKind") "Secret" }}
-    - name: {{ $volName | quote }}
+        name: {{ $volValue.externalName | quote }}
+        {{- if $volValue.mode }}
+        defaultMode: {{ $volValue.mode }}
+        {{- end }}
+    {{- end }}
+    {{- if eq $volValue.volumeKind "Secret" }}
       secret:
-        secretName: {{ get $volValue "externalName" | quote }}
-    {{- end -}}
-    {{- end -}}
-  {{- end -}}
+        secretName: {{ $volValue.externalName | quote }}
+        {{- if $volValue.mode }}
+        defaultMode: {{ $volValue.mode }}
+        {{- end }}
+    {{- end }}
+  {{- end }}
+  {{- end }}
+
   {{- if $service.imagePullSecrets }}
   imagePullSecrets:
     - name: {{ $service.imagePullSecrets }}
