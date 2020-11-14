@@ -60,14 +60,19 @@ Result is a dict { "data": $affinities }
 
 {{- define "stack.helpers.podSpec" }}
 {{-   $name := .name | replace "_" "-" }}
+{{-   $owner_kind := .owner_kind }}
 {{-   $service := .service }}
+{{-   $configs := .configs }}
+{{-   $secrets := .secrets }}
+{{-   $volumes := .volumes }}
 {{-   $containers := .containers }}
 {{-   $initContainers := .initContainers }}
-{{-   $serviceVolumes := .serviceVolumes }}
-{{-   $volumeMounts := .volumeMounts }}
 {{-   $affinities := .affinities }}
 {{-   $restartPolicy := .restartPolicy }}
 {{-   $restartPolicyMap := dict "" "" "none" "Never" "on-failure" "OnFailure" "any" "Always" -}}
+{{- /* Variables */ -}}
+{{-   $podVolumes := dict -}}
+{{-   $context := dict "owner_kind" $owner_kind "configs" $configs "secrets" $secrets "volumes" $volumes "podVolumes" $podVolumes }}
 spec:
   {{- if $affinities }}
   affinity:
@@ -83,47 +88,18 @@ spec:
   {{- end }}
 
   containers:
-  {{- range $index, $container := $containers }}
-  {{- /** Set container.environments */}}
-  {{-   $environment := include "stack.helpers.normalizeKV" $container.environment | fromYaml }}
-  {{-   $_ := set $container "environment" $environment }}
-  {{- /** Set container.volumeMounts */}}
-  {{-   $volumeMount := index $volumeMounts $index }}
-  {{-   $_ := set $container "volumeMounts" $volumeMount }}
-  {{- /** Set container.name */}}
-  {{-   $maybeWithContainerIndex := "" }}
-  {{-   if gt $index 0 }}
-  {{-     $maybeWithContainerIndex = printf "-%d" $index }}
-  {{-   end }}
-  {{-   $name := $container.container_name | default (printf "%s%s" $name $maybeWithContainerIndex) | replace "_" "-" }}
-  {{-   $_ := set $container "name" $name }}
-  - {{ include "stack.helpers.containerSpec" $container | nindent 4 | trim }}
-  {{- end -}}
+  {{- $params := dict "service" $service "containers" $containers "initContainers" $initContainers "name" $name }}
+  {{ include "stack.helpers.containerList" (merge dict $context $params) }}
 
   {{- if $initContainers }}
   initContainers:
-  {{- range $index, $container := $initContainers }}
-  {{- /** Set container.environments */}}
-  {{-   $environment := include "stack.helpers.normalizeKV" $container.environment | fromYaml }}
-  {{-   $_ := set $container "environment" $environment }}
-  {{- /** Set container.volumeMounts. NOT WORKED YET. TODO /}}
-  {{-   $volumeMount := index $volumeMounts $index }}
-  {{-   $_ := set $container "volumeMounts" $volumeMount */}}
-  {{-   $_ := set $container "volumeMounts" nil }}
-  {{- /** Set container.name */}}
-  {{-   $maybeWithContainerIndex := "" }}
-  {{-   if gt $index 0 }}
-  {{-     $maybeWithContainerIndex = printf "-%d" $index }}
-  {{-   end }}
-  {{-   $name := $container.container_name | default (printf "%s-init%s" $name $maybeWithContainerIndex) | replace "_" "-" }}
-  {{-   $_ := set $container "name" $name }}
-  - {{ include "stack.helpers.containerSpec" $container | nindent 4 | trim }}
-  {{- end -}}
-  {{- end -}}
+  {{- $params := dict "service" $service "containers" (deepCopy $initContainers) "name" (printf "%s-init" $name) }}
+  {{ include "stack.helpers.containerList" (merge dict $context $params) }}
+  {{- end }}
 
-  {{- if $serviceVolumes }}
+  {{- if $podVolumes }}
   volumes:
-    {{- range $volName, $volValue := $serviceVolumes -}}
+    {{- range $volName, $volValue := $podVolumes -}}
     {{- if eq (get $volValue "volumeKind") "Volume" }}
     - name: {{ $volName | quote }}
       {{- if get $volValue "type" | eq "hostPath" }}
@@ -167,14 +143,11 @@ spec:
 {{- define "stack.deployment" -}}
 {{-   $name := .name | replace "_" "-" -}}
 {{-   $service := .service -}}
-{{-   $Values := .Values -}}
-{{-   $kind := include "stack.helpers.deploymentKind" $service -}}
 {{-   $replicas := $service | pluck "deploy"| first | default dict | pluck "replicas" | first -}}
-{{-   $volumes := include "stack.helpers.volumes" (dict "Values" $Values) | fromYaml -}}
-{{-   $configs := include "stack.helpers.configs" (dict "Values" $Values) | fromYaml -}}
-{{-   $secrets := include "stack.helpers.secrets" (dict "Values" $Values) | fromYaml -}}
-{{-   $serviceVolumes := dict -}}
-{{-   $volumeMounts := list -}}
+{{-   $kind := include "stack.helpers.deploymentKind" $service -}}
+{{-   $volumes := include "stack.helpers.volumes" (dict "Values" .Values) | fromYaml -}}
+{{-   $configs := include "stack.helpers.configs" (dict "Values" .Values) | fromYaml -}}
+{{-   $secrets := include "stack.helpers.secrets" (dict "Values" .Values) | fromYaml -}}
 {{-   $volumeClaimTemplates := dict -}}
 {{-   $constraints := . | pluck "service" | first | default dict | pluck "deploy" | first | default dict | pluck "placement" | first | default dict | pluck "constraints" | first | default list -}}
 {{-   $affinities := include "stack.helpers.affinitiesFromConstraints" $constraints | fromYaml | pluck "data" | first -}}
@@ -182,72 +155,21 @@ spec:
 {{-   $containers := omit $service "containers" | prepend ($service.containers | default list) -}}
 {{-   $initContainers := $service.initContainers | default list -}}
 
-{{-   range $containerIndex, $container := $containers -}}
-{{-     $volumeMount := dict -}}
-{{-     $maybeWithContainerIndex := "" -}}
-{{-     if gt $containerIndex 0 -}}
-{{-       $maybeWithContainerIndex = printf "-%d" $containerIndex -}}
-{{-     end -}}
+{{-   range $containerIndex, $container := (concat $containers $initContainers) -}}
 {{-     range $volIndex, $volValue := $container.volumes -}}
 {{-       $list := splitList ":" $volValue -}}
 {{-       $volName := first $list -}}
-{{-       $readOnly := false -}}
-{{-       if and (len $list | lt 2) -}}
-{{-         if index $list 2 | eq "ro" -}}
-{{-           $readOnly = true -}}
-{{-         end -}}
-{{-       end -}}
-{{-       if hasPrefix "/" $volName -}}
-{{-         $_ := set $serviceVolumes (printf "volume%s-%d" $maybeWithContainerIndex $volIndex) (dict "volumeKind" "Volume" "type" "hostPath" "src" $volName "dst" (index $list 1) "readOnly" $readOnly) -}}
-{{-         $_ := set $volumeMount (printf "volume%s-%d" $maybeWithContainerIndex $volIndex) (dict "volumeKind" "Volume" "type" "hostPath" "src" $volName "dst" (index $list 1) "readOnly" $readOnly) -}}
-{{-       else if hasPrefix "./" $volName -}}
-{{-         $src := clean (printf "%s/%s" (default "." $Values.chdir) $volName) -}}
-{{-         if not (isAbs $src) -}}
-{{-           fail "volume path or chidir has to be absolute." -}}
-{{-         end -}}
-{{-         $_ := set $serviceVolumes (printf "volume%s-%d" $maybeWithContainerIndex $volIndex) (dict "volumeKind" "Volume" "type" "hostPath" "src" $src "dst" (index $list 1) "readOnly" $readOnly) -}}
-{{-         $_ := set $volumeMount (printf "volume%s-%d" $maybeWithContainerIndex $volIndex) (dict "volumeKind" "Volume" "type" "hostPath" "src" $src "dst" (index $list 1) "readOnly" $readOnly) -}}
-{{-       else -}}
+{{-       if not (or (hasPrefix "/" $volName) (hasPrefix "./" $volName)) -}}
 {{-         $volName = $volName | replace "_" "-" -}}
+{{- /* TODO: Check `volumes.XXX` existences and validity */ -}}
 {{-         $curr := get $volumes $volName | deepCopy -}}
-{{-         $curr = mergeOverwrite $curr (dict "dst" (index $list 1) "readOnly" $readOnly) -}}
-{{-         $_ := set $volumeMount $volName $curr -}}
 {{-         if and (eq $kind "StatefulSet") (ne (get $curr "type") "emptyDir") (get $curr "dynamic") -}}
 {{-           $_ := set $volumeClaimTemplates $volName $curr -}}
-{{-         else -}}
-{{-           $_ := set $serviceVolumes $volName $curr -}}
 {{-         end -}}
 {{-       end -}}
 {{-     end -}}
-{{-     range $volValue := $container.configs -}}
-{{-       if (typeOf $volValue) | ne "string" -}}
-{{-         $volName := get $volValue "source" | replace "_" "-" -}}
-{{-         $curr := get $configs $volName | deepCopy -}}
-{{-         $curr = mergeOverwrite $curr $volValue -}}
-{{-         $_ := set $serviceVolumes $volName $curr -}}
-{{-         $_ := set $volumeMount $volName $curr -}}
-{{-       else -}}
-{{-         $volName := $volValue | replace "_" "-" -}}
-{{-         $_ := set $serviceVolumes $volName (get $configs $volName) -}}
-{{-         $_ := set $volumeMount $volName (get $configs $volName) -}}
-{{-       end -}}
-{{-     end -}}
-{{-     range $volValue := $container.secrets -}}
-{{-       if (typeOf $volValue) | ne "string" -}}
-{{-         $volName := get $volValue "source" | replace "_" "-" -}}
-{{-         $curr := get $secrets $volName | deepCopy -}}
-{{-         $curr = mergeOverwrite $curr $volValue -}}
-{{-         $_ := set $serviceVolumes $volName $curr -}}
-{{-         $_ := set $volumeMount $volName $curr -}}
-{{-       else -}}
-{{-         $volName := $volValue | replace "_" "-" -}}
-{{-         $_ := set $serviceVolumes $volName (get $secrets $volName) -}}
-{{-         $_ := set $volumeMount $volName (get $secrets $volName) -}}
-{{-       end -}}
-{{-     end -}}
-{{-     $volumeMounts = append $volumeMounts $volumeMount -}}
 {{-   end -}}
-{{- $podSpec := include "stack.helpers.podSpec" (dict "name" $name "service" $service "containers" $containers "initContainers" $initContainers "serviceVolumes" $serviceVolumes "volumeMounts" $volumeMounts "affinities" $affinities "restartPolicy" $restartPolicy) | fromYaml -}}
+{{- $podSpec := include "stack.helpers.podSpec" (dict "name" $name "owner_kind" $kind "service" $service "volumes" $volumes "configs" $configs "secrets" $secrets "containers" $containers "initContainers" $initContainers "affinities" $affinities "restartPolicy" $restartPolicy) | fromYaml -}}
 {{- if eq $kind "Job" -}}
 apiVersion: batch/v1
 kind: {{ $kind }}
