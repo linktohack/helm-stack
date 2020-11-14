@@ -142,9 +142,9 @@ spec:
 
 {{- define "stack.deployment" -}}
 {{-   $name := .name | replace "_" "-" -}}
+{{-   $kind := .kind -}}
 {{-   $service := .service -}}
 {{-   $replicas := $service | pluck "deploy"| first | default dict | pluck "replicas" | first -}}
-{{-   $kind := include "stack.helpers.deploymentKind" $service -}}
 {{-   $volumes := include "stack.helpers.volumes" (dict "Values" .Values) | fromYaml -}}
 {{-   $configs := include "stack.helpers.configs" (dict "Values" .Values) | fromYaml -}}
 {{-   $secrets := include "stack.helpers.secrets" (dict "Values" .Values) | fromYaml -}}
@@ -170,6 +170,7 @@ spec:
 {{-     end -}}
 {{-   end -}}
 {{- $podSpec := include "stack.helpers.podSpec" (dict "name" $name "owner_kind" $kind "service" $service "volumes" $volumes "configs" $configs "secrets" $secrets "containers" $containers "initContainers" $initContainers "affinities" $affinities "restartPolicy" $restartPolicy) | fromYaml -}}
+
 {{- if eq $kind "Job" -}}
 apiVersion: batch/v1
 kind: {{ $kind }}
@@ -178,6 +179,7 @@ metadata:
 spec:
   template:
     {{ mergeOverwrite (dict "spec" (dict "restartPolicy" "Never")) $podSpec | toYaml | nindent 4 }}
+
 {{- else if eq $kind "CronJob" -}}
 apiVersion: batch/v1beta1
 kind: {{ $kind }}
@@ -189,6 +191,7 @@ spec:
     spec:
       template:
         {{ mergeOverwrite (dict "spec" (dict "restartPolicy" "Never")) $podSpec | toYaml | nindent 8 }}
+
 {{- else -}}
 apiVersion: apps/v1
 kind: {{ $kind }}
