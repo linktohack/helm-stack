@@ -97,6 +97,10 @@ spec:
   {{ include "stack.helpers.containerList" (merge dict $context $params) }}
   {{- end }}
 
+  {{- if eq "host" ($containers | first | pluck "network_mode" | first) }}
+  hostNetwork: true
+  {{- end }}
+
   {{- if $podVolumes }}
   volumes:
     {{- range $volName, $volValue := $podVolumes -}}
