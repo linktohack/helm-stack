@@ -40,11 +40,11 @@ All the volumes
 {{-   range $name, $service := .Values.services -}}
 {{-     $deploymentKind := include "stack.helpers.deploymentKind" $service -}}
 {{-     $containers := omit $service "containers" | prepend ($service.containers | default list) -}}
-{{-     range $containerIndex, $container := $containers -}}
+{{-     range $container := $containers -}}
 {{-       range $volValue := $container.volumes -}}
-{{-         $list := splitList ":" $volValue -}}
-{{-         $volName := first $list | replace "_" "-" -}}
-{{-         if and (not (hasPrefix "/" $volName)) (not (hasPrefix "./" $volName)) -}}
+{{-         $mountOptions := include "stack.helpers.volumeMountOptions" $volValue | fromYaml -}}
+{{-         $volName := $mountOptions.source | replace "_" "-" -}}
+{{-         if not (or (hasPrefix "/" $volName) (hasPrefix "./" $volName)) -}}
 {{-           $volume := get $volumes $volName -}}
 {{-           $_ := set $volume "deploymentKind" $deploymentKind -}}
 {{-         end -}}
