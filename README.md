@@ -115,9 +115,10 @@ These keys are either not existed in `docker-compose` format or have the meaning
   - `services.XXX.ports` (array, ports to be exposed via `LoadBalancer`)
   - `services.XXX.nodePorts` (ports to be exposed as `NodePort`)
   - `services.XXX.containers` (array, same spec as `services.XXX`, additional containers to run in the same `Pod`)
+  - `services.XXX.initContainers` (array, same spec as `services.XXX.containers`, populate `pod.spec.initContainers`)
 - Volumes
   - `volumes.XXX.storage` (string, default `1Gi` for dynamic provisioner)
-  - `volumes.XXX.subPath` (string)
+  - *~~`volumes.XXX.subPath`~~* (string, **deprecated**, use `services.XXX.volumes` mount long-syntax *(v1.9.0 or above)* instead).
 - Config
   - `config.XXX.file` (string | null, required by `swarm`, can be set to `null` to mount config as a directory)
   - `config.XXX.data` (string)
@@ -248,6 +249,13 @@ kubectl -n com-linktohack-redmine apply -f stack1.yaml
 ```
 
 # Changelog
+* v1.9.0:
+  - Support docker-compose style resources requests/limits via `services.XXX.deploy.resources`.
+  - Add support for extra key `initContainers`.
+  - Support Kubernetes Pod `hostNetwork: true` via docker-compose' `network_mode: host`.
+  - Add support for docker-compose's long-syntax `volumes` mount.
+  - Add support for volumes/secrets/config `subPath` mount.
+  - Fix: StatefulSet should now honor volumes with `external: true` (not create a `volumeClaimTemplate`).
 * v1.8.6 Support extra `containers` key, with `mergeDeepOvewrite`
 * v1.7.0 Support `Job` & `CronJob`
 * v1.6.0 Allow to mount static path to `StatefulSet`.
