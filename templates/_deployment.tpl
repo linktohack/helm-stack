@@ -160,15 +160,15 @@ spec:
 {{-   $containers := omit $service "containers" | prepend ($service.containers | default list) -}}
 {{-   $initContainers := $service.initContainers | default list -}}
 
-{{-   range $containerIndex, $container := (concat $containers $initContainers) -}}
-{{-     range $volIndex, $volValue := $container.volumes -}}
-{{-       $list := splitList ":" $volValue -}}
+{{-   range $container := (concat $containers $initContainers) -}}
+{{-     range $mount := $container.volumes -}}
+{{-       $list := splitList ":" $mount -}}
 {{-       $volName := first $list -}}
 {{-       if not (or (hasPrefix "/" $volName) (hasPrefix "./" $volName)) -}}
 {{-         $volName = $volName | replace "_" "-" -}}
 {{- /* TODO: Check `volumes.XXX` existences and validity */ -}}
 {{-         $curr := get $volumes $volName | deepCopy -}}
-{{-         if and (eq $kind "StatefulSet") (ne (get $curr "type") "emptyDir") (get $curr "dynamic") -}}
+{{-         if and (eq $kind "StatefulSet") (ne $curr.type "emptyDir") (not $curr.external) (get $curr "dynamic") -}}
 {{-           $_ := set $volumeClaimTemplates $volName $curr -}}
 {{-         end -}}
 {{-       end -}}
