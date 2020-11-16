@@ -58,6 +58,28 @@ Result is a dict { "data": $affinities }
 {{ dict "data" $affinities | toYaml }}
 {{- end -}}
 
+{{- define "stack.helpers.tolerations" }}
+{{-   if not (eq (typeOf .) "string") }}
+{{-     fail "deploy.placement.tolerations[] must be string" }}
+{{-   end }}
+{{-   if not (regexMatch "^([^=:]+(=[^=:]+)?)?:(NoSchedule|PreferNoSchedule|NoExecute)$" .) }}
+{{-     fail "deploy.placement.tolerations[] must be [key[=value]]:(NoSchedule|PreferNoSchedule|NoExecute)"}}
+{{-   end }}
+{{-   $tokens := splitList ":" . }}
+{{-   $effect := index $tokens 1 }}
+{{-   $pair := index $tokens 0 | splitList "=" }}
+effect: {{ $effect }}
+{{-   if index $pair 0 }}
+key: {{ index $pair 0 }}
+{{-   end }}
+{{-   if lt (len $pair) 2 }}
+operator: Exists
+{{-   else }}
+operator: Equal
+value: {{ index $pair 1 }}
+{{-   end }}
+{{- end }}
+
 {{- define "stack.helpers.podSpec" }}
 {{-   $name := .name | replace "_" "-" }}
 {{-   $owner_kind := .owner_kind }}
@@ -80,7 +102,15 @@ spec:
       requiredDuringSchedulingIgnoredDuringExecution:
         nodeSelectorTerms:
           - matchExpressions: {{ $affinities | toYaml | nindent 16 }}
-  {{- end -}}
+  {{- end }}
+
+  {{- if include "getPath" (list $service "deploy.placement.tolerations") | fromYaml }}
+  tolerations:
+  {{- range $toleration := $service.deploy.placement.tolerations }}
+  - {{ include "stack.helpers.tolerations" $toleration | indent 4 | trim }}
+  {{- end }}
+  {{- end }}
+
   {{- if $service.dns }}
   dnsPolicy: "None"
   dnsConfig:
