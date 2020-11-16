@@ -126,6 +126,8 @@ These keys are either not existed in `docker-compose` format or have the meaning
   - `secrets.XXX.file` (string | null, required by `swarm`, can be set to `null` to mount secret as a directory)
   - `secrets.XXX.data` (string)
   - `secrets.XXX.stringData` (string)
+- Scheduling:
+  - `deploy.placement.tolerations` (string[], see `kubectl taint -h` for syntax)
 - Top levels
   - `chdir` (string, required in case of rusing relative paths in volumes)
   - `Raw` (array, manifests that should be deployed as is)
@@ -249,6 +251,7 @@ kubectl -n com-linktohack-redmine apply -f stack1.yaml
 ```
 
 # Changelog
+* v1.9.1: support `deploy.placement.tolerations` using `kubectl taint` style.
 * v1.9.0:
   - Support docker-compose style resources requests/limits via `services.XXX.deploy.resources`.
   - Add support for extra key `initContainers`.
