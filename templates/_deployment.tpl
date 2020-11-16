@@ -18,8 +18,7 @@ Affinities from constraints
 Result is a dict { "data": $affinities }
 */}}
 {{- define "stack.helpers.affinitiesFromConstraints" -}}
-{{-   $affinities := list -}}
-{{-   range $constraint := . -}}
+{{-     $constraint := . -}}
 {{-     $op := "" -}}
 {{-     $pair := list -}}
 {{-     $curr := splitList "==" $constraint -}}
@@ -40,22 +39,27 @@ Result is a dict { "data": $affinities }
 {{-       $last := trim (last $pair) -}}
 {{-       if eq $first "node.role" -}}
 {{-         $val := toString (eq $last "manager") -}}
-{{-         $affinities = append $affinities (dict "key" "node-role.kubernetes.io/master" "operator" $op "values" (list $val)) -}}
+key: node-role.kubernetes.io/master
+operator: {{ $op }}
+values: [{{ $val }}]
 {{-       end -}}
 {{-       if eq $first "node.hostname" -}}
-{{-         $affinities = append $affinities (dict "key" "kubernetes.io/hostname" "operator" $op "values" (list $last)) -}}
+key: kubernetes.io/hostname
+operator: {{ $op }}
+values: [{{ $last }}]
 {{-       end -}}
 {{-       if hasPrefix "node.labels" $first -}}
-{{-         $affinities = append $affinities (dict "key" (replace "node.labels." ""  $first) "operator" $op "values" (list $last)) -}}
+key: {{ replace "node.labels." ""  $first }}
+operator: {{ $op }}
+values: [{{ $last }}]
 {{-       end -}}
 {{-     end -}}
 {{-     if (eq $op "Exists") -}}
 {{-       if hasPrefix "node.labels" $constraint -}}
-{{-         $affinities = append $affinities (dict "key" (replace "node.labels." "" $constraint) "operator" $op) -}}
+key: {{ replace "node.labels." "" $constraint }}
+operator: {{ $op }}
 {{-       end -}}
 {{-     end -}}
-{{-   end -}}
-{{ dict "data" $affinities | toYaml }}
 {{- end -}}
 
 {{- define "stack.helpers.tolerations" }}
@@ -89,22 +93,27 @@ value: {{ index $pair 1 }}
 {{-   $volumes := .volumes }}
 {{-   $containers := .containers }}
 {{-   $initContainers := .initContainers }}
-{{-   $affinities := .affinities }}
+{{-   $placement := .placement }}
 {{-   $restartPolicy := .restartPolicy }}
 {{-   $restartPolicyMap := dict "" "" "none" "Never" "on-failure" "OnFailure" "any" "Always" -}}
 {{- /* Variables */ -}}
 {{-   $podVolumes := dict -}}
 {{-   $context := dict "owner_kind" $owner_kind "configs" $configs "secrets" $secrets "volumes" $volumes "podVolumes" $podVolumes }}
 spec:
+  {{- $affinities := $placement.constraints }}
   {{- if $affinities }}
   affinity:
     nodeAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
         nodeSelectorTerms:
-          - matchExpressions: {{ $affinities | toYaml | nindent 16 }}
+          - matchExpressions:
+            {{- range $expression := $affinities }}
+            - {{ include "stack.helpers.affinitiesFromConstraints" $expression | indent 14 | trim }}
+            {{- end }}
   {{- end }}
 
-  {{- if include "getPath" (list $service "deploy.placement.tolerations") | fromYaml }}
+  {{- $tolerations := $placement.tolerations }}
+  {{- if $tolerations }}
   tolerations:
   {{- range $toleration := $service.deploy.placement.tolerations }}
   - {{ include "stack.helpers.tolerations" $toleration | indent 4 | trim }}
@@ -186,8 +195,7 @@ spec:
 {{-   $configs := include "stack.helpers.configs" (dict "Values" .Values) | fromYaml -}}
 {{-   $secrets := include "stack.helpers.secrets" (dict "Values" .Values) | fromYaml -}}
 {{-   $volumeClaimTemplates := dict -}}
-{{-   $constraints := . | pluck "service" | first | default dict | pluck "deploy" | first | default dict | pluck "placement" | first | default dict | pluck "constraints" | first | default list -}}
-{{-   $affinities := include "stack.helpers.affinitiesFromConstraints" $constraints | fromYaml | pluck "data" | first -}}
+{{-   $placement := include "getPath" (list $service "deploy.placement") | fromYaml | default dict -}}
 {{-   $restartPolicy := . | pluck "service" | first | default dict | pluck "deploy" | first | default dict | pluck "restart_policy" | first | default dict -}}
 {{-   $containers := omit $service "containers" | prepend ($service.containers | default list) -}}
 {{-   $initContainers := $service.initContainers | default list -}}
@@ -205,7 +213,7 @@ spec:
 {{-       end -}}
 {{-     end -}}
 {{-   end -}}
-{{- $podSpec := include "stack.helpers.podSpec" (dict "name" $name "owner_kind" $kind "service" $service "volumes" $volumes "configs" $configs "secrets" $secrets "containers" $containers "initContainers" $initContainers "affinities" $affinities "restartPolicy" $restartPolicy) | fromYaml -}}
+{{- $podSpec := include "stack.helpers.podSpec" (dict "name" $name "owner_kind" $kind "service" $service "volumes" $volumes "configs" $configs "secrets" $secrets "containers" $containers "initContainers" $initContainers "placement" $placement "restartPolicy" $restartPolicy) | fromYaml -}}
 
 {{- if eq $kind "Job" -}}
 apiVersion: batch/v1
