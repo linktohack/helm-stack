@@ -29,6 +29,7 @@ All the ingresses
 {{-     $port := "" -}}
 {{-     $backend := "http" -}}
 {{-     $auth := "" -}}
+{{-     $pathPrefix := list -}}
 {{-     $pathPrefixStrip := list -}}
 {{-     $addPrefix := "" -}}
 {{-     $ingressClass := "" -}}
@@ -49,6 +50,9 @@ All the ingresses
 {{-           $pair := splitList ":" $rule -}}
 {{-           if eq (first $pair) "Host" -}}
 {{-             $hosts = concat $hosts (splitList "," (last $pair)) -}}
+{{-           end -}}
+{{-           if eq (first $pair) "PathPrefix" -}}
+{{-             $pathPrefix = concat $pathPrefix (splitList "," (last $pair)) -}}
 {{-           end -}}
 {{-           if eq (first $pair) "PathPrefixStrip" -}}
 {{-             $pathPrefixStrip = concat $pathPrefixStrip (splitList "," (last $pair)) -}}
@@ -83,7 +87,7 @@ All the ingresses
 {{-         end -}}
 {{-       end -}}
 {{-     end -}}
-{{-     $_ := set $ingresses (default "default" $segment) (dict "hosts" $hosts "port" $port "backend" $backend "auth" $auth "pathPrefixStrip" $pathPrefixStrip "addPrefix" $addPrefix "ingressClass" $ingressClass "issuer" $issuer "clusterIssuer" $clusterIssuer "customHeaders" $customHeaders) -}}
+{{-     $_ := set $ingresses (default "default" $segment) (dict "hosts" $hosts "port" $port "backend" $backend "auth" $auth "pathPrefix" $pathPrefix "pathPrefixStrip" $pathPrefixStrip "addPrefix" $addPrefix "ingressClass" $ingressClass "issuer" $issuer "clusterIssuer" $clusterIssuer "customHeaders" $customHeaders) -}}
 {{-   end -}}
 {{ $ingresses | toYaml }}
 {{- end -}}
@@ -97,6 +101,7 @@ All the ingresses
 {{-   $port := $ingress.port -}}
 {{-   $backend := $ingress.backend -}}
 {{-   $auth := $ingress.auth -}}
+{{-   $pathPrefix := $ingress.pathPrefix -}}
 {{-   $pathPrefixStrip := $ingress.pathPrefixStrip -}}
 {{-   $addPrefix := $ingress.addPrefix -}}
 {{-   $ingressClass := $ingress.ingressClass -}}
@@ -125,17 +130,23 @@ metadata:
     {{- if $clusterIssuer }}
     cert-manager.io/cluster-issuer: {{ $clusterIssuer }}
     {{- end -}}
-    {{- if $pathPrefixStrip }}
-    traefik.ingress.kubernetes.io/rule-type: PathPrefixStrip
-    {{- end -}}
     {{- if $addPrefix }}
     traefik.ingress.kubernetes.io/request-modifier: {{ printf "AddPrefix:%s" $addPrefix }}
     {{- end -}}
     {{- range $header := $customHeaders }}
     {{ get $header "dst" }}: {{ get $header "val" | quote }}
     {{- end -}}
-    {{- if and (regexFind "nginx" $ingressClass) $pathPrefixStrip }}
-    nginx.ingress.kubernetes.io/rewrite-target: {{ first $pathPrefixStrip }}/$1
+    {{- if regexFind "nginx" $ingressClass }}
+    {{-   if $pathPrefix }}
+    nginx.ingress.kubernetes.io/rewrite-target: {{ first $pathPrefix }}/$1
+    {{-   end }}
+    {{-   if $pathPrefixStrip }}
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+    {{-   end }}
+    {{- else }}
+    {{-   if $pathPrefixStrip }}
+    traefik.ingress.kubernetes.io/rule-type: PathPrefixStrip
+    {{-   end }}
     {{- end }}
 spec:
   rules:
@@ -143,7 +154,7 @@ spec:
     - host: {{ $host | quote }}
       http:
         paths:
-          {{- range $path := default (list "/") $pathPrefixStrip -}}
+          {{- range $path := $pathPrefix | default $pathPrefixStrip | default (list "/") -}}
           {{- if and (regexFind "nginx" $ingressClass) (ne $path "/") -}}
           {{-   $path = printf "%s/(.*)" $path -}}
           {{- end }}
