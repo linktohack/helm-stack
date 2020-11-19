@@ -251,6 +251,9 @@ kubectl -n com-linktohack-redmine apply -f stack1.yaml
 ```
 
 # Changelog
+* v1.9.2:
+  - Fix `traefik.frontend.rule=PathPrefixStrip` behavior for ingress-nginx.
+  - Add `PathPrefix` support for ingress-nginx.
 * v1.9.1: support `deploy.placement.tolerations` using `kubectl taint` style.
 * v1.9.0:
   - Support docker-compose style resources requests/limits via `services.XXX.deploy.resources`.
