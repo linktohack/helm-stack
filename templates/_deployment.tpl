@@ -158,16 +158,32 @@ spec:
     {{- end }}
     {{- if eq $volValue.volumeKind "ConfigMap" }}
       configMap:
-        name: {{ $volValue.externalName | quote }}
-        {{- if $volValue.mode }}
-        defaultMode: {{ $volValue.mode }}
+        name: {{ $volName | quote }}
+        {{/* if there's configs mount with .mode */}}
+        {{- if values $volValue.items | compact }}
+        items:
+        {{- range $key, $mode := $volValue.items }}
+        - key: {{ $key }}
+          path: {{ $key }}
+          {{- if $mode }}
+          mode: {{ $mode }}
+          {{- end }}
+        {{- end }}
         {{- end }}
     {{- end }}
     {{- if eq $volValue.volumeKind "Secret" }}
       secret:
-        secretName: {{ $volValue.externalName | quote }}
-        {{- if $volValue.mode }}
-        defaultMode: {{ $volValue.mode }}
+        secretName: {{ $volName | quote }}
+        {{/* if there's secrets mount with .mode */}}
+        {{- if values $volValue.items | compact }}
+        items:
+        {{- range $key, $mode := $volValue.items }}
+        - key: {{ $key }}
+          path: {{ $key }}
+          {{- if $mode }}
+          mode: {{ $mode }}
+          {{- end }}
+        {{- end }}
         {{- end }}
     {{- end }}
   {{- end }}
@@ -192,8 +208,8 @@ spec:
 {{-   $service := .service -}}
 {{-   $replicas := $service | pluck "deploy"| first | default dict | pluck "replicas" | first -}}
 {{-   $volumes := include "stack.helpers.volumes" (dict "Values" .Values) | fromYaml -}}
-{{-   $configs := include "stack.helpers.configs" (dict "Values" .Values) | fromYaml -}}
-{{-   $secrets := include "stack.helpers.secrets" (dict "Values" .Values) | fromYaml -}}
+{{-   $configs := .configs -}}
+{{-   $secrets := .secrets -}}
 {{-   $volumeClaimTemplates := dict -}}
 {{-   $placement := include "getPath" (list $service "deploy.placement") | fromYaml | default dict -}}
 {{-   $restartPolicy := . | pluck "service" | first | default dict | pluck "deploy" | first | default dict | pluck "restart_policy" | first | default dict -}}
