@@ -1,21 +1,30 @@
-{{/*
-All the configs
-*/}}
+{{/* Preprocess and validate configs */}}
 {{- define "stack.helpers.configs" -}}
-{{-   $Values := .Values -}}
-{{-   $configs := dict -}}
-{{-   range $volName, $volValue := .Values.configs -}}
-{{-     $originalName := $volName -}}
-{{-     $volName = $volName | replace "_" "-" -}}
-{{-     $volValue = default dict $volValue -}}
-{{-     $external := get $volValue "external" | default false -}}
-{{-     $externalName := get $volValue "name" | default $originalName | replace "_" "-" -}}
-{{-     $file := get $volValue "file" -}}
-{{-     $config := (dict "volumeKind" "ConfigMap" "file" $file "originalName" $originalName "external" $external "externalName" $externalName) -}}
-{{-     if hasKey $volValue "data" -}}
-{{-       $_ := set $config "data" (get $volValue "data") -}}
+{{-   $Release := .Release -}}
+{{-   $configs := dict "byKey" dict "byName" dict -}}
+{{-   range $key, $options := .configs -}}
+{{-     $item := dict -}}
+{{-     $options = $options | default dict -}}
+{{-     if $options.external -}}
+{{-       $_ := set $item "external" true -}}
+{{-       if not $options.name -}}
+{{-         fail (printf "Missing `name` for external config `%s`" $key) -}}
+{{-       end -}}
+{{-     else -}}
+{{-       if hasKey $options "data" -}}
+{{-         $_ := set $item "data" ($options.data | quote) -}}
+{{-       else -}}
+{{-         fail (printf "Missing `data` for config `%s`" $key) -}}
+{{-       end -}}
 {{-     end -}}
-{{-     $_ := set $configs $volName $config -}}
+{{-     $name := $options.name | default (printf "%s-configs" $Release.Name) -}}
+{{-     $_ := set $item "name" $name -}}
+{{-     $_ := set $configs.byKey $key $item -}}
+{{-     if not $options.external -}}
+{{-       $config := get $configs.byName $name | default dict -}}
+{{-       $_ := set $config $key $item -}}
+{{-       $_ := set $configs.byName $name $config -}}
+{{-     end -}}
 {{-   end -}}
 {{ $configs | toYaml }}
 {{- end -}}
@@ -25,9 +34,11 @@ All the configs
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ .volName | quote }}
-{{- if get .volValue "file" }}
+  name: {{ .name }}
 data:
-  {{ get .volValue "file" | base }}: {{ get .volValue "data" | quote }}
-{{- end -}}
+  {{- range $key, $options := .items }}
+  {{-   if not $options.external }}
+  {{      $key }}: {{ $options.data }}
+  {{-   end }}
+  {{- end }}
 {{- end -}}

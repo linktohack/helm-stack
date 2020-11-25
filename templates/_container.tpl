@@ -6,8 +6,9 @@ target: {{ printf "/%s" . }}
 {{-   else }}
 source: {{ .source }}
 target: {{ .target | default (printf "/%s" .source) }}
-{{      if .mode    -}} mode:    {{ .mode    }} {{- end }}
-{{      if .subPath -}} subPath: {{ .subPath }} {{- end }}
+{{-     if .mode }}
+mode: {{ .mode }}
+{{-     end }}
 {{-   end -}}
 {{- end -}}
 
@@ -18,8 +19,9 @@ target: {{ printf "/run/secrets/%s" . }}
 {{-   else }}
 source: {{ .source }}
 target: {{ .target | default (printf "/run/secrets/%s" .source) }}
-{{      if .mode    -}} mode:    {{ .mode    }} {{- end }}
-{{      if .subPath -}} subPath: {{ .subPath }} {{- end }}
+{{-     if .mode }}
+mode: {{ .mode }}
+{{-     end }}
 {{-   end -}}
 {{- end -}}
 
@@ -91,19 +93,29 @@ readOnly: {{ index $tokens 2 | eq "ro" }}
 {{-     end -}}
 {{- /* CONFIG */ -}}
 {{-     range $volValue := $container.configs -}}
-{{-       $mountOptions := include "stack.helpers.configMountOptions" $volValue | fromYaml -}}
-{{-       $name := $mountOptions.source | replace "_" "-" -}}
-{{-       $volume := merge (dict "name" $name) $mountOptions (get $configs $name) -}}
+{{-       $mount := include "stack.helpers.configMountOptions" $volValue | fromYaml -}}
+{{-       $config := get $configs $mount.source -}}
+{{-       if not $config -}}
+{{-         fail (printf "Could not find config `%s` to mount" $mount.source) -}}
+{{-       end -}}
+{{-       $volume := merge (dict "volumeKind" "ConfigMap") $mount $config -}}
 {{-       $volumeMounts = append $volumeMounts $volume -}}
-{{-       $_ := set $podVolumes $name $volume -}}
+{{-       $podVolume := get $podVolumes $config.name | default (dict "volumeKind" "ConfigMap" "name" $config.name "items" dict) -}}
+{{-       $_ := set $podVolume.items $mount.source $mount.mode -}}
+{{-       $_ := set $podVolumes $config.name $podVolume -}}
 {{-     end -}}
 {{- /* SECRET: copy of CONFIG */ -}}
 {{-     range $volValue := $container.secrets -}}
-{{-       $mountOptions := include "stack.helpers.secretMountOptions" $volValue | fromYaml -}}
-{{-       $name := $mountOptions.source | replace "_" "-" -}}
-{{-       $volume := merge (dict "name" $name) $mountOptions (get $secrets $name) -}}
+{{-       $mount := include "stack.helpers.secretMountOptions" $volValue | fromYaml -}}
+{{-       $secret := get $secrets $mount.source -}}
+{{-       if not $secret -}}
+{{-         fail (printf "Could not find secret `%s` to mount" $mount.source) -}}
+{{-       end -}}
+{{-       $volume := merge (dict "volumeKind" "Secret") $mount $secret -}}
 {{-       $volumeMounts = append $volumeMounts $volume -}}
-{{-       $_ := set $podVolumes $name $volume -}}
+{{-       $podVolume := get $podVolumes $secret.name | default (dict "volumeKind" "Secret" "name" $secret.name "items" dict) -}}
+{{-       $_ := set $podVolume.items $mount.source $mount.mode -}}
+{{-       $_ := set $podVolumes $secret.name $podVolume -}}
 {{-     end -}}
 
 {{-     $name := $container.container_name | default $container.name | default (printf "%s%s" $name $maybeWithContainerIndex) | replace "_" "-" }}
@@ -181,10 +193,7 @@ volumeMounts:
   {{- if or (eq $mount.volumeKind "ConfigMap") (eq $mount.volumeKind "Secret") }}
   - mountPath: {{ $mount.target | quote }}
     name: {{ $mount.name | quote }}
-    {{- $subPath := $mount.subPath | default $mount.file -}}
-    {{- if $subPath }}
-    subPath: {{ $subPath | base | quote }}
-    {{- end -}}
+    subPath: {{ $mount.source | quote }}
   {{- end -}}
   {{- end -}}
 {{- end -}}

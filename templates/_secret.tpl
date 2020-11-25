@@ -1,42 +1,57 @@
-{{/*
-All the secrets
-*/}}
+
+{{/* Preprocess and validate secrets */}}
 {{- define "stack.helpers.secrets" -}}
-{{-   $Values := .Values -}}
-{{-   $secrets := dict -}}
-{{-   range $volName, $volValue := .Values.secrets -}}
-{{-     $originalName := $volName -}}
-{{-     $volName = $volName | replace "_" "-" -}}
-{{-     $volValue = default dict $volValue -}}
-{{-     $external := get $volValue "external" | default false -}}
-{{-     $externalName := get $volValue "name" | default $originalName | replace "_" "-" -}}
-{{-     $file := get $volValue "file" -}}
-{{-     $secret := (dict "volumeKind" "Secret" "file" $file "originalName" $originalName "external" $external "externalName" $externalName) -}}
-{{-     if hasKey $volValue "data" -}}
-{{-       $_ := set $secret "data" (get $volValue "data") -}}
+{{-   $Release := .Release -}}
+{{-   $secrets := dict "byKey" dict "byName" dict -}}
+{{-   range $key, $options := .secrets -}}
+{{-     $item := dict -}}
+{{-     $options = $options | default dict -}}
+{{-     if $options.external -}}
+{{-       $_ := set $item "external" true -}}
+{{-       if not $options.name -}}
+{{-         fail (printf "Missing `name` for external secret `%s`" $key) -}}
+{{-       end -}}
+{{-     else -}}
+{{-       if hasKey $options "data" -}}
+{{-         $_ := set $item "data" ($options.data | quote) -}}
+{{-       end -}}
+{{-       if hasKey $options "stringData" -}}
+{{-         $_ := set $item "stringData" ($options.stringData | quote) -}}
+{{-       end -}}
+{{-       if and $item.data $item.stringData -}}
+{{-         fail (printf "Could not specify both `data` and `stringData` for secret `%s`" $key) -}}
+{{-       end -}}
 {{-     end -}}
-{{-     if hasKey $volValue "stringData" -}}
-{{-       $_ := set $secret "stringData" (get $volValue "stringData") -}}
+{{-     $name := $options.name | default (printf "%s-secrets" $Release.Name) -}}
+{{/* Assign secret by key */}}
+{{-     $_ := set $item "name" $name -}}
+{{-     $_ := set $secrets.byKey $key $item -}}
+{{/* Update or create secret by name */}}
+{{-     if not $options.external -}}
+{{-       $secret := get $secrets.byName $name | default dict -}}
+{{-       $_ := set $secret $key $item -}}
+{{-       $_ := set $secrets.byName $name $secret -}}
 {{-     end -}}
-{{-     $_ := set $secrets $volName $secret -}}
 {{-   end -}}
 {{ $secrets | toYaml }}
 {{- end -}}
 
-
-{{- define "stack.secret" -}}
+{{- define "stack.secret" }}
 apiVersion: v1
 kind: Secret
 type: Opaque
 metadata:
-  name: {{ .volName | quote }}
-{{- if get .volValue "file" -}}
-{{- if hasKey .volValue "data" }}  
+  name: {{ .name }}
 data:
-  {{ get .volValue "file" | base }}: {{ get .volValue "data" | quote }}
-{{- else }}  
+  {{- range $key, $options := .items }}
+  {{-   if and (not $options.external) (hasKey $options "data") }}
+  {{      $key }}: {{ $options.data }}
+  {{-   end }}
+  {{- end }}
 stringData:
-  {{ get .volValue "file" | base }}: {{ get .volValue "stringData" | quote }}
-{{- end -}}
-{{- end -}}
-{{- end -}}
+  {{- range $key, $options := .items }}
+  {{-   if and (not $options.external) (hasKey $options "stringData") }}
+  {{      $key }}: {{ $options.stringData }}
+  {{-   end }}
+  {{- end }}
+{{- end }}
