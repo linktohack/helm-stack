@@ -2,16 +2,20 @@
 # Source: stack/templates/stack.yml
 apiVersion: v1
 kind: Secret
+type: Opaque
 metadata:
   name: kubernetes-dashboard-certs
-type: Opaque
+data:
+stringData:
 ---
 # Source: stack/templates/stack.yml
 apiVersion: v1
 kind: Secret
+type: Opaque
 metadata:
   name: kubernetes-dashboard-csrf
-type: Opaque
+data:
+stringData:
 ---
 # Source: stack/templates/stack.yml
 apiVersion: v1
@@ -27,6 +31,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: kubernetes-dashboard-settings
+data:
 ---
 # Source: stack/templates/stack.yml
 apiVersion: v1

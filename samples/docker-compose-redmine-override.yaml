@@ -30,11 +30,10 @@ volumes:
         resources:
           requests:
             storage: 10Gi
-configs:
-  redmine_config:
-    ConfigMap:
-      data:
-        hello.yaml: there
+# configs:
+  # redmine_config:
+  #   data:
+  #     hello.yaml: there
 secrets:
   tested:
     Secret:

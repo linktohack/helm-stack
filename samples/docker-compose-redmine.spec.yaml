@@ -10,12 +10,11 @@ type: Opaque
 ---
 # Source: stack/templates/stack.yml
 apiVersion: v1
-data:
-  config.yml: ""
-  hello.yaml: there
 kind: ConfigMap
 metadata:
   name: redmine-config
+data:
+  config.yml: ""
 ---
 # Source: stack/templates/stack.yml
 apiVersion: v1
@@ -196,7 +195,7 @@ spec:
           name: redmine-config
           subPath: config.yml
         - mountPath: /run/secrets/tested
-          name: tested
+          name: with-external-name
           subPath: tested
       volumes:
       - configMap:
@@ -206,7 +205,7 @@ spec:
       - name: redmine-files
         persistentVolumeClaim:
           claimName: redmine-files
-      - name: tested
+      - name: with-external-name
         secret:
           secretName: with-external-name
 ---

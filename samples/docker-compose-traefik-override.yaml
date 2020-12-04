@@ -6,9 +6,9 @@ services:
       - /path/to/traefik/acme.json:/acme.json
       # - /path/to/traefik/rules.toml:/rules.toml
     configs:
-      - source: traefik_toml
+      - source: traefik.toml
         target: /traefik.toml
-      - source: rules_toml
+      - source: rules.toml
         target: /rules.toml
     Deployment:
       spec:
@@ -18,7 +18,8 @@ services:
             terminationGracePeriodSeconds: 60
 
 configs:
-  traefik_toml:
+  traefik.toml:
+    name: traefik-configs
     file: ./traefik.toml
     data: |-
       debug = true
@@ -60,6 +61,7 @@ configs:
         onHostRule = true
         [acme.httpChallenge]
           entryPoint = "http"
-  rules_toml:
+  rules.toml:
+    name: traefik-configs
     file: ./rules.toml
     data: ""

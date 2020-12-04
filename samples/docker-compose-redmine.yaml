@@ -6,7 +6,7 @@ services:
     volumes:
       - redmine_files:/usr/src/redmine/files
     configs:
-      - source: redmine_config
+      - source: config.yml
         target: /usr/src/redmine/config/configuration.yml
         mode: 0444
     secrets:
@@ -74,11 +74,13 @@ volumes:
       device: /path/to/db
 
 configs: 
-  redmine_config:
+  config.yml:
+    data: ""
     file: ./config.yml
+    name: redmine-config
 
 secrets:
   tested:
     external: true
-    name: with_external_name
+    name: with-external-name
     file: ./tested
