@@ -1,0 +1,174 @@
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
+data:
+  auth: UkVEQUNURUQ=
+kind: Secret
+metadata:
+  name: traefik-default-basic-auth
+type: Opaque
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
+data:
+  rules.toml: ""
+kind: ConfigMap
+metadata:
+  name: rules-toml
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
+data:
+  traefik.toml: |-
+    debug = true
+    logLevel = "DEBUG"
+    insecureSkipVerify = true
+    defaultEntryPoints = ["http", "https"]
+
+    [entryPoints]
+      [entryPoints.http]
+      address = ":80"
+        [entryPoints.http.redirect]
+        entryPoint = "https"
+      [entryPoints.https]
+      address = ":443"
+      [entryPoints.https.tls]
+
+    [web]
+    [web.auth.basic]
+    users = ["REDACTED."]
+
+    [docker]
+      endpoint = "unix:///var/run/docker.sock"
+      domain = "docker.localhost"
+      watch = true
+      exposedByDefault = true
+      swarmMode = true
+      network = "web"
+
+    [kubernetes]
+
+    [file]
+      filename = "rules.toml"
+      watch = true
+
+    [acme]
+      email = "REDACTED"
+      storage = "acme.json"
+      entryPoint = "https"
+      onHostRule = true
+      [acme.httpChallenge]
+        entryPoint = "http"
+kind: ConfigMap
+metadata:
+  name: traefik-toml
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
+kind: Service
+metadata:
+  name: traefik
+spec:
+  ports:
+  - name: tcp-8080
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    service: traefik
+  type: ClusterIP
+---
+# Source: stack/templates/stack.yml
+apiVersion: v1
+kind: Service
+metadata:
+  name: traefik-loadbalancer-tcp
+spec:
+  ports:
+  - name: tcp-80
+    port: 80
+    protocol: TCP
+    targetPort: 80
+  - name: tcp-443
+    port: 443
+    protocol: TCP
+    targetPort: 443
+  - name: tcp-8080
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    service: traefik
+  type: LoadBalancer
+---
+# Source: stack/templates/stack.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: traefik
+spec:
+  selector:
+    matchLabels:
+      service: traefik
+  template:
+    metadata:
+      labels:
+        service: traefik
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node-role.kubernetes.io/master
+                operator: In
+                values:
+                - true
+      containers:
+      - image: traefik:1.7
+        name: traefik
+        volumeMounts:
+        - mountPath: /var/run/docker.sock
+          name: volume-0
+        - mountPath: /acme.json
+          name: volume-1
+        - mountPath: /traefik.toml
+          name: traefik-toml
+          subPath: traefik.toml
+        - mountPath: /rules.toml
+          name: rules-toml
+          subPath: rules.toml
+      serviceAccountName: admin-user
+      terminationGracePeriodSeconds: 60
+      volumes:
+      - configMap:
+          name: rules-toml
+        name: rules-toml
+      - configMap:
+          name: traefik-toml
+        name: traefik-toml
+      - hostPath:
+          path: /var/run/docker.sock
+        name: volume-0
+      - hostPath:
+          path: /path/to/traefik/acme.json
+        name: volume-1
+---
+# Source: stack/templates/stack.yml
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    ingress.kubernetes.io/auth-realm: traefik
+    ingress.kubernetes.io/auth-secret: traefik-default-basic-auth
+    ingress.kubernetes.io/auth-type: basic
+  name: traefik-default
+spec:
+  rules:
+  - host: REDACTED
+    http:
+      paths:
+      - backend:
+          serviceName: traefik
+          servicePort: tcp-8080
+        path: /
