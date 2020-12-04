@@ -46,17 +46,31 @@ The chart is quite features complete and I was able to deploy complex stacks wit
   - Support `readOnly` attribute (`volume:/path:ro`)
 - [X] Config: Handle top-level configs/external configs
   - Support both short and long syntax
-  - Data can be integrated directly via `data` external key
-  - Support mouting as directory by setting `file` to null. See [Advance: full override](#advance-full-override) to see how to insert more than one files
+  - Data can be integrated directly via `data` extra key
+  - *~~Support mouting as directory by setting `file` to null. See [Advance: full override](#advance-full-override) to see how to insert more than one files~~*
 - [X] Secret: Handle top-level secrets/external secrets
   - Support both short and long syntax
-  - Data can be integrated directly via `data` and `stringData` external keys
-  - Support mouting as directory by setting `file` to null. See [Advance: full override](#advance-full-override) to see how to insert more than one files
+  - Data can be integrated directly via `data` and `stringData` extra keys
+  - *~~Support mouting as directory by setting `file` to null. See [Advance: full override](#advance-full-override) to see how to insert more than one files~~*
 - [X] Health check
   - Support both `shell` and `exec` form. For advace features /.e.g/ `httpGet`, please use full override bellow
 - [X] Job
 - [X] CronJob
   - A default `schedule` is set as `*/1 * * * *` but it can be easily overwritten with `CronJob.spec.schedule`.
+
+## Secret and ConfigMap
+This is how Secrets are handled:
+```yaml
+secrets:
+  <secret_name_or_key>:
+    name: <secret_name>           # if specified, would be name of the Secret, whose <secret_name_or_key> above is the key
+    external: <boolean>           # if true, data and stringData (if any) are ignored
+    data: <base64_encoded>        # optional
+    stringData: <base64_encoded>  # optional, mutually exclusive with `data`
+```
+For ConfigMaps, the above remains the same with except of `data` (would be plain text) and `stringData` (ignored).
+
+**NOTE: Without `name` specified, secrets/configs are mounted as directory.**
 
 # Example
 ## Dockersamples
@@ -120,10 +134,10 @@ These keys are either not existed in `docker-compose` format or have the meaning
   - `volumes.XXX.storage` (string, default `1Gi` for dynamic provisioner)
   - *~~`volumes.XXX.subPath`~~* (string, **deprecated**, use `services.XXX.volumes` mount long-syntax *(v1.9.0 or above)* instead).
 - Config
-  - `config.XXX.file` (string | null, required by `swarm`, can be set to `null` to mount config as a directory)
+  - *~~`config.XXX.file` (string | null, required by `swarm`, can be set to `null` to mount config as a directory)~~*
   - `config.XXX.data` (string)
 - Secret
-  - `secrets.XXX.file` (string | null, required by `swarm`, can be set to `null` to mount secret as a directory)
+  - *~~`secrets.XXX.file` (string | null, required by `swarm`, can be set to `null` to mount secret as a directory)~~*
   - `secrets.XXX.data` (string)
   - `secrets.XXX.stringData` (string)
 - Scheduling:
@@ -183,15 +197,6 @@ volumes:
         resources:
           requests:
             storage: 10Gi
-configs:
-  redmine_config:
-    ConfigMap:
-      data:
-        hello.yaml: there
-secrets:
-  tested:
-    Secret:
-      stringData: ""
 ```
 
 # How
