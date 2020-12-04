@@ -86,19 +86,13 @@ value: {{ index $pair 1 }}
 
 {{- define "stack.helpers.podSpec" }}
 {{-   $name := .name | replace "_" "-" }}
-{{-   $owner_kind := .owner_kind }}
 {{-   $service := .service }}
-{{-   $configs := .configs }}
-{{-   $secrets := .secrets }}
-{{-   $volumes := .volumes }}
 {{-   $containers := .containers }}
 {{-   $initContainers := .initContainers }}
 {{-   $placement := .placement }}
 {{-   $restartPolicy := .restartPolicy }}
+{{-   $podVolumes := .podVolumes -}}
 {{-   $restartPolicyMap := dict "" "" "none" "Never" "on-failure" "OnFailure" "any" "Always" -}}
-{{- /* Variables */ -}}
-{{-   $podVolumes := dict -}}
-{{-   $context := dict "owner_kind" $owner_kind "configs" $configs "secrets" $secrets "volumes" $volumes "podVolumes" $podVolumes }}
 spec:
   {{- $affinities := $placement.constraints }}
   {{- if $affinities }}
@@ -127,13 +121,19 @@ spec:
   {{- end }}
 
   containers:
-  {{- $params := dict "service" $service "containers" $containers "initContainers" $initContainers "name" $name }}
-  {{ include "stack.helpers.containerList" (merge dict $context $params) }}
+  {{- range $index, $container := $containers }}
+  {{-   $params := dict "index" $index "container" $container "name" $name }}
+  {{-   $value := include "stack.helpers.container" $params | fromYaml }}
+  - {{  include "stack.helpers.containerSpec" $value | nindent 4 | trim }}
+  {{- end }}
 
   {{- if $initContainers }}
   initContainers:
-  {{- $params := dict "service" $service "containers" (deepCopy $initContainers) "name" (printf "%s-init" $name) }}
-  {{ include "stack.helpers.containerList" (merge dict $context $params) }}
+  {{- range $index, $container := $initContainers }}
+  {{-   $params := dict "index" $index "container" $container "name" (printf "%s-init" $name) }}
+  {{-   $value := include "stack.helpers.container" $params | fromYaml }}
+  - {{  include "stack.helpers.containerSpec" $value | nindent 4 | trim }}
+  {{- end }}
   {{- end }}
 
   {{- if eq "host" ($containers | first | pluck "network_mode" | first | default "default") }}
@@ -205,35 +205,87 @@ spec:
 {{- define "stack.deployment" -}}
 {{-   $name := .name | replace "_" "-" -}}
 {{-   $kind := .kind -}}
+{{-   $chdir := .Values.chdir -}}
 {{-   $service := .service -}}
 {{-   $replicas := $service | pluck "deploy"| first | default dict | pluck "replicas" | first -}}
 {{-   $volumes := include "stack.helpers.volumes" (dict "Values" .Values) | fromYaml -}}
 {{-   $configs := .configs -}}
 {{-   $secrets := .secrets -}}
-{{-   $volumeClaimTemplates := dict -}}
 {{-   $placement := include "getPath" (list $service "deploy.placement") | fromYaml | default dict -}}
 {{-   $restartPolicy := . | pluck "service" | first | default dict | pluck "deploy" | first | default dict | pluck "restart_policy" | first | default dict -}}
 {{-   $containers := omit $service "containers" | prepend ($service.containers | default list) -}}
 {{-   $initContainers := $service.initContainers | default list -}}
+{{-   $podVolumes := dict -}}
+{{-   $podHostpaths := dict -}}
+{{-   $volumeClaimTemplates := dict -}}
 
+{{/* Preprocess .volumes for StatefulSet, Pod, Container */}}
 {{-   range $container := (concat $containers $initContainers) -}}
+{{-     $volumeMounts := list -}}
 {{-     range $mount := $container.volumes -}}
 {{-       $mountOptions := include "stack.helpers.volumeMountOptions" $mount | fromYaml -}}
-{{-       $volName := $mountOptions.source | replace "_" "-" -}}
-{{-       if not (or (hasPrefix "/" $volName) (hasPrefix "./" $volName)) -}}
-{{- /* TODO: Check `volumes.XXX` existences and validity */ -}}
-{{-         $curr := get $volumes $volName | deepCopy -}}
-{{-         if and (eq $kind "StatefulSet") (ne $curr.type "emptyDir") (not $curr.external) (get $curr "dynamic") -}}
-{{-           $_ := set $volumeClaimTemplates $volName $curr -}}
+{{/* Fix relative path first */}}
+{{-       if hasPrefix "./" $mountOptions.source -}}
+{{-         $src := clean (printf "%s/%s" (default "." $chdir) $mountOptions.source) -}}
+{{-         if not (isAbs $src) -}}
+{{-           fail (printf "volume path or chdir has to be absolute: %s" $src) -}}
+{{-         end -}}
+{{-         $_ := set $mountOptions "source" $src -}}
+{{-       end -}}
+{{/* Hostpath */}}
+{{-       if hasPrefix "/" $mountOptions.source -}}
+{{-         $key := $mountOptions.source -}}
+{{-         $defaultName := printf "hostpath-%d" (len $podHostpaths) -}}
+{{-         $hostpath := get $podHostpaths $key | default (dict "name" $defaultName "volumeKind" "Volume" "type" "hostPath") -}}
+{{-         $_ := merge $mountOptions $hostpath -}}
+{{-         $_ := set $podHostpaths $key $mountOptions -}}
+{{/* PersistentVolumeClaim */}}
+{{-       else -}}
+{{-         $name := $mountOptions.source | replace "_" "-" -}}
+{{-         $_ := merge $mountOptions (dict "name" $name "volumeKind" "Volume") (get $volumes $name) -}}
+{{-         with $mountOptions -}}
+{{-           if and (eq $kind "StatefulSet") (ne .type "emptyDir") (not .external) .dynamic -}}
+{{-             $_ := set $volumeClaimTemplates $name . -}}
+{{-           else -}}
+{{-             $_ := set $podVolumes $name . -}}
+{{-           end -}}
 {{-         end -}}
 {{-       end -}}
+{{-       $volumeMounts = append $volumeMounts $mountOptions -}}
 {{-     end -}}
+{{- /* CONFIG */ -}}
+{{-     range $volValue := $container.configs -}}
+{{-       $mount := include "stack.helpers.configMountOptions" $volValue | fromYaml -}}
+{{-       $config := get $configs $mount.source -}}
+{{-       if not $config -}}
+{{-         fail (printf "Could not find config `%s` to mount" $mount.source) -}}
+{{-       end -}}
+{{-       $volume := merge (dict "volumeKind" "ConfigMap") $mount $config -}}
+{{-       $volumeMounts = append $volumeMounts $volume -}}
+{{-       $podVolume := get $podVolumes $volume.name | default (dict "volumeKind" "ConfigMap" "name" $volume.name "items" dict) -}}
+{{-       $_ := set $podVolume.items $volume.source $volume.mode -}}
+{{-       $_ := set $podVolumes $volume.name $podVolume -}}
+{{-     end -}}
+{{- /* SECRET: copy of CONFIG */ -}}
+{{-     range $volValue := $container.secrets -}}
+{{-       $mount := include "stack.helpers.secretMountOptions" $volValue | fromYaml -}}
+{{-       $secret := get $secrets $mount.source -}}
+{{-       if not $secret -}}
+{{-         fail (printf "Could not find secret `%s` to mount" $mount.source) -}}
+{{-       end -}}
+{{-       $volume := merge (dict "volumeKind" "Secret") $mount $secret -}}
+{{-       $volumeMounts = append $volumeMounts $volume -}}
+{{-       $podVolume := get $podVolumes $volume.name | default (dict "volumeKind" "Secret" "name" $volume.name "items" dict) -}}
+{{-       $_ := set $podVolume.items $volume.source $volume.mode -}}
+{{-       $_ := set $podVolumes $volume.name $podVolume -}}
+{{-     end -}}
+{{-     $_ := set $container "volumeMounts" $volumeMounts -}}
 {{-   end -}}
-{{- $podSpec := include "stack.helpers.podSpec" (dict "name" $name "owner_kind" $kind "service" $service "volumes" $volumes "configs" $configs "secrets" $secrets "containers" $containers "initContainers" $initContainers "placement" $placement "restartPolicy" $restartPolicy) | fromYaml -}}
+{{- $podSpec := include "stack.helpers.podSpec" (dict "name" $name "service" $service "containers" $containers "initContainers" $initContainers "placement" $placement "restartPolicy" $restartPolicy "podVolumes" (merge $podVolumes $podHostpaths)) | fromYaml -}}
 
 {{- if eq $kind "Job" -}}
 apiVersion: batch/v1
-kind: {{ $kind }}
+kind: Job
 metadata:
   name: {{ $name | quote }}
 spec:
@@ -242,7 +294,7 @@ spec:
 
 {{- else if eq $kind "CronJob" -}}
 apiVersion: batch/v1beta1
-kind: {{ $kind }}
+kind: CronJob
 metadata:
   name: {{ $name | quote }}
 spec:

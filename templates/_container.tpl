@@ -41,90 +41,19 @@ readOnly: {{ index $tokens 2 | eq "ro" }}
 {{- end }}
 {{- end }}
 
-{{- define "stack.helpers.containerList" -}}
-{{-   $Values := .Values -}}
-{{-   $volumes := .volumes -}}
-{{-   $configs := .configs -}}
-{{-   $secrets := .secrets -}}
+{{- define "stack.helpers.container" -}}
 {{-   $name := .name -}}
-{{-   $containers := .containers -}}
-{{- /* TODO: deduplicate template process */ -}}
-{{-   $owner_kind := .owner_kind -}}
-{{- /* TODO: current implementation mutate parent data */ -}}
-{{-   $podVolumes := .podVolumes }}
-{{- /* Iterate over containers*/ -}}
-{{-   range $index, $container := $containers }}
+{{-   $index := .index -}}
+{{-   $container := .container -}}
 {{-     $maybeWithContainerIndex := "" -}}
 {{-     if gt $index 0 -}}
 {{-       $maybeWithContainerIndex = printf "-%d" $index -}}
 {{-     end -}}
-{{-     $volumeMounts := list -}}
-{{- /* VOLUMES */ -}}
-{{-     range $volIndex, $volValue := $container.volumes -}}
-{{-       $mountOptions := include "stack.helpers.volumeMountOptions" $volValue | fromYaml -}}
-{{-       $volName := $mountOptions.source -}}
-{{- /* Hostpath scenarios */ -}}
-{{-       if hasPrefix "/" $volName -}}
-{{-         $name := printf "volume%s-%d" $maybeWithContainerIndex $volIndex -}}
-{{-         $meta := dict "volumeKind" "Volume" "name" $name "type" "hostPath" -}}
-{{-         $volume := merge $meta $mountOptions -}}
-{{-         $volumeMounts = append $volumeMounts $volume -}}
-{{-         $_ := set $podVolumes $name $volume -}}
-{{-       else if hasPrefix "./" $volName -}}
-{{-         $src := clean (printf "%s/%s" (default "." $Values.chdir) $volName) -}}
-{{-         if not (isAbs $src) -}}
-{{-           fail "volume path or chidir has to be absolute." -}}
-{{-         end -}}
-{{-         $name := printf "volume%s-%d" $maybeWithContainerIndex $volIndex -}}
-{{-         $meta := dict "volumeKind" "Volume" "name" $name "type" "hostPath" "source" $src -}}
-{{-         $volume := merge $meta $mountOptions -}}
-{{-         $volumeMounts = append $volumeMounts $volume -}}
-{{-         $_ := set $podVolumes $name $volume -}}
-{{- /* Else */ -}}
-{{-       else -}}
-{{-         $name := $volName | replace "_" "-" -}}
-{{-         $volume := merge (dict "name" $name) $mountOptions (get $volumes $name) -}}
-{{-         $volumeMounts = append $volumeMounts $volume -}}
-{{-         if and (eq $owner_kind "StatefulSet") (ne $volume.type "emptyDir") (not $volume.external) (get $volume "dynamic") -}}
-{{-         else -}}
-{{-           $_ := set $podVolumes $name $volume -}}
-{{-         end -}}
-{{-       end -}}
-{{-     end -}}
-{{- /* CONFIG */ -}}
-{{-     range $volValue := $container.configs -}}
-{{-       $mount := include "stack.helpers.configMountOptions" $volValue | fromYaml -}}
-{{-       $config := get $configs $mount.source -}}
-{{-       if not $config -}}
-{{-         fail (printf "Could not find config `%s` to mount" $mount.source) -}}
-{{-       end -}}
-{{-       $volume := merge (dict "volumeKind" "ConfigMap") $mount $config -}}
-{{-       $volumeMounts = append $volumeMounts $volume -}}
-{{-       $podVolume := get $podVolumes $config.name | default (dict "volumeKind" "ConfigMap" "name" $config.name "items" dict) -}}
-{{-       $_ := set $podVolume.items $mount.source $mount.mode -}}
-{{-       $_ := set $podVolumes $config.name $podVolume -}}
-{{-     end -}}
-{{- /* SECRET: copy of CONFIG */ -}}
-{{-     range $volValue := $container.secrets -}}
-{{-       $mount := include "stack.helpers.secretMountOptions" $volValue | fromYaml -}}
-{{-       $secret := get $secrets $mount.source -}}
-{{-       if not $secret -}}
-{{-         fail (printf "Could not find secret `%s` to mount" $mount.source) -}}
-{{-       end -}}
-{{-       $volume := merge (dict "volumeKind" "Secret") $mount $secret -}}
-{{-       $volumeMounts = append $volumeMounts $volume -}}
-{{-       $podVolume := get $podVolumes $secret.name | default (dict "volumeKind" "Secret" "name" $secret.name "items" dict) -}}
-{{-       $_ := set $podVolume.items $mount.source $mount.mode -}}
-{{-       $_ := set $podVolumes $secret.name $podVolume -}}
-{{-     end -}}
-
 {{-     $name := $container.container_name | default $container.name | default (printf "%s%s" $name $maybeWithContainerIndex) | replace "_" "-" }}
 {{-     $environment := include "stack.helpers.normalizeKV" $container.environment | fromYaml }}
 {{-     $_ := set $container "environment" $environment }}
-{{-     $_ := set $container "volumeMounts" $volumeMounts }}
 {{-     $_ := set $container "name" $name }}
-  - {{ include "stack.helpers.containerSpec" $container | nindent 4 | trim }}
-{{-   end -}}
+{{ $container | toYaml }}
 {{- end -}}
 
 {{- define "stack.helpers.containerSpec" -}}
