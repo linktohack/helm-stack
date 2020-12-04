@@ -84,6 +84,27 @@ value: {{ index $pair 1 }}
 {{-   end }}
 {{- end }}
 
+{{- define "stack.helpers.mountMode" }}
+{{-   $items := . }}
+{{-   $modes := values . | uniq -}}
+{{/* if there's configs mount with .mode */}}
+{{-   if $modes | compact }}
+{{/* TODO: if there's only one .mode */}}
+{{-   if eq ($modes | len) ($modes | compact | len) 1 }}
+defaultMode: {{ index $modes 0 }}
+{{-   else }}
+items:
+{{-   range $key, $mode := $items }}
+- key: {{ $key }}
+  path: {{ $key }}
+  {{-   if $mode }}
+  mode: {{ $mode }}
+  {{-   end }}
+{{-   end }}
+{{-   end }}
+{{-   end }}
+{{- end }}
+
 {{- define "stack.helpers.podSpec" }}
 {{-   $name := .name | replace "_" "-" }}
 {{-   $service := .service }}
@@ -159,32 +180,13 @@ spec:
     {{- if eq $volValue.volumeKind "ConfigMap" }}
       configMap:
         name: {{ $volName | quote }}
-        {{/* if there's configs mount with .mode */}}
-        {{- if values $volValue.items | compact }}
-        items:
-        {{- range $key, $mode := $volValue.items }}
-        - key: {{ $key }}
-          path: {{ $key }}
-          {{- if $mode }}
-          mode: {{ $mode }}
-          {{- end }}
-        {{- end }}
-        {{- end }}
+        {{ include "stack.helpers.mountMode" $volValue.items | indent 8 }}
     {{- end }}
     {{- if eq $volValue.volumeKind "Secret" }}
       secret:
         secretName: {{ $volName | quote }}
         {{/* if there's secrets mount with .mode */}}
-        {{- if values $volValue.items | compact }}
-        items:
-        {{- range $key, $mode := $volValue.items }}
-        - key: {{ $key }}
-          path: {{ $key }}
-          {{- if $mode }}
-          mode: {{ $mode }}
-          {{- end }}
-        {{- end }}
-        {{- end }}
+        {{ include "stack.helpers.mountMode" $volValue.items | indent 8 }}
     {{- end }}
   {{- end }}
   {{- end }}
@@ -262,9 +264,10 @@ spec:
 {{-       end -}}
 {{-       $volume := merge (dict "volumeKind" "ConfigMap") $mount $config -}}
 {{-       $volumeMounts = append $volumeMounts $volume -}}
-{{-       $podVolume := get $podVolumes $volume.name | default (dict "volumeKind" "ConfigMap" "name" $volume.name "items" dict) -}}
+{{-       $name := $volume.name | default $volume.source -}}
+{{-       $podVolume := get $podVolumes $name | default (dict "volumeKind" "ConfigMap" "name" $name "items" dict) -}}
 {{-       $_ := set $podVolume.items $volume.source $volume.mode -}}
-{{-       $_ := set $podVolumes $volume.name $podVolume -}}
+{{-       $_ := set $podVolumes $name $podVolume -}}
 {{-     end -}}
 {{- /* SECRET: copy of CONFIG */ -}}
 {{-     range $volValue := $container.secrets -}}
@@ -275,9 +278,10 @@ spec:
 {{-       end -}}
 {{-       $volume := merge (dict "volumeKind" "Secret") $mount $secret -}}
 {{-       $volumeMounts = append $volumeMounts $volume -}}
-{{-       $podVolume := get $podVolumes $volume.name | default (dict "volumeKind" "Secret" "name" $volume.name "items" dict) -}}
+{{-       $name := $volume.name | default $volume.source -}}
+{{-       $podVolume := get $podVolumes $name | default (dict "volumeKind" "Secret" "name" $name "items" dict) -}}
 {{-       $_ := set $podVolume.items $volume.source $volume.mode -}}
-{{-       $_ := set $podVolumes $volume.name $podVolume -}}
+{{-       $_ := set $podVolumes $name $podVolume -}}
 {{-     end -}}
 {{-     $_ := set $container "volumeMounts" $volumeMounts -}}
 {{-   end -}}

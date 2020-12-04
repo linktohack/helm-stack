@@ -1,25 +1,19 @@
 {{/* Preprocess and validate configs */}}
 {{- define "stack.helpers.configs" -}}
-{{-   $Release := .Release -}}
 {{-   $configs := dict "byKey" dict "byName" dict -}}
-{{-   range $key, $options := .configs -}}
+{{-   range $key, $options := .Values.configs -}}
 {{-     $item := dict -}}
 {{-     $options = $options | default dict -}}
 {{-     if $options.external -}}
 {{-       $_ := set $item "external" true -}}
-{{-       if not $options.name -}}
-{{-         fail (printf "Missing `name` for external config `%s`" $key) -}}
-{{-       end -}}
 {{-     else -}}
 {{-       if hasKey $options "data" -}}
 {{-         $_ := set $item "data" ($options.data | quote) -}}
-{{-       else -}}
-{{-         fail (printf "Missing `data` for config `%s`" $key) -}}
 {{-       end -}}
 {{-     end -}}
-{{-     $name := $options.name | default (printf "%s-configs" $Release.Name) -}}
-{{-     $_ := set $item "name" $name -}}
+{{-     $_ := set $item "name" $options.name -}}
 {{-     $_ := set $configs.byKey $key $item -}}
+{{-     $name := $options.name | default $key -}}
 {{-     if not $options.external -}}
 {{-       $config := get $configs.byName $name | default dict -}}
 {{-       $_ := set $config $key $item -}}
@@ -37,7 +31,7 @@ metadata:
   name: {{ .name }}
 data:
   {{- range $key, $options := .items }}
-  {{-   if not $options.external }}
+  {{-   if and (not $options.external) (hasKey $options "data") }}
   {{      $key }}: {{ $options.data }}
   {{-   end }}
   {{- end }}

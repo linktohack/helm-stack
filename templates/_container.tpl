@@ -107,8 +107,7 @@ env:
 
 {{- if $container.volumeMounts }}
 volumeMounts:
-  {{- range $mount := $container.volumeMounts -}}
-  {{- $volName := $mount.name -}}
+{{- range $mount := $container.volumeMounts -}}
   {{- if eq $mount.volumeKind "Volume" }}
   - mountPath: {{ $mount.target | quote }}
     name: {{ $mount.name | quote }}
@@ -118,13 +117,16 @@ volumeMounts:
     {{- if $mount.readOnly }}
     readOnly: {{ $mount.readOnly }}
     {{- end }}
-  {{- end -}}
-  {{- if or (eq $mount.volumeKind "ConfigMap") (eq $mount.volumeKind "Secret") }}
+  {{- else if or (eq $mount.volumeKind "ConfigMap") (eq $mount.volumeKind "Secret") }}
   - mountPath: {{ $mount.target | quote }}
+    {{- if $mount.name }}
     name: {{ $mount.name | quote }}
     subPath: {{ $mount.source | quote }}
+    {{- else }}
+    name: {{ $mount.source | quote }}
+    {{- end }}
   {{- end -}}
-  {{- end -}}
+{{- end -}}
 {{- end -}}
 
 {{- if and $container.healthcheck ($container.healthcheck | pluck "test" | first) (not ($container.healthcheck | pluck "disabled" | first)) -}}
