@@ -64,19 +64,18 @@ operator: {{ $op }}
 
 {{- define "stack.helpers.tolerations" }}
 {{-   if not (eq (typeOf .) "string") }}
-{{-     fail "deploy.placement.tolerations[] must be string" }}
+{{-     fail "deploy.placement.tolerations[*] must be string" }}
 {{-   end }}
-{{-   if not (regexMatch "^([^=:]+(=[^=:]+)?)?:(NoSchedule|PreferNoSchedule|NoExecute)$" .) }}
-{{-     fail "deploy.placement.tolerations[] must be [key[=value]]:(NoSchedule|PreferNoSchedule|NoExecute)"}}
+{{-   if not (regexMatch "^[^=:]+(=[^=:]+)?(:(NoSchedule|PreferNoSchedule|NoExecute))?$" .) }}
+{{-     fail "deploy.placement.tolerations[] must be 'key[=value][:(NoSchedule|PreferNoSchedule|NoExecute)]'"}}
 {{-   end }}
 {{-   $tokens := splitList ":" . }}
-{{-   $effect := index $tokens 1 }}
-{{-   $pair := index $tokens 0 | splitList "=" }}
-effect: {{ $effect }}
-{{-   if index $pair 0 }}
-key: {{ index $pair 0 }}
+{{-   if eq (len $tokens) 2 }}
+effect: {{ index $tokens 1 }}
 {{-   end }}
-{{-   if lt (len $pair) 2 }}
+{{-   $pair := index $tokens 0 | splitList "=" }}
+key: {{ index $pair 0 }}
+{{-   if eq (len $pair) 1 }}
 operator: Exists
 {{-   else }}
 operator: Equal
