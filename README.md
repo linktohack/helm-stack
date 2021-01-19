@@ -251,6 +251,7 @@ kubectl -n com-linktohack-redmine apply -f stack1.yaml
 ```
 
 # Changelog
+* v1.9.3: fix tolerations.
 * v1.9.2:
   - Fix `traefik.frontend.rule=PathPrefixStrip` behavior for ingress-nginx.
   - Add `PathPrefix` support for ingress-nginx.
