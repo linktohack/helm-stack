@@ -97,7 +97,7 @@ value: {{ index $pair 1 }}
 {{-   $restartPolicyMap := dict "" "" "none" "Never" "on-failure" "OnFailure" "any" "Always" -}}
 {{- /* Variables */ -}}
 {{-   $podVolumes := dict -}}
-{{-   $context := dict "owner_kind" $owner_kind "configs" $configs "secrets" $secrets "volumes" $volumes "podVolumes" $podVolumes }}
+{{-   $context := dict "owner_kind" $owner_kind "configs" $configs "secrets" $secrets "volumes" $volumes "podVolumes" $podVolumes "Values" .Values }}
 spec:
   {{- $affinities := $placement.constraints }}
   {{- if $affinities }}
@@ -212,7 +212,7 @@ spec:
 {{-       end -}}
 {{-     end -}}
 {{-   end -}}
-{{- $podSpec := include "stack.helpers.podSpec" (dict "name" $name "owner_kind" $kind "service" $service "volumes" $volumes "configs" $configs "secrets" $secrets "containers" $containers "initContainers" $initContainers "placement" $placement "restartPolicy" $restartPolicy) | fromYaml -}}
+{{- $podSpec := include "stack.helpers.podSpec" (dict "name" $name "owner_kind" $kind "service" $service "volumes" $volumes "configs" $configs "secrets" $secrets "containers" $containers "initContainers" $initContainers "placement" $placement "restartPolicy" $restartPolicy "Values" .Values) | fromYaml -}}
 
 {{- if eq $kind "Job" -}}
 apiVersion: batch/v1

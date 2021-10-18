@@ -71,7 +71,7 @@ readOnly: {{ index $tokens 2 | eq "ro" }}
 {{-       else if hasPrefix "./" $volName -}}
 {{-         $src := clean (printf "%s/%s" (default "." $Values.chdir) $volName) -}}
 {{-         if not (isAbs $src) -}}
-{{-           fail "volume path or chidir has to be absolute." -}}
+{{-           fail "volume path or chdir has to be absolute." -}}
 {{-         end -}}
 {{-         $name := printf "volume%s-%d" $maybeWithContainerIndex $volIndex -}}
 {{-         $meta := dict "volumeKind" "Volume" "name" $name "type" "hostPath" "source" $src -}}

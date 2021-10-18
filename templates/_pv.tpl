@@ -21,7 +21,7 @@ All the volumes
 {{-     if hasPrefix "./" $src -}}
 {{-       $src = clean (printf "%s/%s" (default "." $Values.chdir) $src) -}}
 {{-       if not (isAbs $src) -}}
-{{-         fail "volume path or chidir has to be absolute." -}}
+{{-         fail "volume path or chdir has to be absolute." -}}
 {{-       end -}}
 {{-     end -}}
 {{-     if eq $type "none" -}}
