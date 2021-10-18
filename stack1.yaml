@@ -1,126 +1,11 @@
----
-# Source: stack/templates/stack.yml
 apiVersion: v1
 data:
-  auth: UkVEQUNURUQ=
-kind: Secret
-metadata:
-  name: redmine-default-basic-auth
-type: Opaque
----
-# Source: stack/templates/stack.yml
-apiVersion: v1
-data:
-  config.yml: ""
+  config.yml: ''
   hello.yaml: there
 kind: ConfigMap
 metadata:
   name: redmine-config
 ---
-# Source: stack/templates/stack.yml
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: com-linktohack-redmine-db
-spec:
-  accessModes:
-  - ReadWriteOnce
-  capacity:
-    storage: 10Gi
-  claimRef:
-    name: db
-    namespace: com-linktohack-redmine
-  hostPath:
-    path: /path/to/db
-  persistentVolumeReclaimPolicy: Retain
----
-# Source: stack/templates/stack.yml
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: db
-spec:
-  accessModes:
-  - ReadWriteOnce
-  resources:
-    requests:
-      storage: 10Gi
-  storageClassName: manual
----
-# Source: stack/templates/stack.yml
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: redmine-config
-spec:
-  accessModes:
-  - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
----
-# Source: stack/templates/stack.yml
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: redmine-files
-spec:
-  accessModes:
-  - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
----
-# Source: stack/templates/stack.yml
-apiVersion: v1
-kind: Service
-metadata:
-  name: db
-spec:
-  ports:
-  - name: tcp-3306
-    port: 3306
-    protocol: TCP
-    targetPort: 3306
-  selector:
-    service: db
-  type: ClusterIP
----
-# Source: stack/templates/stack.yml
-apiVersion: v1
-kind: Service
-metadata:
-  name: db-loadbalancer-tcp
-spec:
-  ports:
-  - name: tcp-3306
-    port: 3306
-    protocol: TCP
-    targetPort: 3306
-  selector:
-    service: db
-  type: LoadBalancer
----
-# Source: stack/templates/stack.yml
-apiVersion: v1
-kind: Service
-metadata:
-  name: redmine
-spec:
-  ports:
-  - name: tcp-3000
-    port: 3000
-    protocol: TCP
-    targetPort: 3000
-  - name: tcp-3001
-    port: 3001
-    protocol: TCP
-    targetPort: 3001
-  selector:
-    service: redmine
-  type: ClusterIP
----
-# Source: stack/templates/stack.yml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -138,28 +23,27 @@ spec:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
-            - matchExpressions:
-              - key: node-role.kubernetes.io/master
-                operator: In
-                values:
-                - "true"
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/master
+                    operator: In
+                    values:
+                      - true
       containers:
-      - env:
-        - name: MYSQL_DATABASE
-          value: redmine
-        - name: MYSQL_ROOT_PASSWORD
-          value: example
-        image: mysql:5.7
-        name: db-0
-        volumeMounts:
-        - mountPath: /var/lib/mysql
+        - env:
+            - name: MYSQL_DATABASE
+              value: redmine
+            - name: MYSQL_ROOT_PASSWORD
+              value: example
+          image: mysql:5.7
           name: db
+          volumeMounts:
+            - mountPath: /var/lib/mysql
+              name: db
       volumes:
-      - name: db
-        persistentVolumeClaim:
-          claimName: db
+        - name: db
+          persistentVolumeClaim:
+            claimName: db
 ---
-# Source: stack/templates/stack.yml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -178,51 +62,50 @@ spec:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
-            - matchExpressions:
-              - key: node-role.kubernetes.io/master
-                operator: In
-                values:
-                - "true"
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/master
+                    operator: In
+                    values:
+                      - true
       containers:
-      - env:
-        - name: REDMINE_DB_MYSQL
-          value: db
-        - name: REDMINE_DB_PASSWORD
-          value: example
-        image: redmine
-        imagePullPolicy: Always
-        livenessProbe:
-          exec:
-            command:
-            - curl
-            - -f
-            - localhost:3000
-          initialDelaySeconds: 90
-          periodSeconds: 30
-          timeoutSeconds: 2
-        name: override-name
-        volumeMounts:
-        - mountPath: /usr/src/redmine/config/configuration.yml
-          name: redmine-config
-          subPath: config.yml
-        - mountPath: /usr/src/redmine/files
-          name: redmine-files
-        - mountPath: /run/secrets/tested
-          name: tested
-          subPath: tested
+        - env:
+            - name: REDMINE_DB_MYSQL
+              value: db
+            - name: REDMINE_DB_PASSWORD
+              value: example
+          image: redmine
+          imagePullPolicy: Always
+          livenessProbe:
+            exec:
+              command:
+                - curl
+                - -f
+                - localhost:3000
+            initialDelaySeconds: 90
+            periodSeconds: 30
+            timeoutSeconds: 2
+          name: override-name
+          volumeMounts:
+            - mountPath: /usr/src/redmine/files
+              name: redmine-files
+            - mountPath: /usr/src/redmine/config/configuration.yml
+              name: redmine-config
+              subPath: config.yml
+            - mountPath: /run/secrets/tested
+              name: tested
+              subPath: tested
       volumes:
-      - configMap:
-          defaultMode: 292
+        - configMap:
+            defaultMode: 292
+            name: redmine-config
           name: redmine-config
-        name: redmine-config
-      - name: redmine-files
-        persistentVolumeClaim:
-          claimName: redmine-files
-      - name: tested
-        secret:
-          secretName: with-external-name
+        - name: redmine-files
+          persistentVolumeClaim:
+            claimName: redmine-files
+        - name: tested
+          secret:
+            secretName: with-external-name
 ---
-# Source: stack/templates/stack.yml
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
@@ -231,20 +114,19 @@ metadata:
     ingress.kubernetes.io/auth-secret: redmine-default-basic-auth
     ingress.kubernetes.io/auth-type: basic
     ingress.kubernetes.io/custom-response-headers: Access-Control-Allow-Origin:*
-    ingress.kubernetes.io/ssl-redirect: "true"
-    kubernetes.io/ingress.class: traefik
+    ingress.kubernetes.io/ssl-redirect: 'true'
+    traefik.ingress.kubernetes.io/redirect-entry-point: https
   name: redmine-default
 spec:
   rules:
-  - host: REDACTED
-    http:
-      paths:
-      - backend:
-          serviceName: redmine
-          servicePort: tcp-3000
-        path: /
+    - host: REDACTED
+      http:
+        paths:
+          - backend:
+              serviceName: redmine
+              servicePort: tcp-3000
+            path: /
 ---
-# Source: stack/templates/stack.yml
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
@@ -252,10 +134,114 @@ metadata:
   name: redmine-seg
 spec:
   rules:
-  - host: REDACTED
-    http:
-      paths:
-      - backend:
-          serviceName: redmine
-          servicePort: tcp-3001
-        path: /
+    - host: REDACTED
+      http:
+        paths:
+          - backend:
+              serviceName: redmine
+              servicePort: tcp-3001
+            path: /
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: com-linktohack-redmine-db
+spec:
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: 10Gi
+  claimRef:
+    name: db
+    namespace: com-linktohack-redmine
+  hostPath:
+    path: /path/to/db
+  persistentVolumeReclaimPolicy: Retain
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: db
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: manual
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redmine-config
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redmine-files
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+data:
+  auth: UkVEQUNURUQ=
+kind: Secret
+metadata:
+  name: redmine-default-basic-auth
+type: Opaque
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+spec:
+  ports:
+    - name: tcp-3306
+      port: 3306
+      protocol: TCP
+      targetPort: 3306
+  selector:
+    service: db
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: db-loadbalancer-tcp
+spec:
+  ports:
+    - name: tcp-3306
+      port: 3306
+      protocol: TCP
+      targetPort: 3306
+  selector:
+    service: db
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redmine
+spec:
+  ports:
+    - name: tcp-3000
+      port: 3000
+      protocol: TCP
+      targetPort: 3000
+    - name: tcp-3001
+      port: 3001
+      protocol: TCP
+      targetPort: 3001
+  selector:
+    service: redmine
+  type: ClusterIP
