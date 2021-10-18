@@ -41,17 +41,17 @@ Result is a dict { "data": $affinities }
 {{-         $val := toString (eq $last "manager") -}}
 key: node-role.kubernetes.io/master
 operator: {{ $op }}
-values: [{{ $val }}]
+values: [{{ $val | quote }}]
 {{-       end -}}
 {{-       if eq $first "node.hostname" -}}
 key: kubernetes.io/hostname
 operator: {{ $op }}
-values: [{{ $last }}]
+values: [{{ $last | quote }}]
 {{-       end -}}
 {{-       if hasPrefix "node.labels" $first -}}
 key: {{ replace "node.labels." ""  $first }}
 operator: {{ $op }}
-values: [{{ $last }}]
+values: [{{ $last | quote}}]
 {{-       end -}}
 {{-     end -}}
 {{-     if (eq $op "Exists") -}}
