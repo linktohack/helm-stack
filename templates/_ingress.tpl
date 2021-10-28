@@ -157,6 +157,9 @@ metadata:
     {{-   end }}
     {{- end }}
 spec:
+  {{- if $ingressClass }}
+  ingressClassName: {{ $ingressClass }}
+  {{- end }}
   rules:
     {{- range $host := $hosts }}
     - host: {{ $host | quote }}
