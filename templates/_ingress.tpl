@@ -115,11 +115,19 @@ metadata:
   annotations:
     {{- if ne $backend "http" }}
     ingress.kubernetes.io/protocol: {{ $backend }}
+    {{-   if regexFind "nginx" $ingressClass }}
+    nginx.ingress.kubernetes.io/backend-protocol: {{ $backend }}
+    {{-   end -}}
     {{- end -}}
     {{- if $auth }}
     ingress.kubernetes.io/auth-type: basic
     ingress.kubernetes.io/auth-realm: traefik
     ingress.kubernetes.io/auth-secret: {{ printf "%s-%s-basic-auth" $name $segment | quote }}
+    {{-   if regexFind "nginx" $ingressClass }}
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/auth-realm: nginx
+    nginx.ingress.kubernetes.io/auth-secret: {{ printf "%s-%s-basic-auth" $name $segment | quote }}
+    {{-   end -}}
     {{- end -}}
     {{- if $ingressClass }}
     kubernetes.io/ingress.class: {{ $ingressClass }}
