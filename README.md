@@ -251,6 +251,11 @@ kubectl -n com-linktohack-redmine apply -f stack1.yaml
 ```
 
 # Changelog
+
+* v1.16.0: Starting from this version, we follow k8s's versioning scheme so that 1.16.x series supports k8s version is between 1.6 and 1.8
+  - Add tests, require [https://pypi.org/project/yq/](yq). More test are welcome
+  - Add more nginx annotations
+  - Fix missing `chidir` + `constraints` quotation
 * v1.9.3: fix tolerations.
 * v1.9.2:
   - Fix `traefik.frontend.rule=PathPrefixStrip` behavior for ingress-nginx.
@@ -269,5 +274,6 @@ kubectl -n com-linktohack-redmine apply -f stack1.yaml
 * v1.5.0 Support `CertManager`
 * v1.4.0 with `Raw` property
 * v1.3.7 Support port range `xxxx-yyyy:zzzz-tttt/udp`
+
 # License
 MIT
