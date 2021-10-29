@@ -42,7 +42,7 @@ All the volumes
 {{-     $containers := omit $service "containers" | prepend ($service.containers | default list) -}}
 {{-     range $container := $containers -}}
 {{-       range $volValue := $container.volumes -}}
-{{-         $mountOptions := include "stack.helpers.volumeMountOptions" $volValue | fromYaml -}}
+{{-         $mountOptions := include "stack.helpers.normalizeVolumeMount" $volValue | fromYaml -}}
 {{-         $volName := $mountOptions.source | replace "_" "-" -}}
 {{-         if not (or (hasPrefix "/" $volName) (hasPrefix "./" $volName)) -}}
 {{-           $volume := get $volumes $volName -}}

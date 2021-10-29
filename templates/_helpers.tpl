@@ -197,6 +197,75 @@ Normalize ports:
 
 
 {{/*
+Normalize volme mount
+*/}}
+{{- define "stack.helpers.normalizeVolumeMount" }}
+{{-   $mount := dict }}
+{{-   if eq (typeOf .) "string" }}
+{{-     $list := splitList ":" . }}
+{{-     $_ := set $mount "source" (index $list 0) -}}
+{{-     $_ := set $mount "target" (index $list 1) -}}
+{{-     if ge (len $list) 3 -}}
+{{-       if index $list 2 | eq "ro" -}}
+{{-         $_ := set $mount "readOnly" true -}}
+{{-       end -}}
+{{-     end -}}
+{{-   else -}}
+{{-     $mount = . }}
+{{-   end -}}
+{{ $mount | toYaml }}
+{{- end -}}
+
+
+{{/*
+Normalize config mount
+*/}}
+{{- define "stack.helpers.normalizeConfigMount" }}
+{{-   $mount := dict }}
+{{-   if eq (typeOf .) "string" }}
+{{-     $list := splitList ":" . }}
+{{-     $_ := set $mount "source" . -}}
+{{-     $_ := set $mount "target" (printf "/%s" (get $mount "source")) -}}
+{{-   else -}}
+{{-     $mount = . }}
+{{-     if not (get $mount "target") -}}
+{{-       $_ := set $mount "target" (printf "/%s" (get $mount "source")) -}}
+{{-     end -}}
+{{-   end -}}
+{{ $mount | toYaml }}
+{{- end }}
+
+
+{{/*
+Normalize secret mount
+*/}}
+{{- define "stack.helpers.normalizeSecretMount" }}
+{{-   $mount := dict }}
+{{-   if eq (typeOf .) "string" }}
+{{-     $list := splitList ":" . }}
+{{-     $_ := set $mount "source" . -}}
+{{-     $_ := set $mount "target" (printf "/run/secrets/%s" (get $mount "source")) -}}
+{{-   else -}}
+{{-     $mount = . }}
+{{-     if not (get $mount "target") -}}
+{{-       $_ := set $mount "target" (printf "/run/secrets/%s" (get $mount "source")) -}}
+{{-     end -}}
+{{-   end -}}
+{{ $mount | toYaml }}
+{{- end -}}
+
+
+{{/** Rename cpus -> cpu for resource requests & limits */}}
+{{- define "stack.helpers.normalizeCPU" -}}
+{{-   if and . (.cpus) -}}
+{{-     $_ := set . "cpu" .cpus -}}
+{{-     $_ := unset . "cpus" -}}
+{{-   end -}}
+{{- . | toYaml -}}
+{{- end -}}
+
+
+{{/*
 Merge Deep Overwrite with nil, dict, list & primitive support
 Result is a dict { "data": $mergedData }
 */}}
@@ -244,23 +313,4 @@ Result is a dict { "data": $mergedData }
 {{-     end -}}
 {{-   end -}}
 {{ dict "data" $newDst | toYaml }}
-{{- end -}}
-
-{{/** Get path (a.b.c.d) */}}
-{{- define "getPath" -}}
-{{-   $object := index . 0 -}}
-{{-   $paths := splitList "." (index . 1) -}}
-{{-   range $paths -}}
-{{-     $object = $object | pluck . | first -}}
-{{-   end -}}
-{{ $object | toYaml }}
-{{- end -}}
-
-{{/** Rename cpus -> cpu */}}
-{{- define "schema.normalizeCPU" -}}
-{{-   if and . (.cpus) -}}
-{{-     $_ := set . "cpu" .cpus -}}
-{{-     $_ := unset . "cpus" -}}
-{{-   end -}}
-{{- . | toYaml -}}
 {{- end -}}
