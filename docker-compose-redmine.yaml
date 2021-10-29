@@ -61,6 +61,44 @@ services:
         constraints:
           - node.hostname == prod2
 
+  job:
+    kind: Job
+    image: alpine
+    entrypoint:
+      - bash
+      - -c
+      - sleep 1000
+
+  cronjob:
+    kind: Job
+    image: alpine
+    entrypoint:
+      - bash
+      - -c
+      - sleep 1000
+    CronJob:
+      spec:
+        schedule: '*/9 * * * *'
+
+  resource:
+    image: redis:alpine
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 50M
+        reservations:
+          cpus: '0.25'
+          memory: 20M
+
+  toleration:
+    image: redis:alpine
+    deploy:
+      placement:
+        tolerations:
+          - key1=val1:NoExecute
+          - key2:NoSchedule
+
 networks:
   web:
     external: true

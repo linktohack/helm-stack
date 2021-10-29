@@ -106,6 +106,55 @@ spec:
           secret:
             secretName: with-external-name
 ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: resource
+spec:
+  selector:
+    matchLabels:
+      service: resource
+  template:
+    metadata:
+      labels:
+        service: resource
+    spec:
+      containers:
+        - image: redis:alpine
+          name: resource
+          resources:
+            limits:
+              cpu: '0.50'
+              memory: 50M
+            requests:
+              cpu: '0.25'
+              memory: 20M
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: toleration
+spec:
+  selector:
+    matchLabels:
+      service: toleration
+  template:
+    metadata:
+      labels:
+        service: toleration
+    spec:
+      containers:
+        - image: redis:alpine
+          name: toleration
+      tolerations:
+        - effect: NoExecute
+          key: key1
+          operator: Equal
+          value: val1
+        - effect: NoSchedule
+          key: key2
+          operator: Exists
+---
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
@@ -141,6 +190,38 @@ spec:
               serviceName: redmine
               servicePort: tcp-3001
             path: /
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cronjob
+spec:
+  template:
+    spec:
+      containers:
+        - command:
+            - bash
+            - -c
+            - sleep 1000
+          image: alpine
+          name: cronjob
+      restartPolicy: Never
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: job
+spec:
+  template:
+    spec:
+      containers:
+        - command:
+            - bash
+            - -c
+            - sleep 1000
+          image: alpine
+          name: job
+      restartPolicy: Never
 ---
 apiVersion: v1
 kind: PersistentVolume
