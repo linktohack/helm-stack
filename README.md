@@ -8,7 +8,7 @@ If you ever ask yourself, what do this thousand lines of `k8s` manifest or that 
 helm repo add link https://linktohack.github.io/helm-stack/
 kubectl create namespace your-stack
 # docker stack deploy -c docker-compose.yaml your_stack
-helm -n your-stack upgrade --install your-stack link/stack -f docker-compose.yaml --set services.XXX.expose={YYYY,ZZZZ/udp,TTTT:UUU}
+helm -n your-stack upgrade --install your-stack link/stack -f docker-compose.yaml
 ```
 
 While the inter-container communication is enabled in `swarm` either by `network` or `link`, in `k8s` if you have more than one service and they need to communicate together, you will need to expose the ports explicitly by `--set services.XXX.expose={YYYY}`
@@ -16,16 +16,22 @@ While the inter-container communication is enabled in `swarm` either by `network
 # Features (complete)
 The chart is quite features complete and I was able to deploy complex stacks with it including `traefik` and `kubernetes-dashboard`. In all cases, there is a mechanism to override the generated manifests with full possibilities of `k8s` API (see below.)
 
+Acceptable configurations can be found in the [test](./docker-compose-redmine.yaml):.
+
 - [X] Deployment: 
   - Default to `Deployment`
   - `DaemonSet` if `deploy.mode == global`
   - `kind` can be set manually (e.g. `StatefulSet`, `Job`, `CronJob`) via an [extra key](#extra-keys)
-- [X] Multiple conainters per service:
-  - [Extra key](#extra-keys) `containers` to add more than one containers to the service
-- [X] Node: Support placement constraints (`deploy.placement.constraints`) including:
+  - [Extra key](#extra-keys) `containers` to add one or more containers to the service
+  - [Extra key](#extra-keys) `initContainers` to add one or more more initContainers to the service
+- [X] Affinity: Support placement constraints (`deploy.placement.constraints`) including:
   - `node.role`
   - `node.hostname`
   - `node.labels` (`==`, `!=`, `has`)
+- [X] Resources:
+  - `deploy.resources.reservations` map to `request` and
+  - `deploy.resources.limits` map to `limit` (accept both `cpus` and `cpu` keys)
+- [X] Toleration: via extra key `deploy.placement.tolerations` with `kubectl taint` syntax
 - [X] Service:
   - `ports` expose `LoadBlancer` by default
   - `expose` exposes `ClusterIP` services
