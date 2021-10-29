@@ -32,6 +32,7 @@ Acceptable configurations can be found in the [test](./docker-compose-redmine.ya
   - `deploy.resources.reservations` map to `request` and
   - `deploy.resources.limits` map to `limit` (accept both `cpus` and `cpu` keys)
 - [X] Toleration: via extra key `deploy.placement.tolerations` with `kubectl taint` syntax
+- [X] Resources: `deploy.resource.reservations` map to `request` and `deploy.resource.limits` map to `limit` (accept both `cpus` and `cpu`!)
 - [X] Service:
   - `ports` expose `LoadBlancer` by default
   - `expose` exposes `ClusterIP` services
@@ -41,7 +42,7 @@ Acceptable configurations can be found in the [test](./docker-compose-redmine.ya
   - Support `CertManager` `Issuer` and `ClusterIssuer` via extra labels `traefik.issuer` and `traefik.cluster-issuer`
   - Support `Ingress` class via extra label `traefik.ingress-class`
   - Support `segment` labels for services that expose multiple ports `traefik.port`, `traefik.first.port`, `traefik.second.port`...
-  - Advanced features (`PathPrefixStrip`, custom headers...) will set the Ingress class to `traefik`, but again it can be overriden.
+  - Advanced features (`PathPrefixStrip`, custom headers...) will set the Ingress class to `traefik`, but again it can be overwritten.
 - [X] Volume: Handle inline/top-level volumes/external volumes
   - Automatic switch to `volumeClaimTemplates` for `StatefulSet` (really useful if combine with cloud provider's dynamic provisioner).
   - Dynamic provisioner should work as expected `volumes.XXX.driver_opts.type` maps directly to `storageClassName` including treatments for
@@ -121,10 +122,11 @@ These keys are either not existed in `docker-compose` format or have the meaning
   - `services.XXX.ports` (array, ports to be exposed via `LoadBalancer`)
   - `services.XXX.nodePorts` (ports to be exposed as `NodePort`)
   - `services.XXX.containers` (array, same spec as `services.XXX`, additional containers to run in the same `Pod`)
-  - `services.XXX.initContainers` (array, same spec as `services.XXX.containers`, populate `pod.spec.initContainers`)
+  - `services.XXX.initContainers` (array, same spec as `services.XXX.containers`, populates `pod.spec.initContainers`)
+  - `services.XXX.volumes[].subPath` (string, `subPath` support)
 - Volumes
   - `volumes.XXX.storage` (string, default `1Gi` for dynamic provisioner)
-  - *~~`volumes.XXX.subPath`~~* (string, **deprecated**, use `services.XXX.volumes` mount long-syntax *(v1.9.0 or above)* instead).
+  - `volumes.XXX.subPath` (string, use `services.XXX.volumes` long syntax with extra key `subPath` if you want multiple `subPath`s
 - Config
   - `config.XXX.file` (string | null, required by `swarm`, can be set to `null` to mount config as a directory)
   - `config.XXX.data` (string)
@@ -258,7 +260,9 @@ kubectl -n com-linktohack-redmine apply -f stack1.yaml
 
 # Changelog
 
-* v1.16.0: Starting from this version, we follow k8s's versioning scheme so that 1.16.x series supports k8s version is between 1.6 and 1.8
+* v1.18.0: Support k8s version between 1.18 and 1.21
+  - Support `ingressClassName`
+* v1.16.0: Starting from this version, we follow k8s's versioning scheme so that 1.16.x series supports k8s version is between 1.16 and 1.21
   - Add tests, require [https://pypi.org/project/yq/](yq). More test are welcome
   - Add more nginx annotations
   - Fix missing `chidir` + `constraints` quotation
