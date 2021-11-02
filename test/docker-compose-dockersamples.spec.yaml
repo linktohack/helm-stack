@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db
+spec:
+  selector:
+    matchLabels:
+      service: db
+  template:
+    metadata:
+      labels:
+        service: db
+    spec:
+      containers:
+        - image: dockersamples/k8s-wordsmith-db
+          name: db
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  selector:
+    matchLabels:
+      service: web
+  template:
+    metadata:
+      labels:
+        service: web
+    spec:
+      containers:
+        - image: dockersamples/k8s-wordsmith-web
+          name: web
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: words
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      service: words
+  template:
+    metadata:
+      labels:
+        service: words
+    spec:
+      containers:
+        - image: dockersamples/k8s-wordsmith-api
+          name: words
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-loadbalancer-tcp
+spec:
+  ports:
+    - name: tcp-33000
+      port: 33000
+      protocol: TCP
+      targetPort: 80
+  selector:
+    service: web
+  type: LoadBalancer

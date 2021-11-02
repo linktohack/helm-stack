@@ -14,9 +14,9 @@ helm -n your-stack upgrade --install your-stack link/stack -f docker-compose.yam
 While the inter-container communication is enabled in `swarm` either by `network` or `link`, in `k8s` if you have more than one service and they need to communicate together, you will need to expose the ports explicitly by `--set services.XXX.expose={YYYY}`
 
 # Features (complete)
-The chart is quite features complete and I was able to deploy complex stacks with it including `traefik` and `kubernetes-dashboard`. In all cases, there is a mechanism to override the generated manifests with full possibilities of `k8s` API (see below.)
+The chart is features complete and I was able to deploy complex stacks with it including `traefik` and `kubernetes-dashboard`. In all cases, there is a mechanism to override the generated manifests with full possibilities of `k8s` API (see below.)
 
-Acceptable configurations can be found in the [test](./docker-compose-redmine.yaml):.
+Acceptable configurations can be found in the [test](./test/docker-compose-redmine.yaml):.
 
 - [X] Deployment: 
   - Default to `Deployment`
@@ -31,31 +31,30 @@ Acceptable configurations can be found in the [test](./docker-compose-redmine.ya
 - [X] Resources:
   - `deploy.resources.reservations` map to `request` and
   - `deploy.resources.limits` map to `limit` (accept both `cpus` and `cpu` keys)
-- [X] Toleration: via extra key `deploy.placement.tolerations` with `kubectl taint` syntax
-- [X] Resources: `deploy.resource.reservations` map to `request` and `deploy.resource.limits` map to `limit` (accept both `cpus` and `cpu`!)
+- [X] Toleration: via [extra key](#extra-keys) `deploy.placement.tolerations` with `kubectl taint` syntax
 - [X] Service:
   - `ports` expose `LoadBlancer` by default
   - `expose` exposes `ClusterIP` services
   - `nodePorts` expose `NodePort` services
 - [X] Ingress
-  - Support `traefik` (1.7) labels (`deploy.labels`) as input with annotations including basic auth
-  - Support `CertManager` `Issuer` and `ClusterIssuer` via extra labels `traefik.issuer` and `traefik.cluster-issuer`
+  - Support `traefik` (1.7) labels (`deploy.labels`) as input with annotations support, including basic auth, `PathPrefixStrip`, `customRequestHeaders`, `customResponseHeaders`...
+  - Support `CertManager`'s `Issuer` and `ClusterIssuer` via extra labels `traefik.issuer` and `traefik.cluster-issuer`
   - Support `Ingress` class via extra label `traefik.ingress-class`
   - Support `segment` labels for services that expose multiple ports `traefik.port`, `traefik.first.port`, `traefik.second.port`...
-  - Advanced features (`PathPrefixStrip`, custom headers...) will set the Ingress class to `traefik`, but again it can be overwritten.
-- [X] Volume: Handle inline/top-level volumes/external volumes
+- [X] Volume: Support inline/top-level volumes/external volumes
+  - Support both short and long syntax
   - Automatic switch to `volumeClaimTemplates` for `StatefulSet` (really useful if combine with cloud provider's dynamic provisioner).
-  - Dynamic provisioner should work as expected `volumes.XXX.driver_opts.type` maps directly to `storageClassName` including treatments for
+  - Dynamic provisioner should work as expected. `volumes.XXX.driver_opts.type` maps directly to `storageClassName` including treatments for:
     - `none` (default storage class)
     - `nfs`
     - `emptyDir`
-  - Support `none` (map to `hostPath` if `volumes.XXX.driver_opts.device` presents) and `nfs` (support `addr` in `volumes.XXX.driver_opts.o`, `volumes.XXX.driver_opts.device`) static provisioner. 
-  - Support `readOnly` attribute (`volume:/path:ro`)
-- [X] Config: Handle top-level configs/external configs
+  - Support `none` (map to `hostPath` if `volumes.XXX.driver_opts.device` presents) and `nfs` (if `addr` presents in `volumes.XXX.driver_opts.o` and `volumes.XXX.driver_opts.device` prensents) static provisioner. 
+  - Support `readOnly` attribute (`volume:/path:ro` style)
+- [X] Config: Support top-level configs/external configs
   - Support both short and long syntax
   - Data can be integrated directly via `data` external key
   - Support mouting as directory by setting `file` to null. See [Advance: full override](#advance-full-override) to see how to insert more than one files
-- [X] Secret: Handle top-level secrets/external secrets
+- [X] Secret: Support top-level secrets/external secrets
   - Support both short and long syntax
   - Data can be integrated directly via `data` and `stringData` external keys
   - Support mouting as directory by setting `file` to null. See [Advance: full override](#advance-full-override) to see how to insert more than one files
@@ -70,7 +69,7 @@ Acceptable configurations can be found in the [test](./docker-compose-redmine.ya
 Tested in a K3s cluster with `local-path` provisioner.
 
 ```sh
-❯ helm -n com-linktohack-docker-on-compose upgrade --install sample link/stack -f docker-compose-dockersamples.yaml
+❯ helm -n com-linktohack-docker-on-compose upgrade --install sample link/stack -f test/docker-compose-dockersamples.yaml
 Release "sample" does not exist. Installing it now.
 NAME: sample
 LAST DEPLOYED: Tue Jan 14 18:38:42 2020
@@ -158,18 +157,18 @@ services:
       tcp: {}
       upd: {}
     Ingress:
-      default: {}
-      seg: {}
+      default: {} # default segement
+      seg1: {} # segment seg1
     Auth:
       default: {}
-      seg: {}
+      seg: {} # segment seg1
     Deployment:
       spec:
         template:
           spec:
             containers:
               - name: override-name
-                imagePullPolicy: Always
+                imagePullPolicy: Always # supported as an extra key already
     DaemonSet:
       spec:
     StatefulSe:
@@ -178,26 +177,26 @@ services:
       spec:
     CronJob:
       spec:
-        schedule: '*/1 * * * *'
+        schedule: '*/1 * * * *' # mostly require
 volumes:
   db:
     PV:
       spec:
         capacity:
-          storage: 10Gi
+          storage: 10Gi # supported as an extra key already
         persistentVolumeReclaimPolicy: Retain
     PVC:
       spec:
         resources:
           requests:
-            storage: 10Gi
+            storage: 10Gi # supported as an extra key already
 configs:
   redmine_config:
     ConfigMap:
       data:
         hello.yaml: there
 secrets:
-  tested:
+  with_string_data:
     Secret:
       stringData: ""
 ```
@@ -217,13 +216,14 @@ The same technique can be applied via a proper language instead of using a Helm 
 # Contribution
 - More `traefik` headers
 - JSON schema of `docker-compose` and extra keys
+- More tests
 
 # More examples
 ## Redmine + MySQL
 This example contains almost all the possible configurations of this stack.
 
 ```sh
-helm -n com-linktohack-redmine upgrade --install redmine link/stack -f docker-compose-redmine.yaml -f docker-compose-redmine-override.yaml \
+helm -n com-linktohack-redmine upgrade --install redmine link/stack -f test/docker-compose-redmine.yaml -f test/docker-compose-redmine-override.yaml \
     --set services.db.expose={3306:3306} \
     --set services.db.ports={3306:3306} \
     --set services.db.deploy.placement.constraints={node.role==manager} \
@@ -236,7 +236,7 @@ helm -n com-linktohack-redmine upgrade --install redmine link/stack -f docker-co
 
 ## Traefik ingress
 ```sh   
-helm -n kube-system upgrade --install traefik link/stack -f docker-compose-traefik.yml -f docker-compose-traefik-override.yml
+helm -n kube-system upgrade --install traefik link/stack -f test/docker-compose-traefik.yml -f test/docker-compose-traefik-override.yml
 ```
 
 ## Kubernetes dashboard (with basic auth and skip login)
@@ -244,18 +244,18 @@ helm -n kube-system upgrade --install traefik link/stack -f docker-compose-traef
 - Bind it with `cluster-admin` role
 
 ```sh
-helm -n kubernetes-dashboard upgrade --install dashboard link/stack -f docker-compose-kubernetes-dashboard.yml 
+helm -n kubernetes-dashboard upgrade --install dashboard link/stack -f test/docker-compose-kubernetes-dashboard.yml 
 ```
 
 ## Via template
 ```sh
-helm -n com-linktohack-redmine template redmine link/stack -f docker-compose-redmine.yaml -f docker-compose-redmine-override.yaml \
+helm -n com-linktohack-redmine template redmine link/stack -f test/docker-compose-redmine.yaml -f test/docker-compose-redmine-override.yaml \
     --set services.db.expose={3306:3306} \
     --set services.db.ports={3306:3306} \
     --set services.db.deploy.placement.constraints={node.role==manager} \
     --set services.redmine.deploy.placement.constraints={node.role==manager} \
-    --set chdir=/stack --debug > stack1.yaml
-kubectl -n com-linktohack-redmine apply -f stack1.yaml
+    --set chdir=/stack --debug > test/docker-compose-redmine.manifest.yaml
+kubectl -n com-linktohack-redmine apply -f test/docker-compose-redmine.manifest.yaml
 ```
 
 # Changelog

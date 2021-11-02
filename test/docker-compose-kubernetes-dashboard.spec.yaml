@@ -1,0 +1,130 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kubernetes-dashboard-settings
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dashboard-metrics-scraper
+spec:
+  selector:
+    matchLabels:
+      service: dashboard-metrics-scraper
+  template:
+    metadata:
+      labels:
+        service: dashboard-metrics-scraper
+    spec:
+      containers:
+        - image: kubernetesui/metrics-scraper:v1.0.1
+          name: dashboard-metrics-scraper
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmp-volume2
+      serviceAccountName: kubernetes-dashboard
+      volumes:
+        - emptyDir: {}
+          name: tmp-volume2
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubernetes-dashboard
+spec:
+  selector:
+    matchLabels:
+      service: kubernetes-dashboard
+  template:
+    metadata:
+      labels:
+        service: kubernetes-dashboard
+    spec:
+      containers:
+        - args:
+            - --auto-generate-certificates
+            - --namespace=kubernetes-dashboard
+            - --enable-skip-login
+          image: kubernetesui/dashboard:v2.0.0-beta8
+          imagePullPolicy: Always
+          name: kubernetes-dashboard
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmp-volume1
+            - mountPath: /certs
+              name: kubernetes-dashboard-certs
+      serviceAccountName: kubernetes-dashboard
+      volumes:
+        - name: kubernetes-dashboard-certs
+          secret:
+            secretName: kubernetes-dashboard-certs
+        - emptyDir: {}
+          name: tmp-volume1
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    ingress.kubernetes.io/auth-realm: traefik
+    ingress.kubernetes.io/auth-remove-header: 'true'
+    ingress.kubernetes.io/auth-secret: kubernetes-dashboard-default-basic-auth
+    ingress.kubernetes.io/auth-type: basic
+    ingress.kubernetes.io/protocol: https
+  name: kubernetes-dashboard-default
+spec:
+  rules:
+    - host: REDACTED
+      http:
+        paths:
+          - backend:
+              serviceName: kubernetes-dashboard
+              servicePort: tcp-8443
+            path: /
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kubernetes-dashboard-certs
+type: Opaque
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kubernetes-dashboard-csrf
+type: Opaque
+---
+apiVersion: v1
+data:
+  auth: UkVEQUNURUQ=
+kind: Secret
+metadata:
+  name: kubernetes-dashboard-default-basic-auth
+type: Opaque
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dashboard-metrics-scraper
+spec:
+  ports:
+    - name: tcp-8000
+      port: 8000
+      protocol: TCP
+      targetPort: 8000
+  selector:
+    service: dashboard-metrics-scraper
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubernetes-dashboard
+spec:
+  ports:
+    - name: tcp-8443
+      port: 8443
+      protocol: TCP
+      targetPort: 8443
+  selector:
+    service: kubernetes-dashboard
+  type: ClusterIP
