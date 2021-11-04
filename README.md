@@ -262,6 +262,7 @@ kubectl -n com-linktohack-redmine apply -f test/docker-compose-redmine.manifest.
 
 * v1.25.0: Not yet release, check branch `v1.25`. Support k8s version between 1.25 and above
 * v1.22.0: Not yet release, check branch `v1.22`. Support k8s version between 1.22 and 1.24
+* v1.18.1: Update Ingress's apiVersion to `networking.k8s.io/v1beta1`
 * v1.18.0: Support k8s version between 1.18 and 1.21
   - Support `ingressClassName`
 * v1.16.0: Starting from this version, we follow k8s's versioning scheme so that 1.16.x series supports k8s version is between 1.16 and 1.21
