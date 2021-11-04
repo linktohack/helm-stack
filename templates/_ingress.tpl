@@ -108,7 +108,7 @@ All the ingresses
 {{-   $issuer := $ingress.issuer -}}
 {{-   $clusterIssuer := $ingress.clusterIssuer -}}
 {{-   $customHeaders := $ingress.customHeaders -}}
-apiVersion: extensions/v1beta1
+apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
   name: {{ printf "%s-%s" $name $segment | quote }}
