@@ -61,7 +61,7 @@ spec:
         - emptyDir: {}
           name: tmp-volume1
 ---
-apiVersion: networking.k8s.io/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
@@ -77,9 +77,12 @@ spec:
       http:
         paths:
           - backend:
-              serviceName: kubernetes-dashboard
-              servicePort: tcp-8443
+              service:
+                name: kubernetes-dashboard
+                port:
+                  name: tcp-8443
             path: /
+            pathType: ImplementationSpecific
 ---
 apiVersion: v1
 kind: Secret

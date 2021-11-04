@@ -108,7 +108,7 @@ All the ingresses
 {{-   $issuer := $ingress.issuer -}}
 {{-   $clusterIssuer := $ingress.clusterIssuer -}}
 {{-   $customHeaders := $ingress.customHeaders -}}
-apiVersion: networking.k8s.io/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: {{ printf "%s-%s" $name $segment | quote }}
@@ -128,9 +128,6 @@ metadata:
     nginx.ingress.kubernetes.io/auth-realm: nginx
     nginx.ingress.kubernetes.io/auth-secret: {{ printf "%s-%s-basic-auth" $name $segment | quote }}
     {{-   end -}}
-    {{- end -}}
-    {{- if $ingressClass }}
-    kubernetes.io/ingress.class: {{ $ingressClass }}
     {{- end -}}
     {{- if $issuer }}
     cert-manager.io/issuer: {{ $issuer }}
@@ -170,9 +167,12 @@ spec:
           {{-   $path = printf "%s/(.*)" $path -}}
           {{- end }}
           - path: {{ $path | quote }}
+            pathType: ImplementationSpecific
             backend:
-              serviceName: {{ printf "%s" $name | quote }}
-              servicePort: {{ printf "tcp-%s" $port | quote }}
+              service:
+                name: {{ printf "%s" $name | quote }}
+                port:
+                  name: {{ printf "tcp-%s" $port | quote }}
           {{- end -}}
     {{- end -}}
   {{- if or $issuer $clusterIssuer }}
