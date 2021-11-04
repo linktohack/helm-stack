@@ -20,4 +20,5 @@
 .idea/
 *.tmproj
 .vscode/
+test/
 stack-*.tgz
