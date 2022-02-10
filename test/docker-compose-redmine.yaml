@@ -70,7 +70,7 @@ services:
       - sleep 1000
 
   cronjob:
-    kind: Job
+    kind: CronJob
     image: alpine
     entrypoint:
       - bash

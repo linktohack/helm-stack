@@ -387,7 +387,7 @@ spec:
     {{ mergeOverwrite (dict "spec" (dict "restartPolicy" "Never")) $podSpec | toYaml | nindent 4 }}
 {{- /* CronJob */ -}}
 {{- else if eq $kind "CronJob" -}}
-apiVersion: batch/v1beta1
+apiVersion: batch/v1
 kind: {{ $kind }}
 metadata:
   name: {{ $name | quote }}

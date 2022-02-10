@@ -6,6 +6,25 @@ kind: ConfigMap
 metadata:
   name: redmine-config
 ---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cronjob
+spec:
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - command:
+                - bash
+                - -c
+                - sleep 1000
+              image: alpine
+              name: cronjob
+          restartPolicy: Never
+  schedule: '*/9 * * * *'
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -196,22 +215,6 @@ spec:
                   name: tcp-3001
             path: /
             pathType: ImplementationSpecific
----
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: cronjob
-spec:
-  template:
-    spec:
-      containers:
-        - command:
-            - bash
-            - -c
-            - sleep 1000
-          image: alpine
-          name: cronjob
-      restartPolicy: Never
 ---
 apiVersion: batch/v1
 kind: Job
