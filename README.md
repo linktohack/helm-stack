@@ -289,4 +289,12 @@ kubectl -n com-linktohack-redmine apply -f test/docker-compose-redmine.manifest.
 * v1.3.7 Support port range `xxxx-yyyy:zzzz-tttt/udp`
 
 # License
-MIT
+
+This project is licensed under **Fair Source License** with a revenue-based threshold.
+
+See [LICENSE.md](./LICENSE.md) for full terms.
+
+**TL;DR:**
+- **Free** for individuals and organizations with < $1M annual revenue
+- **Commercial license required** for organizations with ≥ $1M annual revenue
+
