@@ -1,17 +1,16 @@
 {{- define "stack.service.loadBalancer" -}}
 {{-   $name := .name | replace "_" "-" -}}
-{{-   $protocol := .protocol -}}
 {{-   $ports := .ports -}}
 {{- if $ports -}}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ printf "%s-loadbalancer-%s" $name $protocol | quote }}
+  name: {{ printf "%s-loadbalancer" $name | quote }}
 spec:
   type: LoadBalancer
   ports:
     {{- range $ports }}
-    - name: {{ printf "%s-%s" $protocol (get . "port") | lower | quote }}
+    - name: {{ printf "%s-%s" (get . "protocol") (get . "port") | lower | quote }}
       protocol: {{ get . "protocol" | quote }}
       port: {{ get . "port" }}
       targetPort: {{ get . "targetPort" }}

@@ -89,11 +89,11 @@ pod/words-6465f956d-vchlm              1/1     Running   0          2m2s
 pod/words-6465f956d-l9lnd              1/1     Running   0          2m2s
 pod/words-6465f956d-2lsbz              1/1     Running   0          2m2s
 
-NAME                           TYPE           CLUSTER-IP      EXTERNAL-IP   PORT(S)           AGE
-service/web-loadbalancer-tcp   LoadBalancer   10.43.235.241   2.56.99.175   33000:31908/TCP   2m4s
+NAME                       TYPE           CLUSTER-IP      EXTERNAL-IP   PORT(S)           AGE
+service/web-loadbalancer   LoadBalancer   10.43.235.241   2.56.99.175   33000:31908/TCP   2m4s
 
-NAME                                        DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR   AGE
-daemonset.apps/svclb-web-loadbalancer-tcp   1         1         1       1            1           <none>          2m4s
+NAME                                    DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR   AGE
+daemonset.apps/svclb-web-loadbalancer   1         1         1       1            1           <none>          2m4s
 
 NAME                    READY   UP-TO-DATE   AVAILABLE   AGE
 deployment.apps/web     1/1     1            1           2m4s
@@ -153,9 +153,7 @@ services:
   redmine:
     ClusterIP: {}
     NodePort: {}
-    LoadBalancer:
-      tcp: {}
-      upd: {}
+    LoadBalancer: {}
     Ingress:
       default: {} # default segement
       seg1: {} # segment seg1
@@ -171,7 +169,7 @@ services:
                 imagePullPolicy: Always # supported as an extra key already
     DaemonSet:
       spec:
-    StatefulSe:
+    StatefulSet:
       spec:
     Job:
       spec:
@@ -260,6 +258,9 @@ kubectl -n com-linktohack-redmine apply -f test/docker-compose-redmine.manifest.
 
 # Changelog
 
+* v1.25.1: Merge TCP/UDP LoadBalancer into single service (K8s 1.24+ supports mixed protocols)
+  - Service name changed from `xxx-loadbalancer-tcp`/`xxx-loadbalancer-udp` to `xxx-loadbalancer`
+  - Override syntax simplified: `LoadBalancer: {}` instead of `LoadBalancer: { tcp: {}, udp: {} }`
 * v1.25.0: CronJob: Updade apiVersion to `v1` (require k8s v1.25)
 * v1.22.0: Ingress: Update apiVersion to `v1` (require k8s v1.22)
 * v1.18.1: Update Ingress's apiVersion to `networking.k8s.io/v1beta1`

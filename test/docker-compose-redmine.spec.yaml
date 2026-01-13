@@ -307,7 +307,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: db-loadbalancer-tcp
+  name: db-loadbalancer
 spec:
   ports:
     - name: tcp-3306

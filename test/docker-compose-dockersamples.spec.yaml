@@ -53,7 +53,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: web-loadbalancer-tcp
+  name: web-loadbalancer
 spec:
   ports:
     - name: tcp-33000

@@ -2,9 +2,7 @@ services:
   redmine:
     ClusterIP: {}
     NodePort: {}
-    LoadBalancer:
-      tcp: {}
-      upd: {}
+    LoadBalancer: {}
     Ingress:
       default: {}
       seg: {}

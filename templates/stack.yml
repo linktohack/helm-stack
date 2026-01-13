@@ -61,15 +61,13 @@
 {{       include "stack.helpers.mergeDeepOverwrite" (list $nodePort $override) | fromYaml | pluck "data" | first | toYaml -}}
 {{-   end }}
 {{/* services: loadBalancer */}}
-{{-   $ports := include "stack.helpers.normalizePorts" $service.ports | fromYaml -}}
-{{-   range $protocol, $ports := pick $ports "tcp" "udp" -}}
-{{-     if $ports }}
-{{-       $loadBalancer := include "stack.service.loadBalancer" (dict "name" $name "protocol" $protocol "ports" $ports) | fromYaml -}}
-{{-       $override := $service | pluck "LoadBalancer" | first | default dict | pluck $protocol | first | default dict -}}
-{{-       if $loadBalancer }}
+{{-   $ports := get (include "stack.helpers.normalizePorts" $service.ports | fromYaml) "all" -}}
+{{-   if $ports }}
+{{-     $loadBalancer := include "stack.service.loadBalancer" (dict "name" $name "ports" $ports) | fromYaml -}}
+{{-     $override := $service | pluck "LoadBalancer" | first | default dict -}}
+{{-     if $loadBalancer }}
 ---
-{{          include "stack.helpers.mergeDeepOverwrite" (list $loadBalancer $override) | fromYaml | pluck "data" | first | toYaml -}}
-{{-       end -}}
+{{        include "stack.helpers.mergeDeepOverwrite" (list $loadBalancer $override) | fromYaml | pluck "data" | first | toYaml -}}
 {{-     end -}}
 {{-   end -}}
 {{/* services: ingress */}}
