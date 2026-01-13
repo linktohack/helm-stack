@@ -143,10 +143,10 @@ metadata:
     {{- end -}}
     {{- if regexFind "nginx" $ingressClass }}
     {{-   if $pathPrefix }}
-    nginx.ingress.kubernetes.io/rewrite-target: {{ first $pathPrefix }}/$1
+    nginx.ingress.kubernetes.io/rewrite-target: {{ first $pathPrefix }}$1
     {{-   end }}
     {{-   if $pathPrefixStrip }}
-    nginx.ingress.kubernetes.io/rewrite-target: /$1
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
     {{-   end }}
     {{- else }}
     {{-   if $pathPrefixStrip }}
@@ -164,7 +164,7 @@ spec:
         paths:
           {{- range $path := $pathPrefix | default $pathPrefixStrip | default (list "/") -}}
           {{- if and (regexFind "nginx" $ingressClass) (ne $path "/") -}}
-          {{-   $path = printf "%s/(.*)" $path -}}
+          {{-   $path = printf "%s(/(.*))?$" $path -}}
           {{- end }}
           - path: {{ $path | quote }}
             pathType: ImplementationSpecific
