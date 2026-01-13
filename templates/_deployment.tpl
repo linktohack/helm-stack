@@ -96,15 +96,41 @@ args: {{ $container.command | include "stack.helpers.normalizeCommand" | nindent
 hostname: {{ $container.hostname | quote }}
 {{- end -}}
 {{- $resources := $container | pluck "deploy" | first | default dict | pluck "resources" | first | default dict -}}
-{{- if $resources }}
-resources:
-  requests: {{ $resources.reservations | default $resources.requests | include "stack.helpers.normalizeCPU" | nindent 4 }}
-  limits: {{ $resources.limits | include "stack.helpers.normalizeCPU" | nindent 4 }}
+{{- $reservations := $resources.reservations | default dict -}}
+{{- $devices := $reservations.devices | default list -}}
+{{- $gpuLimits := dict -}}
+{{- if $devices -}}
+{{-   $gpuLimits = include "stack.helpers.normalizeDevices" $devices | fromYaml -}}
 {{- end -}}
-{{- if or $container.privileged $container.cap_add $container.cap_drop }}
+{{- $limits := merge ($gpuLimits | default dict) ($resources.limits | default dict) -}}
+{{- /* Strip devices from reservations for requests */ -}}
+{{- $requests := omit $reservations "devices" -}}
+{{- if not $requests -}}
+{{-   $requests = $resources.requests | default dict -}}
+{{- end -}}
+{{- if or $resources $gpuLimits }}
+resources:
+  {{- if $requests }}
+  requests: {{ $requests | include "stack.helpers.normalizeCPU" | nindent 4 }}
+  {{- end }}
+  {{- if $limits }}
+  limits: {{ $limits | include "stack.helpers.normalizeCPU" | nindent 4 }}
+  {{- end }}
+{{- end -}}
+{{- if or $container.privileged $container.cap_add $container.cap_drop $container.read_only $container.user }}
 securityContext:
   {{- if $container.privileged }}
   privileged: {{ $container.privileged }}
+  {{- end -}}
+  {{- if $container.read_only }}
+  readOnlyRootFilesystem: {{ $container.read_only }}
+  {{- end -}}
+  {{- if $container.user }}
+  {{- $userSpec := include "stack.helpers.normalizeUser" $container.user | fromYaml }}
+  runAsUser: {{ $userSpec.runAsUser }}
+  {{- if $userSpec.runAsGroup }}
+  runAsGroup: {{ $userSpec.runAsGroup }}
+  {{- end -}}
   {{- end -}}
   {{- if or $container.cap_add $container.cap_drop }}
   capabilities:
@@ -169,6 +195,9 @@ livenessProbe:
 {{- end -}}
 {{- if $container.imagePullPolicy }}
 imagePullPolicy: {{ $container.imagePullPolicy }}
+{{- end -}}
+{{- if $container.working_dir }}
+workingDir: {{ $container.working_dir | quote }}
 {{- end -}}
 {{- end -}}
 
@@ -242,6 +271,19 @@ Result is a dict { "list": $containerList }
 {{-       $volumeMounts = append $volumeMounts $volume -}}
 {{-       $_ := set $podVolumes $name $volume -}}
 {{-     end -}}
+{{- /* tmpfs */ -}}
+{{-     if $container.tmpfs -}}
+{{-       $tmpfsList := include "stack.helpers.normalizeTmpfs" $container.tmpfs | fromYaml | pluck "list" | first -}}
+{{-       range $tmpfs := $tmpfsList -}}
+{{-         $volName := printf "tmpfs%s-%d" $maybeWithContainerIndex (get $tmpfs "index" | int) -}}
+{{-         $volume := dict "volumeKind" "Volume" "name" $volName "type" "tmpfs" "target" (get $tmpfs "path") -}}
+{{-         if get $tmpfs "sizeLimit" -}}
+{{-           $_ := set $volume "sizeLimit" (get $tmpfs "sizeLimit") -}}
+{{-         end -}}
+{{-         $volumeMounts = append $volumeMounts $volume -}}
+{{-         $_ := set $podVolumes $volName $volume -}}
+{{-       end -}}
+{{-     end -}}
 {{-     $name := $container.container_name | default $container.name | default (printf "%s%s" $name $maybeWithContainerIndex) | replace "_" "-" -}}
 {{-     $environment := include "stack.helpers.normalizeKV" $container.environment | fromYaml -}}
 {{-     $_ := set $container "environment" $environment -}}
@@ -294,6 +336,10 @@ spec:
   dnsConfig:
     nameservers: {{ $service.dns | toYaml | nindent 10 }}
   {{- end }}
+  {{- /* extra_hosts -> hostAliases */ -}}
+  {{- if $service.extra_hosts }}
+  hostAliases: {{ include "stack.helpers.normalizeExtraHosts" $service.extra_hosts | nindent 4 }}
+  {{- end }}
   {{/* containers */}}
   containers: {{ include "stack.helpers.containerList" (dict "name" $name "service" $service "kind" $kind "configs" $configs "secrets" $secrets "volumes" $volumes "podVolumes" $podVolumes "containers" $containers "Values" .Values) | fromYaml | pluck "list" | first | toYaml | nindent 6 }}
   {{/* initContainers */}}
@@ -315,6 +361,12 @@ spec:
         path: {{ $volValue.src | default $volValue.source | quote }}
       {{- else if eq $volValue.type "emptyDir" }}
       emptyDir: {}
+      {{- else if eq $volValue.type "tmpfs" }}
+      emptyDir:
+        medium: Memory
+        {{- if $volValue.sizeLimit }}
+        sizeLimit: {{ $volValue.sizeLimit }}
+        {{- end }}
       {{- else }}
       persistentVolumeClaim:
         claimName: {{ $volValue.externalName | quote }}
@@ -346,6 +398,10 @@ spec:
   {{- end -}}
   {{- if get $restartPolicyMap (get $restartPolicy "condition") }}
   restartPolicy: {{ get $restartPolicyMap (get $restartPolicy "condition") }}
+  {{- end -}}
+  {{- /* stop_grace_period -> terminationGracePeriodSeconds */ -}}
+  {{- if $service.stop_grace_period }}
+  terminationGracePeriodSeconds: {{ include "stack.helpers.normalizeDuration" $service.stop_grace_period }}
   {{- end -}}
 {{- end -}}
 

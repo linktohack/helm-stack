@@ -26,6 +26,7 @@ spec:
 {{-   $service := .service -}}
 {{-   $ports := get (include "stack.helpers.normalizePorts" ($service.expose | default dict) | fromYaml) "all" -}}
 {{-   $labels := $service | pluck "deploy" | first | default dict | pluck "labels" | first | default list -}}
+{{-   $endpointMode := $service | pluck "deploy" | first | default dict | pluck "endpoint_mode" | first | default "vip" -}}
 {{-   $port := "" -}}
 {{-   range $labelName, $labelValue := include "stack.helpers.normalizeKV" $labels | fromYaml -}}
 {{-     if regexMatch "^traefik\\.(\\w+\\.)?port$" $labelName -}}
@@ -48,6 +49,9 @@ metadata:
   name: {{ printf "%s" $name | quote }}
 spec:
   type: ClusterIP
+  {{- if eq $endpointMode "dnsrr" }}
+  clusterIP: None
+  {{- end }}
   ports:
     {{- range $ports }}
     - name: {{ printf "%s-%s" (get . "protocol") (get . "port") | lower | quote }}

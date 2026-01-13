@@ -255,6 +255,91 @@ Normalize secret mount
 {{- end -}}
 
 
+{{/*
+Normalize extra_hosts to hostAliases format
+Input: ["hostname:ip", ...] or {"hostname": "ip", ...}
+Output: [{"ip": "...", "hostnames": ["..."]}, ...]
+*/}}
+{{- define "stack.helpers.normalizeExtraHosts" -}}
+{{-   $hostAliases := dict -}}
+{{-   $isList := eq (typeOf .) "[]interface {}" -}}
+{{-   range $key, $value := . -}}
+{{-     $hostname := "" -}}
+{{-     $ip := "" -}}
+{{-     if $isList -}}
+{{-       $parts := splitList ":" $value -}}
+{{-       $hostname = first $parts -}}
+{{-       $ip = last $parts -}}
+{{-     else -}}
+{{-       $hostname = $key -}}
+{{-       $ip = $value -}}
+{{-     end -}}
+{{-     if hasKey $hostAliases $ip -}}
+{{-       $existing := get $hostAliases $ip -}}
+{{-       $_ := set $hostAliases $ip (append $existing $hostname) -}}
+{{-     else -}}
+{{-       $_ := set $hostAliases $ip (list $hostname) -}}
+{{-     end -}}
+{{-   end -}}
+{{-   $result := list -}}
+{{-   range $ip, $hostnames := $hostAliases -}}
+{{-     $result = append $result (dict "ip" $ip "hostnames" $hostnames) -}}
+{{-   end -}}
+{{ $result | toYaml }}
+{{- end -}}
+
+
+{{/*
+Normalize user string to runAsUser/runAsGroup
+Input: "uid" or "uid:gid"
+Output: {"runAsUser": uid, "runAsGroup": gid}
+*/}}
+{{- define "stack.helpers.normalizeUser" -}}
+{{-   $result := dict -}}
+{{-   $parts := splitList ":" (toString .) -}}
+{{-   $_ := set $result "runAsUser" (first $parts | int64) -}}
+{{-   if gt (len $parts) 1 -}}
+{{-     $_ := set $result "runAsGroup" (index $parts 1 | int64) -}}
+{{-   end -}}
+{{ $result | toYaml }}
+{{- end -}}
+
+
+{{/*
+Normalize tmpfs mounts
+Input: ["/path", "/path:size=100M", ...] or "/path"
+Output: {"list": [{"path": "/path", "sizeLimit": "100Mi"}, ...]}
+*/}}
+{{- define "stack.helpers.normalizeTmpfs" -}}
+{{-   $result := list -}}
+{{-   $input := . -}}
+{{-   if eq (typeOf $input) "string" -}}
+{{-     $input = list $input -}}
+{{-   end -}}
+{{-   range $index, $value := $input -}}
+{{-     $parts := splitList ":" $value -}}
+{{-     $path := first $parts -}}
+{{-     $sizeLimit := "" -}}
+{{-     if gt (len $parts) 1 -}}
+{{-       $options := index $parts 1 -}}
+{{-       $optParts := splitList "," $options -}}
+{{-       range $opt := $optParts -}}
+{{-         if hasPrefix "size=" $opt -}}
+{{-           $size := trimPrefix "size=" $opt -}}
+{{-           $sizeLimit = $size | replace "M" "Mi" | replace "G" "Gi" | replace "K" "Ki" -}}
+{{-         end -}}
+{{-       end -}}
+{{-     end -}}
+{{-     $entry := dict "path" $path "index" $index -}}
+{{-     if $sizeLimit -}}
+{{-       $_ := set $entry "sizeLimit" $sizeLimit -}}
+{{-     end -}}
+{{-     $result = append $result $entry -}}
+{{-   end -}}
+list: {{ $result | toYaml | nindent 2 }}
+{{- end -}}
+
+
 {{/** Rename cpus -> cpu for resource requests & limits */}}
 {{- define "stack.helpers.normalizeCPU" -}}
 {{-   if and . (.cpus) -}}
@@ -262,6 +347,25 @@ Normalize secret mount
 {{-     $_ := unset . "cpus" -}}
 {{-   end -}}
 {{- . | toYaml -}}
+{{- end -}}
+
+
+{{/*
+Normalize GPU devices from Docker Compose format to Kubernetes resource limits
+Input: devices array from deploy.resources.reservations.devices
+Output: dict with GPU resource limits (e.g., {"nvidia.com/gpu": 2})
+*/}}
+{{- define "stack.helpers.normalizeDevices" -}}
+{{-   $result := dict -}}
+{{-   range $device := . -}}
+{{-     $driver := get $device "driver" | default "" -}}
+{{-     $count := get $device "count" | default 1 -}}
+{{-     $capabilities := get $device "capabilities" | default list -}}
+{{-     if or (eq $driver "nvidia") (has "gpu" $capabilities) -}}
+{{-       $_ := set $result "nvidia.com/gpu" $count -}}
+{{-     end -}}
+{{-   end -}}
+{{ $result | toYaml }}
 {{- end -}}
 
 

@@ -29,4 +29,9 @@ test:
 		-f test/docker-compose-traefik.yaml \
 		-f test/docker-compose-traefik-override.yaml \
 		| yq -sy 'sort_by(.kind, .metadata.name) | .[]' > test/docker-compose-traefik.spec2.yaml
-	diff -u test/docker-compose-traefik.spec.yaml test/docker-compose-traefik.spec2.yaml	
+	diff -u test/docker-compose-traefik.spec.yaml test/docker-compose-traefik.spec2.yaml
+
+	# container-settings (v3.8 features)
+	helm -n com-linktohack-container-settings template container-settings . -f test/docker-compose-container-settings.yaml \
+		| yq -sy 'sort_by(.kind, .metadata.name) | .[]' > test/docker-compose-container-settings.spec2.yaml
+	diff -u test/docker-compose-container-settings.spec.yaml test/docker-compose-container-settings.spec2.yaml

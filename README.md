@@ -63,6 +63,17 @@ Acceptable configurations can be found in the [test](./test/docker-compose-redmi
 - [X] Job
 - [X] CronJob
   - A default `schedule` is set as `*/1 * * * *` but it can be easily overwritten with `CronJob.spec.schedule`.
+- [X] Container settings (Docker Compose v3.8):
+  - `stop_grace_period` → `terminationGracePeriodSeconds`
+  - `extra_hosts` → `hostAliases`
+  - `read_only` → `securityContext.readOnlyRootFilesystem`
+  - `user` → `securityContext.runAsUser/runAsGroup` (supports `uid` or `uid:gid` format)
+  - `working_dir` → `workingDir`
+  - `tmpfs` → `emptyDir` with `medium: Memory` (supports size limit via `tmpfs: /path:size=100M`)
+- [X] Headless Service:
+  - `deploy.endpoint_mode: dnsrr` → `clusterIP: None`
+- [X] GPU Support:
+  - `deploy.resources.reservations.devices` with `driver: nvidia` → `resources.limits.nvidia.com/gpu`
 
 # Example
 ## Dockersamples
@@ -258,6 +269,15 @@ kubectl -n com-linktohack-redmine apply -f test/docker-compose-redmine.manifest.
 
 # Changelog
 
+* v1.25.2: Add Docker Compose v3.8 container settings support
+  - `stop_grace_period` → `terminationGracePeriodSeconds`
+  - `extra_hosts` → `hostAliases`
+  - `read_only` → `securityContext.readOnlyRootFilesystem`
+  - `user` → `securityContext.runAsUser/runAsGroup`
+  - `working_dir` → `workingDir`
+  - `tmpfs` → `emptyDir` with `medium: Memory`
+  - `deploy.endpoint_mode: dnsrr` → headless service (`clusterIP: None`)
+  - GPU support via `deploy.resources.reservations.devices` → `nvidia.com/gpu`
 * v1.25.1: Merge TCP/UDP LoadBalancer into single service (K8s 1.24+ supports mixed protocols)
   - Service name changed from `xxx-loadbalancer-tcp`/`xxx-loadbalancer-udp` to `xxx-loadbalancer`
   - Override syntax simplified: `LoadBalancer: {}` instead of `LoadBalancer: { tcp: {}, udp: {} }`

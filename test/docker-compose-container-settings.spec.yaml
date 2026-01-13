@@ -1,0 +1,408 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: combined-test
+spec:
+  selector:
+    matchLabels:
+      service: combined-test
+  template:
+    metadata:
+      labels:
+        service: combined-test
+    spec:
+      containers:
+        - image: nginx:alpine
+          name: combined-test
+          securityContext:
+            readOnlyRootFilesystem: true
+            runAsGroup: 1001
+            runAsUser: 1001
+          volumeMounts:
+            - mountPath: /cache
+              name: tmpfs-0
+          workingDir: /data
+      hostAliases:
+        - hostnames:
+            - myhost
+          ip: 10.0.0.1
+      terminationGracePeriodSeconds: 90
+      volumes:
+        - emptyDir:
+            medium: Memory
+            sizeLimit: 256Mi
+          name: tmpfs-0
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: extra-hosts-test
+spec:
+  selector:
+    matchLabels:
+      service: extra-hosts-test
+  template:
+    metadata:
+      labels:
+        service: extra-hosts-test
+    spec:
+      containers:
+        - image: nginx:alpine
+          name: extra-hosts-test
+      hostAliases:
+        - hostnames:
+            - somehost
+          ip: 162.242.195.82
+        - hostnames:
+            - otherhost
+          ip: 50.31.209.229
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gpu-test
+spec:
+  selector:
+    matchLabels:
+      service: gpu-test
+  template:
+    metadata:
+      labels:
+        service: gpu-test
+    spec:
+      containers:
+        - image: nvidia/cuda:latest
+          name: gpu-test
+          resources:
+            limits:
+              nvidia.com/gpu: 2
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gpu-with-limits-test
+spec:
+  selector:
+    matchLabels:
+      service: gpu-with-limits-test
+  template:
+    metadata:
+      labels:
+        service: gpu-with-limits-test
+    spec:
+      containers:
+        - image: nvidia/cuda:latest
+          name: gpu-with-limits-test
+          resources:
+            limits:
+              memory: 4G
+              nvidia.com/gpu: 1
+            requests:
+              cpu: '2'
+              memory: 2G
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: headless-test
+spec:
+  selector:
+    matchLabels:
+      service: headless-test
+  template:
+    metadata:
+      labels:
+        service: headless-test
+    spec:
+      containers:
+        - image: nginx:alpine
+          name: headless-test
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: read-only-test
+spec:
+  selector:
+    matchLabels:
+      service: read-only-test
+  template:
+    metadata:
+      labels:
+        service: read-only-test
+    spec:
+      containers:
+        - image: nginx:alpine
+          name: read-only-test
+          securityContext:
+            readOnlyRootFilesystem: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stop-grace-test
+spec:
+  selector:
+    matchLabels:
+      service: stop-grace-test
+  template:
+    metadata:
+      labels:
+        service: stop-grace-test
+    spec:
+      containers:
+        - image: nginx:alpine
+          name: stop-grace-test
+      terminationGracePeriodSeconds: 30
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tmpfs-multi-test
+spec:
+  selector:
+    matchLabels:
+      service: tmpfs-multi-test
+  template:
+    metadata:
+      labels:
+        service: tmpfs-multi-test
+    spec:
+      containers:
+        - image: nginx:alpine
+          name: tmpfs-multi-test
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmpfs-0
+            - mountPath: /run
+              name: tmpfs-1
+      volumes:
+        - emptyDir:
+            medium: Memory
+          name: tmpfs-0
+        - emptyDir:
+            medium: Memory
+            sizeLimit: 100Mi
+          name: tmpfs-1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tmpfs-single-test
+spec:
+  selector:
+    matchLabels:
+      service: tmpfs-single-test
+  template:
+    metadata:
+      labels:
+        service: tmpfs-single-test
+    spec:
+      containers:
+        - image: nginx:alpine
+          name: tmpfs-single-test
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmpfs-0
+      volumes:
+        - emptyDir:
+            medium: Memory
+          name: tmpfs-0
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-no-group-test
+spec:
+  selector:
+    matchLabels:
+      service: user-no-group-test
+  template:
+    metadata:
+      labels:
+        service: user-no-group-test
+    spec:
+      containers:
+        - image: nginx:alpine
+          name: user-no-group-test
+          securityContext:
+            runAsUser: 999
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-test
+spec:
+  selector:
+    matchLabels:
+      service: user-test
+  template:
+    metadata:
+      labels:
+        service: user-test
+    spec:
+      containers:
+        - image: nginx:alpine
+          name: user-test
+          securityContext:
+            runAsGroup: 1000
+            runAsUser: 1000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: working-dir-test
+spec:
+  selector:
+    matchLabels:
+      service: working-dir-test
+  template:
+    metadata:
+      labels:
+        service: working-dir-test
+    spec:
+      containers:
+        - image: nginx:alpine
+          name: working-dir-test
+          workingDir: /app/src
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: combined-test
+spec:
+  ports:
+    - name: tcp-8080
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    service: combined-test
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: extra-hosts-test
+spec:
+  ports:
+    - name: tcp-80
+      port: 80
+      protocol: TCP
+      targetPort: 80
+  selector:
+    service: extra-hosts-test
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: headless-test
+spec:
+  clusterIP: None
+  ports:
+    - name: tcp-80
+      port: 80
+      protocol: TCP
+      targetPort: 80
+  selector:
+    service: headless-test
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: read-only-test
+spec:
+  ports:
+    - name: tcp-80
+      port: 80
+      protocol: TCP
+      targetPort: 80
+  selector:
+    service: read-only-test
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: stop-grace-test
+spec:
+  ports:
+    - name: tcp-80
+      port: 80
+      protocol: TCP
+      targetPort: 80
+  selector:
+    service: stop-grace-test
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tmpfs-multi-test
+spec:
+  ports:
+    - name: tcp-80
+      port: 80
+      protocol: TCP
+      targetPort: 80
+  selector:
+    service: tmpfs-multi-test
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tmpfs-single-test
+spec:
+  ports:
+    - name: tcp-80
+      port: 80
+      protocol: TCP
+      targetPort: 80
+  selector:
+    service: tmpfs-single-test
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-no-group-test
+spec:
+  ports:
+    - name: tcp-80
+      port: 80
+      protocol: TCP
+      targetPort: 80
+  selector:
+    service: user-no-group-test
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-test
+spec:
+  ports:
+    - name: tcp-80
+      port: 80
+      protocol: TCP
+      targetPort: 80
+  selector:
+    service: user-test
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: working-dir-test
+spec:
+  ports:
+    - name: tcp-80
+      port: 80
+      protocol: TCP
+      targetPort: 80
+  selector:
+    service: working-dir-test
+  type: ClusterIP

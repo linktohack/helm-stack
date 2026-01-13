@@ -1,0 +1,109 @@
+version: "3.8"
+services:
+  # Test stop_grace_period
+  stop-grace-test:
+    image: nginx:alpine
+    stop_grace_period: 30s
+    expose:
+      - "80"
+
+  # Test extra_hosts
+  extra-hosts-test:
+    image: nginx:alpine
+    extra_hosts:
+      - "somehost:162.242.195.82"
+      - "otherhost:50.31.209.229"
+    expose:
+      - "80"
+
+  # Test read_only
+  read-only-test:
+    image: nginx:alpine
+    read_only: true
+    expose:
+      - "80"
+
+  # Test user
+  user-test:
+    image: nginx:alpine
+    user: "1000:1000"
+    expose:
+      - "80"
+
+  # Test user without group
+  user-no-group-test:
+    image: nginx:alpine
+    user: "999"
+    expose:
+      - "80"
+
+  # Test working_dir
+  working-dir-test:
+    image: nginx:alpine
+    working_dir: /app/src
+    expose:
+      - "80"
+
+  # Test tmpfs (single)
+  tmpfs-single-test:
+    image: nginx:alpine
+    tmpfs: /tmp
+    expose:
+      - "80"
+
+  # Test tmpfs (multiple with size)
+  tmpfs-multi-test:
+    image: nginx:alpine
+    tmpfs:
+      - /tmp
+      - /run:size=100M
+    expose:
+      - "80"
+
+  # Test endpoint_mode: dnsrr
+  headless-test:
+    image: nginx:alpine
+    expose:
+      - "80"
+    deploy:
+      endpoint_mode: dnsrr
+
+  # Test GPU support
+  gpu-test:
+    image: nvidia/cuda:latest
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 2
+              capabilities: [gpu]
+
+  # Test GPU with other resources
+  gpu-with-limits-test:
+    image: nvidia/cuda:latest
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          cpus: "2"
+          memory: 2G
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # Test combined features
+  combined-test:
+    image: nginx:alpine
+    stop_grace_period: 1m30s
+    extra_hosts:
+      - "myhost:10.0.0.1"
+    read_only: true
+    user: "1001:1001"
+    working_dir: /data
+    tmpfs:
+      - /cache:size=256M
+    expose:
+      - "8080"
